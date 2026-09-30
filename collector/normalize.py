@@ -61,12 +61,12 @@ BIZINFO_AUDIENCE = {"중소기업": AUD_SME, "중견기업": AUD_SME, "제조업
 GOV24_AUDIENCE = {"개인": AUD_PERSON, "가구": AUD_PERSON, "소상공인": AUD_SOHO, "법인/시설/단체": AUD_ORG}
 
 # 화면의 '누구를 위한 지원' 조건. 한 사업이 여러 대상에 들 수 있다. 농업인은 여러 대상 중 하나다.
-PERSONAS = ["청년", "어르신", "장애인", "임산부·출산", "한부모·다자녀", "구직자", "농업인",
+PERSONAS = ["청년", "시니어", "장애인", "임산부·출산", "한부모·다자녀", "구직자", "농업인",
             AUD_SOHO, AUD_SME, AUD_STARTUP, AUD_ORG]
 # 제목(공고는 지원대상 글도)에서 찾는 말. '고령군'·'유통경로'처럼 다른 뜻으로 쓰이는 경우는 뺀다
 PERSONA_WORDS = {
     "청년": [r"청년"],
-    "어르신": [r"어르신", r"노인", r"고령(?!군)", r"시니어", r"경로당"],
+    "시니어": [r"어르신", r"노인", r"고령(?!군)", r"시니어", r"경로당"],
     "장애인": [r"장애"],
     "임산부·출산": [r"임산부", r"임신", r"출산", r"난임", r"산모", r"산후"],
     "한부모·다자녀": [r"한부모", r"다자녀", r"조손"],
@@ -297,7 +297,7 @@ def personas_for(texts, base=(), agri=0, cond=None):
         if isinstance(lo, int) and isinstance(hi, int) and                 YOUTH_START[0] <= lo <= YOUTH_START[1] and YOUTH_END[0] <= hi <= YOUTH_END[1]:
             found.add("청년")
         if isinstance(lo, int) and lo >= SENIOR_AGE:
-            found.add("어르신")
+            found.add("시니어")
     return [p for p in PERSONAS if p in found]
 
 
