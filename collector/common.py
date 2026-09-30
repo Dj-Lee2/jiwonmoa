@@ -10,6 +10,13 @@ ROOT = Path(__file__).resolve().parent.parent
 RAW_DIR = ROOT / "data" / "raw"
 KEY_PLACEHOLDER = "여기에"
 
+# https만 여는 요청기. 기본 urlopen과 달리 file:// 같은 다른 방식은 처리하지 않는다.
+_OPENER = urllib.request.OpenerDirector()
+for _handler in (urllib.request.HTTPSHandler, urllib.request.HTTPDefaultErrorHandler,
+                 urllib.request.HTTPRedirectHandler, urllib.request.HTTPErrorProcessor,
+                 urllib.request.UnknownHandler):
+    _OPENER.add_handler(_handler())
+
 
 def load_service_key():
     """.env의 DATA_GO_KR_KEY를 읽는다. 인코딩 키를 넣어도 동작하도록 한 번 디코딩한다."""
@@ -30,12 +37,14 @@ def get(url, params, retries=3, timeout=30):
 
     인증키가 주소에 들어가므로 요청 주소는 출력하지 않는다.
     """
+    if urllib.parse.urlsplit(url).scheme != "https":
+        raise ValueError("https 주소만 요청합니다.")
     full = url + "?" + urllib.parse.urlencode(params)
     req = urllib.request.Request(full, headers={"User-Agent": "support-hub-collector/0.1"})
     last = (0, "")
     for attempt in range(retries):
         try:
-            with urllib.request.urlopen(req, timeout=timeout) as resp:
+            with _OPENER.open(req, timeout=timeout) as resp:
                 return resp.status, resp.read().decode("utf-8", errors="replace")
         except urllib.error.HTTPError as e:
             body = e.read().decode("utf-8", errors="replace")

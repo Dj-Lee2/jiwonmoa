@@ -304,7 +304,7 @@ def personas_for(texts, base=(), agri=0, cond=None):
 def content_hash(rec):
     keys = ("title", "period_text", "target", "summary", "content", "how", "apply_url", "files")
     blob = json.dumps([rec.get(k) for k in keys], ensure_ascii=False)
-    return hashlib.sha1(blob.encode("utf-8")).hexdigest()
+    return hashlib.sha256(blob.encode("utf-8")).hexdigest()
 
 
 def to_date(value):
