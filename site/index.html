@@ -1,0 +1,231 @@
+<!doctype html>
+<html lang="ko" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>지원모아</title>
+<meta name="description" content="정부·지자체·공공기관의 지원사업 공고와 제도를 한곳에서 찾아보는 비공식 개인 프로젝트">
+<meta name="color-scheme" content="only light">
+<meta name="theme-color" content="#ffffff">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23111111'/%3E%3Cpath d='M9 17l5 5 9-11' stroke='white' stroke-width='3.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@phosphor-icons/web@2.1.1/src/regular/style.css">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<a class="skip" href="#main">본문으로 건너뛰기</a>
+
+<header class="top">
+  <div class="wrap top-inner">
+    <div class="brand">
+      <h1><a id="homeLink" href="#" aria-label="지원모아, 홈으로">지원모아</a></h1>
+    </div>
+    <button id="fontToggle" class="iconbtn" type="button" aria-pressed="false">
+      <i class="ph ph-text-aa" aria-hidden="true"></i><span>글자 크게</span>
+    </button>
+  </div>
+</header>
+
+<nav class="tabs" aria-label="보기 선택">
+  <div class="wrap tabs-inner" role="tablist">
+    <button role="tab" id="tab-home" data-tab="home" aria-controls="homePane">홈</button>
+    <button role="tab" id="tab-open" data-tab="open" aria-controls="listPane">지금 모집 중 <span class="tab-count"></span></button>
+    <button role="tab" id="tab-services" data-tab="services" aria-controls="listPane">상시 지원제도 <span class="tab-count"></span></button>
+  </div>
+</nav>
+
+<div id="main">
+<main id="homePane" class="wrap home" role="tabpanel" aria-labelledby="tab-home" hidden>
+  <section class="home-hero">
+    <h2 id="homeTitle" class="hero-title"></h2>
+    <p id="homeSub" class="hero-sub"></p>
+    <form id="homeSearch" class="hero-search" role="search">
+      <div class="field grow">
+        <label class="label" for="homeQ">무엇을 찾으세요?</label>
+        <div class="input-icon">
+          <i class="ph ph-magnifying-glass" aria-hidden="true"></i>
+          <input id="homeQ" type="search" placeholder="예: 스마트팜, 청년, 수출" autocomplete="off">
+        </div>
+      </div>
+      <div class="field region-field">
+        <label class="label" for="homeRegion">지역</label>
+        <div class="input-icon">
+          <i class="ph ph-map-pin" aria-hidden="true"></i>
+          <select id="homeRegion"><option value="">전체 지역</option></select>
+        </div>
+      </div>
+      <button class="btn yellow hero-go" type="submit">찾기</button>
+      <label class="check national"><input type="checkbox" id="homeNat" checked> 전국 대상 사업 포함</label>
+    </form>
+  </section>
+
+  <section class="home-stats" id="homeStats" aria-label="한눈에 보기"></section>
+
+  <section class="home-block who-card" aria-labelledby="homeWhoTitle">
+    <div class="block-head"><h3 id="homeWhoTitle"><i class="ph ph-user-circle" aria-hidden="true"></i>나에게 맞는 지원 찾기</h3></div>
+    <div class="chips" id="homeWho"></div>
+  </section>
+
+  <section class="home-charts" id="homeCharts" aria-label="현황 그래프"></section>
+
+  <div class="home-grid">
+    <section class="home-block" aria-labelledby="homeSoonTitle">
+      <div class="block-head">
+        <h3 id="homeSoonTitle">마감이 가까운 사업</h3>
+        <button type="button" class="more-link" id="homeSoonAll">전체 보기<i class="ph ph-arrow-right" aria-hidden="true"></i></button>
+      </div>
+      <ul id="homeSoon" class="results"></ul>
+      <button type="button" class="btn gray more" id="homeSoonMore" hidden></button>
+    </section>
+    <section class="home-block" aria-labelledby="homeNewTitle">
+      <div class="block-head">
+        <h3 id="homeNewTitle">새로 올라온 공고 <span class="head-count" id="homeNewCount"></span></h3>
+        <button type="button" class="more-link" id="homeNewAll">전체 보기<i class="ph ph-arrow-right" aria-hidden="true"></i></button>
+      </div>
+      <ul id="homeNew" class="results"></ul>
+      <button type="button" class="btn gray more" id="homeNewMore" hidden></button>
+    </section>
+    <section class="home-block" aria-labelledby="homePopTitle">
+      <div class="block-head">
+        <h3 id="homePopTitle">많이 찾는 지원사업</h3>
+        <div class="seg-mini" id="homePopKind" role="group" aria-label="자료 종류">
+          <button type="button" data-pop="s" aria-pressed="true">상시 제도</button>
+          <button type="button" data-pop="n" aria-pressed="false">모집 공고</button>
+        </div>
+      </div>
+      <ul id="homePop" class="results"></ul>
+      <button type="button" class="btn gray more" id="homePopMore" hidden></button>
+    </section>
+  </div>
+</main>
+
+<div class="wrap layout" id="listLayout">
+  <aside id="filters" class="filters" aria-labelledby="filtersTitle">
+    <div class="sheet-head">
+      <h2 id="filtersTitle" tabindex="-1">조건</h2>
+      <button id="filterClose" class="iconbtn narrow-only" type="button">
+        <i class="ph ph-x" aria-hidden="true"></i><span>닫기</span>
+      </button>
+    </div>
+
+    <fieldset class="group">
+      <legend class="label">누구를 위한 지원</legend>
+      <div class="chips" id="aud"></div>
+    </fieldset>
+
+    <fieldset id="fsTopic" class="group" hidden>
+      <legend class="label">농업 세부 분야</legend>
+      <div class="chips" id="topics"></div>
+    </fieldset>
+
+    <fieldset id="fsCat" class="group" hidden>
+      <legend class="label">분야</legend>
+      <div class="chips" id="cats"></div>
+    </fieldset>
+
+    <fieldset id="fsSupport" class="group" hidden>
+      <legend class="label">지원 방식</legend>
+      <div class="chips" id="support"></div>
+    </fieldset>
+
+    <fieldset class="group">
+      <legend class="label">신청 상태</legend>
+      <div class="chips" id="status"></div>
+    </fieldset>
+
+    <fieldset id="fsSrc" class="group">
+      <legend class="label">출처</legend>
+      <div class="chips" id="src"></div>
+    </fieldset>
+
+    <label class="check group" id="privWrap"><input type="checkbox" id="priv" checked> 민간 주관 공고도 보기</label>
+
+    <div class="sheet-foot">
+      <button class="btn gray" type="button" data-action="reset">조건 지우기</button>
+      <button id="filterDone" class="btn dark narrow-only" type="button">결과 보기</button>
+    </div>
+  </aside>
+
+  <main id="listPane" class="list-pane" role="tabpanel" aria-labelledby="tab-open">
+    <p id="agriNote" class="note-box" hidden>
+      <i class="ph ph-info" aria-hidden="true"></i>
+      <span>농업기술센터 자체 공고는 빠져 있습니다.
+        <a href="https://www.losims.go.kr/sp" target="_blank" rel="noopener">보탬e</a>·<a href="https://www.nongupez.go.kr" target="_blank" rel="noopener">농업e지</a>도 확인하세요.</span>
+    </p>
+
+    <div class="searchbar">
+      <div class="field grow">
+        <label class="label" for="q">검색어</label>
+        <div class="input-icon">
+          <i class="ph ph-magnifying-glass" aria-hidden="true"></i>
+          <input id="q" type="search" placeholder="예: 스마트팜, 청년, 수출" autocomplete="off">
+        </div>
+      </div>
+      <div class="field region-field">
+        <label class="label" for="region">지역</label>
+        <div class="input-icon">
+          <i class="ph ph-map-pin" aria-hidden="true"></i>
+          <select id="region"><option value="">전체 지역</option></select>
+        </div>
+      </div>
+      <label class="check national"><input type="checkbox" id="withNational" checked> 전국 대상 사업 포함</label>
+    </div>
+
+    <div class="toolbar">
+      <button id="filterOpen" class="toggle narrow-only" type="button" aria-controls="filters" aria-expanded="false">
+        <i class="ph ph-funnel" aria-hidden="true"></i><span>조건</span><span id="filterBadge" class="pill" hidden></span>
+      </button>
+      <button id="soonToggle" class="toggle" type="button" aria-pressed="false" hidden>
+        <i class="ph ph-clock" aria-hidden="true"></i><span>7일 안에 마감</span><span class="n"></span>
+      </button>
+      <div class="toolbar-end">
+        <p id="resultCount" class="result-count" aria-live="polite"></p>
+        <label class="sort"><span class="sr-only">정렬</span>
+          <select id="sort">
+            <option value="deadline">마감 임박순</option>
+            <option value="posted">최근 등록순</option>
+            <option value="recent">최근 수정순</option>
+            <option value="name">이름순</option>
+          </select>
+        </label>
+      </div>
+    </div>
+
+    <div id="activeFilters" class="active-filters" hidden></div>
+
+    <ul id="results" class="results" tabindex="-1"></ul>
+    <div id="listState" class="state" hidden></div>
+    <button id="more" class="btn gray more" type="button" hidden></button>
+    <p id="basisShort" class="basis-short"></p>
+  </main>
+
+  <section id="detail" class="detail" aria-label="상세 내용" tabindex="-1"></section>
+</div>
+</div>
+
+<footer class="foot">
+  <div class="wrap foot-inner">
+    <ul class="foot-links" aria-label="원문을 볼 수 있는 곳">
+      <li><a href="https://www.bizinfo.go.kr" target="_blank" rel="noopener">기업마당</a></li>
+      <li><a href="https://www.k-startup.go.kr" target="_blank" rel="noopener">K-Startup</a></li>
+      <li><a href="https://www.gov.kr/portal/rcvfvrSvc/main" target="_blank" rel="noopener">보조금24</a></li>
+      <li><a href="https://www.bojo.go.kr" target="_blank" rel="noopener">보조금 통합포털</a></li>
+      <li><a href="https://www.losims.go.kr/sp" target="_blank" rel="noopener">보탬e</a></li>
+      <li><a href="https://www.nongupez.go.kr" target="_blank" rel="noopener">농업e지</a></li>
+    </ul>
+    <p>신청 전에 원문 공고를 확인하세요.</p>
+    <p>자료: 공공데이터포털 — 중소벤처기업부 「중소기업 지원사업 공고 조회 서비스」(기업마당, 공공누리 제3유형), 창업진흥원 「K-Startup 조회서비스」, 행정안전부 「대한민국 공공서비스(혜택) 정보」, 기획예산처 「국고보조금 공모사업 상세」</p>
+    <p>지도: <a href="https://github.com/VictorCazanave/svg-maps/tree/master/packages/south-korea" target="_blank" rel="noopener">svg-maps South Korea</a>
+      (Victor Cazanave, 원본 <a href="https://mapsvg.com/maps/south-korea" target="_blank" rel="noopener">MapSVG</a>),
+      <a href="https://creativecommons.org/licenses/by/4.0/deed.ko" target="_blank" rel="noopener">CC BY 4.0</a>, 광주·전남 합쳐 표시</p>
+  </div>
+</footer>
+
+<div id="vizTip" class="viz-tip" role="status" hidden></div>
+
+<script src="vendor/korea-map.js"></script>
+<script src="data/meta.js"></script>
+<script src="data/notices.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

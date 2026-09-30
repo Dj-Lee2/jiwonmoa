@@ -1,0 +1,1489 @@
+{
+ "swagger": "2.0",
+ "info": {
+  "description": "국고보조사업의 내역사업, 보조사업, 공모 관련 정보를 종합적으로 제공하는 데이터입니다.\n사업 목적·규모·지원내용·신청방법·선정기준·재원 구성 등을 한 번에 확인할 수 있습니다.\n국고보조사업 전반에 대한 이해를 높이고, 정책·분석 목적의 활용을 지원합니다.\n국고보조사업의 내역사업과 보조사업 간 구조적 연계 관계를 중심으로 사업 목적, 규모, 기간, 수행기관 및 재원 구성 정보를 제공하는 데이터입니다.\n사업 체계와 재정 구조를 종합적으로 파악할 수 있어 정책 분석과 통계·연구 활용에 적합합니다.",
+  "version": "1.0.0",
+  "title": "기획재정부_국고보조금 공모사업 상세"
+ },
+ "host": "apis.data.go.kr/1051000/MoefOpenAPI2025",
+ "basePath": "",
+ "schemes": [
+  "https",
+  "http"
+ ],
+ "paths": {
+  "/T_OPD_ASBS_PBNS_UNITY": {
+   "get": {
+    "responses": {
+     "10": {
+      "description": "잘못된 요청 파라메터 에러"
+     },
+     "200": {
+      "description": "성공",
+      "schema": {
+       "type": "object",
+       "properties": {
+        "header": {
+         "type": "object",
+         "description": "header",
+         "properties": {
+          "resultCode": {
+           "type": "string",
+           "description": "결과코드",
+           "properties": {}
+          },
+          "resultMsg": {
+           "type": "string",
+           "description": "결과메시지",
+           "properties": {}
+          }
+         }
+        },
+        "body": {
+         "type": "object",
+         "description": "body",
+         "properties": {
+          "numOfRows": {
+           "type": "string",
+           "description": "한 페이지 결과 수",
+           "properties": {}
+          },
+          "pageNo": {
+           "type": "string",
+           "description": "페이지번호",
+           "properties": {}
+          },
+          "totalCount": {
+           "type": "string",
+           "description": "전체 결과 수",
+           "properties": {}
+          },
+          "items": {
+           "type": "object",
+           "description": "items",
+           "properties": {
+            "item": {
+             "type": "object",
+             "description": "item",
+             "properties": {
+              "BSNSYEAR": {
+               "type": "string",
+               "description": "사업연도",
+               "properties": {}
+              },
+              "DTLBZ_ID": {
+               "type": "string",
+               "description": "내역사업ID",
+               "properties": {}
+              },
+              "DTLBZ_NM": {
+               "type": "string",
+               "description": "내역사업명",
+               "properties": {}
+              },
+              "DTLBZ_BSNS_PURPS_DC": {
+               "type": "string",
+               "description": "내역사업목적설명",
+               "properties": {}
+              },
+              "DTLBZ_BSNS_SCALE_DC": {
+               "type": "string",
+               "description": "내역사업규모설명",
+               "properties": {}
+              },
+              "DDTLBZ_ID": {
+               "type": "string",
+               "description": "상세내역사업ID",
+               "properties": {}
+              },
+              "DDTLBZ_NM": {
+               "type": "string",
+               "description": "상세내역사업명",
+               "properties": {}
+              },
+              "JRSD_NM": {
+               "type": "string",
+               "description": "소관명",
+               "properties": {}
+              },
+              "BSNS_BEGIN_DE": {
+               "type": "string",
+               "description": "사업시작일자",
+               "properties": {}
+              },
+              "BSNS_END_DE": {
+               "type": "string",
+               "description": "사업종료일자",
+               "properties": {}
+              },
+              "TGYL_YEAR_BSNS_AMOUNT": {
+               "type": "string",
+               "description": "당해년도사업금액",
+               "properties": {}
+              },
+              "DDTLBZ_BSNS_PURPS_DC": {
+               "type": "string",
+               "description": "상세내역사업목적설명",
+               "properties": {}
+              },
+              "DDTLBZ_BSNS_SCALE_DC": {
+               "type": "string",
+               "description": "상세내역사업규모설명",
+               "properties": {}
+              },
+              "SPORT_CN_DC": {
+               "type": "string",
+               "description": "지원내용설명",
+               "properties": {}
+              },
+              "SPORT_CND_CN": {
+               "type": "string",
+               "description": "지원조건내용",
+               "properties": {}
+              },
+              "BSNS_GUIDANCE_URL": {
+               "type": "string",
+               "description": "사업안내URL",
+               "properties": {}
+              },
+              "BSNS_POPUP_URL": {
+               "type": "string",
+               "description": "사업정보팝업URL",
+               "properties": {}
+              },
+              "PBLANC_NM": {
+               "type": "string",
+               "description": "공고명",
+               "properties": {}
+              },
+              "PBLANC_BEGIN_DE": {
+               "type": "string",
+               "description": "공고시작일자",
+               "properties": {}
+              },
+              "PBLANC_END_DE": {
+               "type": "string",
+               "description": "공고종료일자",
+               "properties": {}
+              },
+              "REQST_RCEPT_MTH_CN": {
+               "type": "string",
+               "description": "신청접수방법내용",
+               "properties": {}
+              },
+              "RCEPT_BEGIN_DE": {
+               "type": "string",
+               "description": "접수시작일자",
+               "properties": {}
+              },
+              "RCEPT_END_DE": {
+               "type": "string",
+               "description": "접수종료일자",
+               "properties": {}
+              },
+              "SPORT_BGAMT": {
+               "type": "string",
+               "description": "지원예산액",
+               "properties": {}
+              },
+              "RCEPT_PD_DC": {
+               "type": "string",
+               "description": "접수기간설명",
+               "properties": {}
+              },
+              "SLCTN_STDR_DC": {
+               "type": "string",
+               "description": "선정기준설명",
+               "properties": {}
+              },
+              "SPORT_TRGET_CN": {
+               "type": "string",
+               "description": "지원대상내용",
+               "properties": {}
+              },
+              "PRESENTN_PAPERS_GUIDANCE_CN": {
+               "type": "string",
+               "description": "제출서류안내내용",
+               "properties": {}
+              },
+              "SLCTN_RESULT_DSPTH_MTH_CN": {
+               "type": "string",
+               "description": "선정결과통보방법내용",
+               "properties": {}
+              },
+              "EXCL_TRGET_CN": {
+               "type": "string",
+               "description": "제외대상내용",
+               "properties": {}
+              },
+              "GOVSUBY": {
+               "type": "string",
+               "description": "국고보조금",
+               "properties": {}
+              },
+              "LOCGOV_ALOTM": {
+               "type": "string",
+               "description": "지자체부담금",
+               "properties": {}
+              },
+              "SALM": {
+               "type": "string",
+               "description": "자부담금",
+               "properties": {}
+              },
+              "ETC_ALOTM": {
+               "type": "string",
+               "description": "기타부담금",
+               "properties": {}
+              },
+              "DDTLBZ_UPDT_DT": {
+               "type": "string",
+               "description": "상세내역사업수정일시",
+               "properties": {}
+              },
+              "DTLBZ_DDTLBZ_ID": {
+               "type": "string",
+               "description": "내역보조ID",
+               "properties": {}
+              },
+              "PBLANC_UPDT_DT": {
+               "type": "string",
+               "description": "공고수정일시",
+               "properties": {}
+              },
+              "PBLANC_POPUP_URL": {
+               "type": "string",
+               "description": "공고팝업URL",
+               "properties": {}
+              },
+              "STDR_DE": {
+               "type": "string",
+               "description": "데이터 개방 기준일자",
+               "properties": {}
+              },
+              "DLVPL_NM": {
+               "type": "string",
+               "description": "수행기관명",
+               "properties": {}
+              },
+              "CMMN_ATRB_NM": {
+               "type": "string",
+               "description": "공통속성명",
+               "properties": {}
+              },
+              "CL_STDR_DC": {
+               "type": "string",
+               "description": "분류기준설명",
+               "properties": {}
+              },
+              "CTPRVN_NM": {
+               "type": "string",
+               "description": "시도명",
+               "properties": {}
+              },
+              "SIGNGU_NM": {
+               "type": "string",
+               "description": "시군구명",
+               "properties": {}
+              },
+              "LEGALDONG_EMD_NM": {
+               "type": "string",
+               "description": "법정동읍면동명",
+               "properties": {}
+              }
+             }
+            }
+           }
+          }
+         }
+        }
+       },
+       "xml": {
+        "name": "response"
+       }
+      }
+     },
+     "301": {
+      "description": "잘못된 결과형태 요청"
+     },
+     "310": {
+      "description": "잘못된 OPEN API 서비스 요청"
+     },
+     "333": {
+      "description": "잘못된 요청 파라메터 오류"
+     },
+     "334": {
+      "description": "시작 페이지 숫자가 끝 페이지 숫자보다 큼"
+     },
+     "336": {
+      "description": "한번에 1000건 이상의 요청은 할 수 없음"
+     },
+     "340": {
+      "description": "필수 요청 파라미터가 입력되지 않거나 부적절한 값이 입력되었음"
+     },
+     "350": {
+      "description": "서비스 요청 제한 횟수 초과 오류"
+     },
+     "500": {
+      "description": "내부 서버 오류"
+     },
+     "601": {
+      "description": "잘못된 오픈 API 작동 오류"
+     },
+     "00": {
+      "description": "정상 수행 입니다."
+     }
+    },
+    "tags": [
+     "API 목록"
+    ],
+    "summary": "국고보조사업지원정보종합",
+    "description": "국고보조사업의 내역사업, 보조사업, 공모 관련 정보를 종합적으로 제공하는 데이터",
+    "operationId": "T_OPD_ASBS_PBNS_UNITY",
+    "consumes": [
+     "application/json"
+    ],
+    "produces": [
+     "application/json",
+     "application/xml"
+    ]
+   },
+   "parameters": [
+    {
+     "name": "serviceKey",
+     "description": "공공데이터포털에서 받은 인증키",
+     "type": "string",
+     "required": true,
+     "in": "query"
+    },
+    {
+     "name": "pageNo",
+     "description": "페이지번호",
+     "type": "string",
+     "required": true,
+     "in": "query"
+    },
+    {
+     "name": "numOfRows",
+     "description": "한 페이지 결과 수",
+     "type": "string",
+     "required": true,
+     "in": "query"
+    },
+    {
+     "name": "resultType",
+     "description": "결과형식 (XML/JSON)",
+     "type": "string",
+     "required": true,
+     "in": "query"
+    },
+    {
+     "name": "bsnsyear",
+     "description": "사업연도",
+     "type": "string",
+     "required": true,
+     "in": "query"
+    },
+    {
+     "name": "dtlbz_nm",
+     "description": "내역사업명",
+     "type": "string",
+     "required": false,
+     "in": "query"
+    },
+    {
+     "name": "ddtlbz_nm",
+     "description": "상세내역사업명",
+     "type": "string",
+     "required": false,
+     "in": "query"
+    },
+    {
+     "name": "jrsd_nm",
+     "description": "소관명",
+     "type": "string",
+     "required": false,
+     "in": "query"
+    },
+    {
+     "name": "pblanc_nm",
+     "description": "공고명",
+     "type": "string",
+     "required": false,
+     "in": "query"
+    },
+    {
+     "name": "ddtlbz_updt_dt",
+     "description": "상세내역사업수정일시",
+     "type": "string",
+     "required": false,
+     "in": "query"
+    },
+    {
+     "name": "pblanc_updt_dt",
+     "description": "공고수정일시",
+     "type": "string",
+     "required": false,
+     "in": "query"
+    },
+    {
+     "name": "dlvpl_nm",
+     "description": "수행기관명",
+     "type": "string",
+     "required": false,
+     "in": "query"
+    }
+   ]
+  },
+  "/T_OPD_ASBS_UNITY": {
+   "get": {
+    "responses": {
+     "10": {
+      "description": "잘못된 요청 파라메터 에러"
+     },
+     "200": {
+      "description": "성공",
+      "schema": {
+       "type": "object",
+       "properties": {
+        "header": {
+         "type": "object",
+         "description": "header",
+         "properties": {
+          "resultCode": {
+           "type": "string",
+           "description": "결과코드",
+           "properties": {}
+          },
+          "resultMsg": {
+           "type": "string",
+           "description": "결과메시지",
+           "properties": {}
+          }
+         }
+        },
+        "body": {
+         "type": "object",
+         "description": "body",
+         "properties": {
+          "numOfRows": {
+           "type": "string",
+           "description": "한 페이지 결과 수",
+           "properties": {}
+          },
+          "pageNo": {
+           "type": "string",
+           "description": "페이지번호",
+           "properties": {}
+          },
+          "totalCount": {
+           "type": "string",
+           "description": "전체 결과 수",
+           "properties": {}
+          },
+          "items": {
+           "type": "object",
+           "description": "items",
+           "properties": {
+            "item": {
+             "type": "object",
+             "description": "item",
+             "properties": {
+              "BSNSYEAR": {
+               "type": "string",
+               "description": "사업연도",
+               "properties": {}
+              },
+              "DTLBZ_ID": {
+               "type": "string",
+               "description": "내역사업ID",
+               "properties": {}
+              },
+              "DTLBZ_NM": {
+               "type": "string",
+               "description": "내역사업명",
+               "properties": {}
+              },
+              "DTLBZ_BSNS_PURPS_DC": {
+               "type": "string",
+               "description": "내역사업목적설명",
+               "properties": {}
+              },
+              "DTLBZ_BSNS_SCALE_DC": {
+               "type": "string",
+               "description": "내역사업규모설명",
+               "properties": {}
+              },
+              "JRSD_CODE": {
+               "type": "string",
+               "description": "소관코드",
+               "properties": {}
+              },
+              "JRSD_NM": {
+               "type": "string",
+               "description": "소관명",
+               "properties": {}
+              },
+              "DDTLBZ_ID": {
+               "type": "string",
+               "description": "상세내역사업ID",
+               "properties": {}
+              },
+              "DDTLBZ_NM": {
+               "type": "string",
+               "description": "상세내역사업명",
+               "properties": {}
+              },
+              "DDTLBZ_BSNS_PURPS_DC": {
+               "type": "string",
+               "description": "상세내역사업목적설명",
+               "properties": {}
+              },
+              "DDTLBZ_BSNS_SCALE_DC": {
+               "type": "string",
+               "description": "상세내역사업규모설명",
+               "properties": {}
+              },
+              "BSNS_BEGIN_DE": {
+               "type": "string",
+               "description": "사업시작일자",
+               "properties": {}
+              },
+              "BSNS_END_DE": {
+               "type": "string",
+               "description": "사업종료일자",
+               "properties": {}
+              },
+              "BSNS_GUIDANCE_URL": {
+               "type": "string",
+               "description": "사업안내URL",
+               "properties": {}
+              },
+              "BSNS_POPUP_URL": {
+               "type": "string",
+               "description": "사업정보팝업URL",
+               "properties": {}
+              },
+              "DDTLBZ_ODR": {
+               "type": "string",
+               "description": "보조사업차수",
+               "properties": {}
+              },
+              "DLVPL_NM": {
+               "type": "string",
+               "description": "수행기관명",
+               "properties": {}
+              },
+              "TGYL_YEAR_BSNS_AMOUNT": {
+               "type": "string",
+               "description": "당해년도사업금액",
+               "properties": {}
+              },
+              "GOVSUBY": {
+               "type": "string",
+               "description": "국고보조금",
+               "properties": {}
+              },
+              "LOCGOV_ALOTM": {
+               "type": "string",
+               "description": "지자체보조금",
+               "properties": {}
+              },
+              "SALM": {
+               "type": "string",
+               "description": "자기부담금",
+               "properties": {}
+              },
+              "ETC_ALOTM": {
+               "type": "string",
+               "description": "기타부담금",
+               "properties": {}
+              },
+              "STDR_DE": {
+               "type": "string",
+               "description": "데이터 개방 기준일자",
+               "properties": {}
+              }
+             }
+            }
+           }
+          }
+         }
+        }
+       },
+       "xml": {
+        "name": "response"
+       }
+      }
+     },
+     "301": {
+      "description": "잘못된 결과형태 요청"
+     },
+     "310": {
+      "description": "잘못된 OPEN API 서비스 요청"
+     },
+     "333": {
+      "description": "잘못된 요청 파라메터 오류"
+     },
+     "335": {
+      "description": "시작 페이지 숫자가 끝 페이지 숫자보다 큼"
+     },
+     "336": {
+      "description": "한번에 1000건 이상의 요청은 할 수 없음"
+     },
+     "340": {
+      "description": "필수 요청 파라미터가 입력되지 않거나 부적절한 값이 입력되었음"
+     },
+     "350": {
+      "description": "서비스 요청 제한 횟수 초과 오류"
+     },
+     "500": {
+      "description": "내부 서버 오류"
+     },
+     "601": {
+      "description": "잘못된 오픈 API 작동 오류"
+     },
+     "00": {
+      "description": "정상 수행 입니다."
+     }
+    },
+    "tags": [
+     "API 목록"
+    ],
+    "summary": "국고보조사업구조정보",
+    "description": "국고보조사업의 내역사업과 보조사업 간 구조적 연계 관계를 중심으로 사업 목적, 규모, 기간, 수행기관 및 재원 구성 정보를 제공하는 데이터",
+    "operationId": "T_OPD_ASBS_UNITY",
+    "consumes": [
+     "application/json"
+    ],
+    "produces": [
+     "application/json",
+     "application/xml"
+    ]
+   },
+   "parameters": [
+    {
+     "name": "serviceKey",
+     "description": "공공데이터포털에서 받은 인증키",
+     "type": "string",
+     "required": true,
+     "in": "query"
+    },
+    {
+     "name": "pageNo",
+     "description": "페이지번호",
+     "type": "string",
+     "required": true,
+     "in": "query"
+    },
+    {
+     "name": "numOfRows",
+     "description": "한 페이지 결과 수",
+     "type": "string",
+     "required": true,
+     "in": "query"
+    },
+    {
+     "name": "resultType",
+     "description": "결과형식 (XML/JSON)",
+     "type": "string",
+     "required": true,
+     "in": "query"
+    },
+    {
+     "name": "bsnsyear",
+     "description": "사업연도",
+     "type": "string",
+     "required": true,
+     "in": "query"
+    },
+    {
+     "name": "dtlbz_nm",
+     "description": "내역사업명",
+     "type": "string",
+     "required": false,
+     "in": "query"
+    },
+    {
+     "name": "ddtlbz_nm",
+     "description": "상세내역사업명",
+     "type": "string",
+     "required": false,
+     "in": "query"
+    },
+    {
+     "name": "jrsd_nm",
+     "description": "소관명",
+     "type": "string",
+     "required": true,
+     "in": "query"
+    },
+    {
+     "name": "dlvpl_nm",
+     "description": "수행기관명",
+     "type": "string",
+     "required": false,
+     "in": "query"
+    }
+   ]
+  }
+ },
+ "definitions": {
+  "T_OPD_ASBS_PBNS_UNITY_response": {
+   "type": "object",
+   "properties": {
+    "header": {
+     "type": "object",
+     "description": "header",
+     "properties": {
+      "resultCode": {
+       "type": "string",
+       "description": "결과코드"
+      },
+      "resultMsg": {
+       "type": "string",
+       "description": "결과메시지"
+      }
+     }
+    },
+    "body": {
+     "type": "object",
+     "description": "body",
+     "properties": {
+      "numOfRows": {
+       "type": "string",
+       "description": "한 페이지 결과 수"
+      },
+      "pageNo": {
+       "type": "string",
+       "description": "페이지번호"
+      },
+      "totalCount": {
+       "type": "string",
+       "description": "전체 결과 수"
+      },
+      "items": {
+       "type": "object",
+       "description": "items",
+       "properties": {
+        "item": {
+         "type": "object",
+         "description": "item",
+         "properties": {
+          "BSNSYEAR": {
+           "type": "string",
+           "description": "사업연도"
+          },
+          "DTLBZ_ID": {
+           "type": "string",
+           "description": "내역사업ID"
+          },
+          "DTLBZ_NM": {
+           "type": "string",
+           "description": "내역사업명"
+          },
+          "DTLBZ_BSNS_PURPS_DC": {
+           "type": "string",
+           "description": "내역사업목적설명"
+          },
+          "DTLBZ_BSNS_SCALE_DC": {
+           "type": "string",
+           "description": "내역사업규모설명"
+          },
+          "DDTLBZ_ID": {
+           "type": "string",
+           "description": "상세내역사업ID"
+          },
+          "DDTLBZ_NM": {
+           "type": "string",
+           "description": "상세내역사업명"
+          },
+          "JRSD_NM": {
+           "type": "string",
+           "description": "소관명"
+          },
+          "BSNS_BEGIN_DE": {
+           "type": "string",
+           "description": "사업시작일자"
+          },
+          "BSNS_END_DE": {
+           "type": "string",
+           "description": "사업종료일자"
+          },
+          "TGYL_YEAR_BSNS_AMOUNT": {
+           "type": "string",
+           "description": "당해년도사업금액"
+          },
+          "DDTLBZ_BSNS_PURPS_DC": {
+           "type": "string",
+           "description": "상세내역사업목적설명"
+          },
+          "DDTLBZ_BSNS_SCALE_DC": {
+           "type": "string",
+           "description": "상세내역사업규모설명"
+          },
+          "SPORT_CN_DC": {
+           "type": "string",
+           "description": "지원내용설명"
+          },
+          "SPORT_CND_CN": {
+           "type": "string",
+           "description": "지원조건내용"
+          },
+          "BSNS_GUIDANCE_URL": {
+           "type": "string",
+           "description": "사업안내URL"
+          },
+          "BSNS_POPUP_URL": {
+           "type": "string",
+           "description": "사업정보팝업URL"
+          },
+          "PBLANC_NM": {
+           "type": "string",
+           "description": "공고명"
+          },
+          "PBLANC_BEGIN_DE": {
+           "type": "string",
+           "description": "공고시작일자"
+          },
+          "PBLANC_END_DE": {
+           "type": "string",
+           "description": "공고종료일자"
+          },
+          "REQST_RCEPT_MTH_CN": {
+           "type": "string",
+           "description": "신청접수방법내용"
+          },
+          "RCEPT_BEGIN_DE": {
+           "type": "string",
+           "description": "접수시작일자"
+          },
+          "RCEPT_END_DE": {
+           "type": "string",
+           "description": "접수종료일자"
+          },
+          "SPORT_BGAMT": {
+           "type": "string",
+           "description": "지원예산액"
+          },
+          "RCEPT_PD_DC": {
+           "type": "string",
+           "description": "접수기간설명"
+          },
+          "SLCTN_STDR_DC": {
+           "type": "string",
+           "description": "선정기준설명"
+          },
+          "SPORT_TRGET_CN": {
+           "type": "string",
+           "description": "지원대상내용"
+          },
+          "PRESENTN_PAPERS_GUIDANCE_CN": {
+           "type": "string",
+           "description": "제출서류안내내용"
+          },
+          "SLCTN_RESULT_DSPTH_MTH_CN": {
+           "type": "string",
+           "description": "선정결과통보방법내용"
+          },
+          "EXCL_TRGET_CN": {
+           "type": "string",
+           "description": "제외대상내용"
+          },
+          "GOVSUBY": {
+           "type": "string",
+           "description": "국고보조금"
+          },
+          "LOCGOV_ALOTM": {
+           "type": "string",
+           "description": "지자체부담금"
+          },
+          "SALM": {
+           "type": "string",
+           "description": "자부담금"
+          },
+          "ETC_ALOTM": {
+           "type": "string",
+           "description": "기타부담금"
+          },
+          "DDTLBZ_UPDT_DT": {
+           "type": "string",
+           "description": "상세내역사업수정일시"
+          },
+          "DTLBZ_DDTLBZ_ID": {
+           "type": "string",
+           "description": "내역보조ID"
+          },
+          "PBLANC_UPDT_DT": {
+           "type": "string",
+           "description": "공고수정일시"
+          },
+          "PBLANC_POPUP_URL": {
+           "type": "string",
+           "description": "공고팝업URL"
+          },
+          "STDR_DE": {
+           "type": "string",
+           "description": "데이터 개방 기준일자"
+          },
+          "DLVPL_NM": {
+           "type": "string",
+           "description": "수행기관명"
+          },
+          "CMMN_ATRB_NM": {
+           "type": "string",
+           "description": "공통속성명"
+          },
+          "CL_STDR_DC": {
+           "type": "string",
+           "description": "분류기준설명"
+          },
+          "CTPRVN_NM": {
+           "type": "string",
+           "description": "시도명"
+          },
+          "SIGNGU_NM": {
+           "type": "string",
+           "description": "시군구명"
+          },
+          "LEGALDONG_EMD_NM": {
+           "type": "string",
+           "description": "법정동읍면동명"
+          }
+         }
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "T_OPD_ASBS_UNITY_response": {
+   "type": "object",
+   "properties": {
+    "header": {
+     "type": "object",
+     "description": "header",
+     "properties": {
+      "resultCode": {
+       "type": "string",
+       "description": "결과코드"
+      },
+      "resultMsg": {
+       "type": "string",
+       "description": "결과메시지"
+      }
+     }
+    },
+    "body": {
+     "type": "object",
+     "description": "body",
+     "properties": {
+      "numOfRows": {
+       "type": "string",
+       "description": "한 페이지 결과 수"
+      },
+      "pageNo": {
+       "type": "string",
+       "description": "페이지번호"
+      },
+      "totalCount": {
+       "type": "string",
+       "description": "전체 결과 수"
+      },
+      "items": {
+       "type": "object",
+       "description": "items",
+       "properties": {
+        "item": {
+         "type": "object",
+         "description": "item",
+         "properties": {
+          "BSNSYEAR": {
+           "type": "string",
+           "description": "사업연도"
+          },
+          "DTLBZ_ID": {
+           "type": "string",
+           "description": "내역사업ID"
+          },
+          "DTLBZ_NM": {
+           "type": "string",
+           "description": "내역사업명"
+          },
+          "DTLBZ_BSNS_PURPS_DC": {
+           "type": "string",
+           "description": "내역사업목적설명"
+          },
+          "DTLBZ_BSNS_SCALE_DC": {
+           "type": "string",
+           "description": "내역사업규모설명"
+          },
+          "JRSD_CODE": {
+           "type": "string",
+           "description": "소관코드"
+          },
+          "JRSD_NM": {
+           "type": "string",
+           "description": "소관명"
+          },
+          "DDTLBZ_ID": {
+           "type": "string",
+           "description": "상세내역사업ID"
+          },
+          "DDTLBZ_NM": {
+           "type": "string",
+           "description": "상세내역사업명"
+          },
+          "DDTLBZ_BSNS_PURPS_DC": {
+           "type": "string",
+           "description": "상세내역사업목적설명"
+          },
+          "DDTLBZ_BSNS_SCALE_DC": {
+           "type": "string",
+           "description": "상세내역사업규모설명"
+          },
+          "BSNS_BEGIN_DE": {
+           "type": "string",
+           "description": "사업시작일자"
+          },
+          "BSNS_END_DE": {
+           "type": "string",
+           "description": "사업종료일자"
+          },
+          "BSNS_GUIDANCE_URL": {
+           "type": "string",
+           "description": "사업안내URL"
+          },
+          "BSNS_POPUP_URL": {
+           "type": "string",
+           "description": "사업정보팝업URL"
+          },
+          "DDTLBZ_ODR": {
+           "type": "string",
+           "description": "보조사업차수"
+          },
+          "DLVPL_NM": {
+           "type": "string",
+           "description": "수행기관명"
+          },
+          "TGYL_YEAR_BSNS_AMOUNT": {
+           "type": "string",
+           "description": "당해년도사업금액"
+          },
+          "GOVSUBY": {
+           "type": "string",
+           "description": "국고보조금"
+          },
+          "LOCGOV_ALOTM": {
+           "type": "string",
+           "description": "지자체보조금"
+          },
+          "SALM": {
+           "type": "string",
+           "description": "자기부담금"
+          },
+          "ETC_ALOTM": {
+           "type": "string",
+           "description": "기타부담금"
+          },
+          "STDR_DE": {
+           "type": "string",
+           "description": "데이터 개방 기준일자"
+          }
+         }
+        }
+       }
+      }
+     }
+    }
+   }
+  }
+ },
+ "swaggerOprtinVOs": [
+  {
+   "oprtinUrl": "http://opd.gosims.go.kr/opd/service/MoefOpenAPI/T_OPD_ASBS_UNITY",
+   "oprtinNm": "국고보조사업구조정보",
+   "oprtinDc": "국고보조사업의 내역사업과 보조사업 간 구조적 연계 관계를 중심으로 사업 목적, 규모, 기간, 수행기관 및 재원 구성 정보를 제공하는 데이터",
+   "gwSvcNm": "T_OPD_ASBS_UNITY",
+   "operationId": "T_OPD_ASBS_UNITY",
+   "publicDataTyDetailCode": "PRDE02",
+   "reqList": [
+    {
+     "paramtrNm": "serviceKey",
+     "paramtrDc": "공공데이터포털에서 받은 인증키",
+     "paramtrBassValue": "-",
+     "paramtrTy": "string",
+     "paramtrDivision": "필수",
+     "ck": true
+    },
+    {
+     "paramtrNm": "pageNo",
+     "paramtrDc": "페이지번호",
+     "paramtrBassValue": "1",
+     "paramtrTy": "string",
+     "paramtrDivision": "필수",
+     "ck": true
+    },
+    {
+     "paramtrNm": "numOfRows",
+     "paramtrDc": "한 페이지 결과 수",
+     "paramtrBassValue": "10",
+     "paramtrTy": "string",
+     "paramtrDivision": "필수",
+     "ck": true
+    },
+    {
+     "paramtrNm": "resultType",
+     "paramtrDc": "결과형식 (XML/JSON)",
+     "paramtrBassValue": "xml",
+     "paramtrTy": "string",
+     "paramtrDivision": "필수",
+     "ck": true
+    },
+    {
+     "paramtrNm": "bsnsyear",
+     "paramtrDc": "사업연도",
+     "paramtrBassValue": "2025",
+     "paramtrTy": "string",
+     "paramtrDivision": "필수",
+     "ck": true
+    },
+    {
+     "paramtrNm": "dtlbz_nm",
+     "paramtrDc": "내역사업명",
+     "paramtrBassValue": "충남 광역형 기후환경연수원",
+     "paramtrTy": "string",
+     "paramtrDivision": "옵션",
+     "ck": true
+    },
+    {
+     "paramtrNm": "ddtlbz_nm",
+     "paramtrDc": "상세내역사업명",
+     "paramtrBassValue": "충남 광역형 기후환경교육원 조성",
+     "paramtrTy": "string",
+     "paramtrDivision": "옵션",
+     "ck": true
+    },
+    {
+     "paramtrNm": "jrsd_nm",
+     "paramtrDc": "소관명",
+     "paramtrBassValue": "기획재정부",
+     "paramtrTy": "string",
+     "paramtrDivision": "필수",
+     "ck": true
+    },
+    {
+     "paramtrNm": "dlvpl_nm",
+     "paramtrDc": "수행기관명",
+     "paramtrBassValue": "충청남도",
+     "paramtrTy": "string",
+     "paramtrDivision": "옵션",
+     "ck": true
+    }
+   ],
+   "resList": [
+    {
+     "paramtrNm": "header",
+     "paramtrDc": "header",
+     "arrayYn": "N",
+     "paramtrDefNm": "#/definitions/T_OPD_ASBS_UNITY-header",
+     "subDefNm": "T_OPD_ASBS_UNITY-header",
+     "paramtrTy": "object",
+     "paramtrDivision": "필수",
+     "ck": true,
+     "subParam": [
+      {
+       "paramtrNm": "resultCode",
+       "paramtrDc": "결과코드",
+       "arrayYn": "N",
+       "paramtrDefNm": "",
+       "paramtrTy": "string",
+       "paramtrDivision": "필수",
+       "ck": true
+      },
+      {
+       "paramtrNm": "resultMsg",
+       "paramtrDc": "결과메시지",
+       "arrayYn": "N",
+       "paramtrDefNm": "",
+       "paramtrTy": "string",
+       "paramtrDivision": "필수",
+       "ck": true
+      }
+     ]
+    },
+    {
+     "paramtrNm": "body",
+     "paramtrDc": "body",
+     "arrayYn": "N",
+     "paramtrDefNm": "#/definitions/T_OPD_ASBS_UNITY-body",
+     "subDefNm": "T_OPD_ASBS_UNITY-body",
+     "paramtrTy": "object",
+     "paramtrDivision": "필수",
+     "ck": true,
+     "subParam": [
+      {
+       "paramtrNm": "numOfRows",
+       "paramtrDc": "한 페이지 결과 수",
+       "arrayYn": "N",
+       "paramtrDefNm": "",
+       "paramtrTy": "string",
+       "paramtrDivision": "필수",
+       "ck": true
+      },
+      {
+       "paramtrNm": "pageNo",
+       "paramtrDc": "페이지번호",
+       "arrayYn": "N",
+       "paramtrDefNm": "",
+       "paramtrTy": "string",
+       "paramtrDivision": "필수",
+       "ck": true
+      },
+      {
+       "paramtrNm": "totalCount",
+       "paramtrDc": "전체 결과 수",
+       "arrayYn": "N",
+       "paramtrDefNm": "",
+       "paramtrTy": "string",
+       "paramtrDivision": "필수",
+       "ck": true
+      },
+      {
+       "paramtrNm": "items",
+       "paramtrDc": "items",
+       "arrayYn": "N",
+       "paramtrDefNm": "#/definitions/T_OPD_ASBS_UNITY-items",
+       "subDefNm": "T_OPD_ASBS_UNITY-items",
+       "paramtrTy": "object",
+       "paramtrDivision": "필수",
+       "ck": true,
+       "subParam": [
+        {
+         "paramtrNm": "item",
+         "paramtrDc": "item",
+         "arrayYn": "N",
+         "paramtrDefNm": "#/definitions/T_OPD_ASBS_UNITY-item",
+         "subDefNm": "T_OPD_ASBS_UNITY-item",
+         "paramtrTy": "object",
+         "paramtrDivision": "필수",
+         "ck": true,
+         "subParam": [
+          {
+           "paramtrNm": "BSNSYEAR",
+           "paramtrDc": "사업연도",
+           "arrayYn": "N",
+           "paramtrDefNm": "",
+           "paramtrTy": "string",
+           "paramtrDivision": "옵션",
+           "ck": true
+          },
+          {
+           "paramtrNm": "DTLBZ_ID",
+           "paramtrDc": "내역사업ID",
+           "arrayYn": "N",
+           "paramtrDefNm": "",
+           "paramtrTy": "string",
+           "paramtrDivision": "옵션",
+           "ck": true
+          },
+          {
+           "paramtrNm": "DTLBZ_NM",
+           "paramtrDc": "내역사업명",
+           "arrayYn": "N",
+           "paramtrDefNm": "",
+           "paramtrTy": "string",
+           "paramtrDivision": "옵션",
+           "ck": true
+          },
+          {
+           "paramtrNm": "DTLBZ_BSNS_PURPS_DC",
+           "paramtrDc": "내역사업목적설명",
+           "arrayYn": "N",
+           "paramtrDefNm": "",
+           "paramtrTy": "string",
+           "paramtrDivision": "옵션",
+           "ck": true
+          },
+          {
+           "paramtrNm": "DTLBZ_BSNS_SCALE_DC",
+           "paramtrDc": "내역사업규모설명",
+           "arrayYn": "N",
+           "paramtrDefNm": "",
+           "paramtrTy": "string",
+           "paramtrDivision": "옵션",
+           "ck": true
+          },
+          {
+           "paramtrNm": "JRSD_CODE",
+           "paramtrDc": "소관코드",
+           "arrayYn": "N",
+           "paramtrDefNm": "",
+           "paramtrTy": "string",
+           "paramtrDivision": "옵션",
+           "ck": true
+          },
+          {
+           "paramtrNm": "JRSD_NM",
+           "paramtrDc": "소관명",
+           "arrayYn": "N",
+           "paramtrDefNm": "",
+           "paramtrTy": "string",
+           "paramtrDivision": "옵션",
+           "ck": true
+          },
+          {
+           "paramtrNm": "DDTLBZ_ID",
+           "paramtrDc": "상세내역사업ID",
+           "arrayYn": "N",
+           "paramtrDefNm": "",
+           "paramtrTy": "string",
+           "paramtrDivision": "옵션",
+           "ck": true
+          },
+          {
+           "paramtrNm": "DDTLBZ_NM",
+           "paramtrDc": "상세내역사업명",
+           "arrayYn": "N",
+           "paramtrDefNm": "",
+           "paramtrTy": "string",
+           "paramtrDivision": "옵션",
+           "ck": true
+          },
+          {
+           "paramtrNm": "DDTLBZ_BSNS_PURPS_DC",
+           "paramtrDc": "상세내역사업목적설명",
+           "arrayYn": "N",
+           "paramtrDefNm": "",
+           "paramtrTy": "string",
+           "paramtrDivision": "옵션",
+           "ck": true
+          },
+          {
+           "paramtrNm": "DDTLBZ_BSNS_SCALE_DC",
+           "paramtrDc": "상세내역사업규모설명",
+           "arrayYn": "N",
+           "paramtrDefNm": "",
+           "paramtrTy": "string",
+           "paramtrDivision": "옵션",
+           "ck": true
+          },
+          {
+           "paramtrNm": "BSNS_BEGIN_DE",
+           "paramtrDc": "사업시작일자",
+           "arrayYn": "N",
+           "paramtrDefNm": "",
+           "paramtrTy": "string",
+           "paramtrDivision": "옵션",
+           "ck": true
+          },
+          {
+           "paramtrNm": "BSNS_END_DE",
+           "paramtrDc": "사업종료일자",
+           "arrayYn": "N",
+           "paramtrDefNm": "",
+           "paramtrTy": "string",
+           "paramtrDivision": "옵션",
+           "ck": true
+          },
+          {
+           "paramtrNm": "BSNS_GUIDANCE_URL",
+           "paramtrDc": "사업안내URL",
+           "arrayYn": "N",
+           "paramtrDefNm": "",
+           "paramtrTy": "string",
+           "paramtrDivision": "옵션",
+           "ck": true
+          },
+          {
+           "paramtrNm": "BSNS_POPUP_URL",
+           "paramtrDc": "사업정보팝업URL",
+           "arrayYn": "N",
+           "paramtrDefNm": "",
+           "paramtrTy": "string",
+           "paramtrDivision": "옵션",
+           "ck": true
+          },
+          {
+           "paramtrNm": "DDTLBZ_ODR",
+           "paramtrDc": "보조사업차수",
+           "arrayYn": "N",
+           "paramtrDefNm": "",
+           "paramtrTy": "string",
+           "paramtrDivision": "옵션",
+           "ck": true
+          },
+          {
+           "paramtrNm": "DLVPL_NM",
+           "paramtrDc": "수행기관명",
+           "arrayYn": "N",
+           "paramtrDefNm": "",
+           "paramtrTy": "string",
+           "paramtrDivision": "옵션",
+           "ck": true
+          },
+          {
+           "paramtrNm": "TGYL_YEAR_BSNS_AMOUNT",
+           "paramtrDc": "당해년도사업금액",
+           "arrayYn": "N",
+           "paramtrDefNm": "",
+           "paramtrTy": "string",
+           "paramtrDivision": "옵션",
+           "ck": true
+          },
+          {
+           "paramtrNm": "GOVSUBY",
+           "paramtrDc": "국고보조금",
+           "arrayYn": "N",
+           "paramtrDefNm": "",
+           "paramtrTy": "string",
+           "paramtrDivision": "옵션",
+           "ck": true
+          },
+          {
+           "paramtrNm": "LOCGOV_ALOTM",
+           "paramtrDc": "지자체보조금",
+           "arrayYn": "N",
+           "paramtrDefNm": "",
+           "paramtrTy": "string",
+           "paramtrDivision": "옵션",
+           "ck": true
+          },
+          {
+           "paramtrNm": "SALM",
+           "paramtrDc": "자기부담금",
+           "arrayYn": "N",
+           "paramtrDefNm": "",
+           "paramtrTy": "string",
+           "paramtrDivision": "옵션",
+           "ck": true
+          },
+          {
+           "paramtrNm": "ETC_ALOTM",
+           "paramtrDc": "기타부담금",
+           "arrayYn": "N",
+           "paramtrDefNm": "",
+           "paramtrTy": "string",
+           "paramtrDivision": "옵션",
+           "ck": true
+          },
+          {
+           "paramtrNm": "STDR_DE",
+           "paramtrDc": "데이터 개방 기준일자",
+           "arrayYn": "N",
+           "paramtrDefNm": "",
+           "paramtrTy": "string",
+           "paramtrDivision": "옵션",
+           "ck": true
+          }
+         ]
+        }
+       ]
+      }
+     ]
+    }
+   ]
+  }
+ ]
+}
