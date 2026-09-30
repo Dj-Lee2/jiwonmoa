@@ -73,3 +73,9 @@ python -m http.server 8765 --directory site   # http://127.0.0.1:8765
 
 지도: [svg-maps South Korea](https://github.com/VictorCazanave/svg-maps/tree/master/packages/south-korea)
 (Victor Cazanave, 원본 [MapSVG](https://mapsvg.com/maps/south-korea)), [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/). 광주·전남을 한 지역으로 합쳐 표시한다.
+
+## 라이선스
+
+- 코드: [MIT](LICENSE)
+- 지도(`site/vendor/korea-map.js`): 위 원저작자의 CC BY 4.0을 따른다.
+- 수집 자료: 각 출처의 이용 조건을 따른다(기업마당은 공공누리 제3유형).
