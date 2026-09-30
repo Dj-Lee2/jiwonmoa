@@ -789,6 +789,7 @@
     state.sort = defaultSort(state);
     applyView();
     if (tab === "home") {
+      seenCards = {}; // 다른 탭에서 돌아오면 그래프가 처음처럼 다시 움직인다
       renderHome();
       renderDetail();
       writeHash(false);
@@ -1525,6 +1526,7 @@
 
   /* ---------- 그래프 움직임 ----------
    * 카드가 처음 화면에 들어올 때 한 번(play): 카드가 올라오며 나타나고 막대가 자라나고 선이 그려진다.
+   * 다른 탭에서 홈으로 돌아오면 seenCards를 비워 다시 처음처럼 움직인다.
    * 지역을 바꾸거나 카드의 전환 단추를 누르면 바뀐 그래프만 다시 자라난다(replay). 창 크기 변경 등은 그대로.
    * 움직임 줄이기 설정이면 style.css에서 모두 끈다. 웹 글꼴을 기다린 뒤 시작한다(글꼴이 오면 다시 그리므로) */
   var seenCards = {}, animScope = null, chartObserver = null, chartGen = 0;
@@ -1694,9 +1696,11 @@
     });
 
     window.addEventListener("popstate", function () {
+      var wasHome = state.tab === "home";
       state = readHash();
       applyView();
       if (state.tab === "home") {
+        if (!wasHome) seenCards = {}; // 뒤로 가기로 홈에 돌아와도 다시 움직인다
         renderHome();
         renderDetail();
         return;
