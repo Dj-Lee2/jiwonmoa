@@ -108,7 +108,20 @@ button, input, select { font: inherit; color: inherit; letter-spacing: inherit; 
 
 .label { display: block; font-weight: 700; font-size: .875rem; margin: 0 0 8px; padding: 0; color: var(--fg-strong); }
 .check { display: flex; align-items: center; gap: 8px; font-size: .875rem; cursor: pointer; }
-.check input { width: 18px; height: 18px; margin: 0; accent-color: var(--dark); }
+/* 체크 상자: 둥근 상자에 체크가 톡 튀어나온다. 테두리 --muted(흰 바탕 5:1). 
+ * Pattern adapted from Uiverse.io by DaniloMGutavo (stupid-mouse-85) — MIT License, © 2023 Uiverse.io */
+.check input {
+  appearance: none; -webkit-appearance: none; display: inline-grid; place-content: center; flex: none;
+  width: 20px; height: 20px; margin: 0; border: 1.5px solid var(--muted); border-radius: 6px; cursor: pointer;
+  background: var(--canvas) no-repeat center / 0 0;
+  transition: background-color .14s ease, border-color .14s ease, background-size .2s cubic-bezier(.3, 1.6, .5, 1);
+}
+.check input:checked {
+  border-color: var(--dark); background-color: var(--dark); background-size: 14px 14px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M3.5 8.4l2.9 2.9 6.1-6.6' fill='none' stroke='white' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+}
+.check input:focus-visible { outline: 2px solid var(--fg-strong); outline-offset: 2px; }
+@media (prefers-reduced-motion: reduce) { .check input { transition: none; } }
 
 /* 조건 칩: 회색 알약, 고른 칩은 검정 */
 .chips { display: flex; flex-wrap: wrap; gap: 8px; }
@@ -213,6 +226,15 @@ select { appearance: none; background-image: linear-gradient(45deg, transparent 
 .skeleton .row { cursor: default; }
 .skeleton .row:hover { background: transparent; }
 .skeleton .bar { display: block; height: .9em; border-radius: 999px; background: var(--surface); }
+/* 불러오는 동안 막대 위로 옅은 빛이 지나간다(움직임 줄이기면 멈춘 막대만).
+ * Pattern adapted from Uiverse.io by Nawsome (light-husky-91) — MIT License, © 2023 Uiverse.io */
+@media (prefers-reduced-motion: no-preference) {
+  .skeleton .bar {
+    background: linear-gradient(110deg, var(--surface) 30%, var(--surface-hover) 50%, var(--surface) 70%) 0 0 / 300% 100%;
+    animation: shimmer 1.4s linear infinite;
+  }
+}
+@keyframes shimmer { from { background-position: 100% 0; } to { background-position: 0 0; } }
 .skeleton .bar.w1 { width: 72%; height: 1.1em; }
 .skeleton .bar.w2 { width: 40%; }
 .skeleton .bar.w3 { width: 5em; }

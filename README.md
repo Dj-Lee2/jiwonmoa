@@ -95,7 +95,7 @@ python -m unittest discover -s tests -v
 
 - 코드: [MIT](LICENSE)
 - 지도(`site/vendor/korea-map.js`): 위 원저작자의 CC BY 4.0을 따른다.
-- 배경 무늬·그래프 말풍선 꼬리·전환 단추 알약(`site/style.css`): [Uiverse.io](https://uiverse.io) 패턴·툴팁·라디오
-  (BadlyWrittenStylesheet, AspenBranch, johnliter, Pradeepsaranbishnoi)을 고쳐 씀 — MIT License, © 2023 Uiverse.io.
+- 배경 무늬·그래프 말풍선 꼬리·전환 단추 알약·체크 상자·불러오기 막대(`site/style.css`): [Uiverse.io](https://uiverse.io) 패턴·툴팁·라디오
+  (BadlyWrittenStylesheet, AspenBranch, johnliter, Pradeepsaranbishnoi, DaniloMGutavo, Nawsome)을 고쳐 씀 — MIT License, © 2023 Uiverse.io.
   출처는 각 규칙 주석에 적었다.
 - 수집 자료: 각 출처의 이용 조건을 따른다(기업마당은 공공누리 제3유형).
