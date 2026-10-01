@@ -316,9 +316,16 @@ select { appearance: none; background-image: linear-gradient(45deg, transparent 
 .home-grid .row-arrow { display: none; }
 @media (hover: none) { .row-arrow { display: none; } }
 /* 많이 찾는 지원사업의 제도/공고 전환 */
-.seg-mini { display: inline-flex; gap: 2px; padding: 3px; border-radius: 999px; background: var(--surface); }
-.seg-mini button { border: 0; background: none; height: 30px; padding: 0 12px; border-radius: 999px; cursor: pointer; font-size: .8125rem; font-weight: 700; color: var(--fg); }
+.seg-mini { position: relative; display: inline-flex; gap: 2px; padding: 3px; border-radius: 999px; background: var(--surface); }
+.seg-mini button { position: relative; z-index: 1; border: 0; background: none; height: 30px; padding: 0 12px; border-radius: 999px; cursor: pointer; font-size: .8125rem; font-weight: 700; color: var(--fg); transition: color .2s ease; }
 .seg-mini button[aria-pressed="true"] { background: var(--dark); color: var(--on-dark); }
+/* 눌린 단추 뒤 검은 알약이 단추 사이를 미끄러져 옮겨 간다(app.js placeSegGliders가 자리·폭을 맞춘 뒤 .glide).
+ * 자리를 잡기 전·스크립트가 없을 때는 위 단추 바탕 그대로 보인다.
+ * Pattern adapted from Uiverse.io by Pradeepsaranbishnoi (heavy-dragonfly-92) — MIT License, © 2023 Uiverse.io */
+.seg-glider { position: absolute; top: 3px; left: 0; z-index: 0; width: 0; height: 30px; border-radius: 999px; background: var(--dark); opacity: 0; pointer-events: none; transition: transform .28s cubic-bezier(.2, .8, .2, 1), width .28s cubic-bezier(.2, .8, .2, 1); }
+.seg-mini.glide .seg-glider { opacity: 1; }
+@media (prefers-reduced-motion: reduce) { .seg-glider { transition: none; } }
+.seg-mini.glide button[aria-pressed="true"] { background: none; }
 .who-card { background: var(--surface-hover); border-radius: 24px; padding: 24px; margin-bottom: 44px; }
 .who-card h3 .ph { color: var(--blue); }
 .who-card .chip { background: var(--canvas); }
@@ -412,6 +419,14 @@ select { appearance: none; background-image: linear-gradient(45deg, transparent 
 @keyframes draw { from { stroke-dasharray: 1; stroke-dashoffset: 1; } to { stroke-dasharray: 1; stroke-dashoffset: 0; } }
 .viz-tip { position: fixed; z-index: 90; pointer-events: none; background: var(--dark); color: var(--on-dark); border-radius: 12px; padding: 8px 12px; font-size: .8125rem; line-height: 1.45; max-width: 240px; }
 .viz-tip strong { display: block; font-size: 1rem; }
+/* 말풍선 꼬리가 가리킨 막대·칸·지역을 향한다(app.js tipFor가 --caret-x와 위/아래(.below)를 정한다).
+ * Pattern adapted from Uiverse.io by johnliter (clever-lizard-46) — MIT License, © 2023 Uiverse.io */
+.viz-tip::after { content: ""; position: absolute; top: 100%; left: var(--caret-x, 50%); border-style: solid; border-width: 7px 7px 0; border-color: var(--dark) transparent transparent; transform: translateX(-50%); }
+.viz-tip.below::after { top: auto; bottom: 100%; border-width: 0 7px 7px; border-color: transparent transparent var(--dark); }
+@media (prefers-reduced-motion: no-preference) {
+  .viz-tip:not([hidden]) { animation: tip-in .12s ease-out; }
+}
+@keyframes tip-in { from { opacity: 0; translate: 0 3px; } to { opacity: 1; translate: 0 0; } }
 
 /* 마감 달력(app.js dueCard): 한 열 = 한 주, 한 칸 = 하루. 빈 날은 옅은 회색, 지난날은 더 옅게, 오늘은 테두리.
  * 칸 색은 지도와 같은 파랑 4단계(인라인 fill). 가장 진한 칸의 숫자만 흰 글자 */

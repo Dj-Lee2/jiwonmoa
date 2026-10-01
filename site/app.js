@@ -919,6 +919,7 @@
     $("#homeNat").checked = state.nat;
     $("#homeNat").closest("label").hidden = !state.r;
     document.title = SITE_TITLE;
+    placeSegGliders();
   }
 
   function fillList(box, rows, emptyText) {
@@ -1038,19 +1039,27 @@
     return t;
   }
 
+  /* 말풍선은 가리킨 곳 바로 위 가운데에 놓고, 아래 꼬리가 그 점을 가리킨다.
+   * 화면 가장자리에서는 말풍선만 안쪽으로 당기고 꼬리는 제자리(--caret-x)에 둔다.
+   * 위에 자리가 없으면 아래로 뒤집는다(.below) */
   function tipFor(node, value, label) {
     var tip = $("#vizTip");
-    function show(x, y) {
+    function show(x, y, gap) {
       tip.replaceChildren(el("strong", { text: value }), label);
       tip.hidden = false;
-      tip.style.left = Math.max(8, Math.min(window.innerWidth - tip.offsetWidth - 8, x + 12)) + "px";
-      tip.style.top = Math.max(8, y - tip.offsetHeight - 12) + "px";
+      var w = tip.offsetWidth, h = tip.offsetHeight;
+      var left = Math.max(8, Math.min(window.innerWidth - w - 8, x - w / 2));
+      var below = y - h - gap < 8;
+      tip.classList.toggle("below", below);
+      tip.style.left = left + "px";
+      tip.style.top = (below ? y + gap : y - h - gap) + "px";
+      tip.style.setProperty("--caret-x", Math.max(12, Math.min(w - 12, x - left)) + "px");
     }
-    node.addEventListener("pointermove", function (e) { show(e.clientX, e.clientY); });
+    node.addEventListener("pointermove", function (e) { show(e.clientX, e.clientY, 14); });
     node.addEventListener("pointerleave", function () { tip.hidden = true; });
     node.addEventListener("focus", function () {
       var r = node.getBoundingClientRect();
-      show(r.left + r.width / 2, r.top);
+      show(r.left + r.width / 2, r.top, 10);
     });
     node.addEventListener("blur", function () { tip.hidden = true; });
   }
@@ -1087,6 +1096,9 @@
       var b = el("button", { type: "button", "aria-pressed": String(o.value === current), text: o.label });
       b.addEventListener("click", function () {
         if (o.value === current) return;
+        // 다시 그리기 전 눌린 단추 자리를 기억해 두면 새 단추로 알약이 미끄러져 온다
+        var from = box.querySelector('[aria-pressed="true"]');
+        segFrom[name] = from ? { left: from.offsetLeft, width: from.offsetWidth } : null;
         onPick(o.value);
         animScope = name; // 카드 이름표(map·svc)와 같다
         renderHome();
@@ -1095,7 +1107,29 @@
       });
       box.append(b);
     });
+    box.append(el("span", { className: "seg-glider", "aria-hidden": "true" }));
     return box;
+  }
+
+  /* 눌린 단추 뒤 알약(.seg-glider)을 그 단추 자리·폭에 맞춘다. 막 바뀐 단추면 이전 자리에서 미끄러져 온다.
+   * 홈을 다시 그린 뒤와 글자 크기를 바꾼 뒤 부른다 */
+  var segFrom = {};
+  function placeSegGliders() {
+    document.querySelectorAll(".seg-mini").forEach(function (box) {
+      var glider = box.querySelector(".seg-glider"), on = box.querySelector('[aria-pressed="true"]');
+      if (!glider || !on || !on.offsetWidth) return; // 홈이 가려져 잴 수 없으면 다음에 그릴 때 맞춘다
+      var name = box.dataset.seg, from = name && segFrom[name];
+      function put(p) { glider.style.width = p.width + "px"; glider.style.transform = "translateX(" + p.left + "px)"; }
+      if (from) {
+        segFrom[name] = null;
+        glider.style.transition = "none";
+        put(from);
+        void glider.offsetWidth; // 이전 자리를 먼저 그리게 해야 미끄러짐이 보인다
+        glider.style.transition = "";
+      }
+      put({ left: on.offsetLeft, width: on.offsetWidth });
+      box.classList.add("glide");
+    });
   }
 
   /* 두 계열 이상일 때만 쓰는 범례(색 네모 + 이름) */
@@ -1595,6 +1629,7 @@
     fitListHeight(upcoming.querySelector(".results"), upcoming._expandable, WIDE_CHARTS); // 막대 채우기보다 먼저
     [persona, support].forEach(fillCard);
     setupMotion(cards);
+    placeSegGliders(); // 글꼴이 온 뒤 그래프만 다시 그릴 때도 전환 단추 알약을 맞춘다
   }
 
   /* ---------- 그래프 움직임 ----------
@@ -1691,11 +1726,16 @@
       var redo = function () { if (state.tab === "home") renderHome(); };
       if (mq.addEventListener) mq.addEventListener("change", redo); else if (mq.addListener) mq.addListener(redo);
     });
+    $("#homePopKind").append(el("span", { className: "seg-glider", "aria-hidden": "true" }));
     document.querySelectorAll("#homePopKind button").forEach(function (b) {
       b.addEventListener("click", function () {
+        if (b.dataset.pop === popKind) return;
+        var from = $("#homePopKind [aria-pressed=\"true\"]");
+        segFrom.pop = from ? { left: from.offsetLeft, width: from.offsetWidth } : null;
         popKind = b.dataset.pop;
         homeShown.pop = HOME_FIRST;
         renderPopular(homeLive());
+        placeSegGliders();
       });
     });
 
