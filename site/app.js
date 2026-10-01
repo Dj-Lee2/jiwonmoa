@@ -689,9 +689,7 @@
       url ? el("a", { className: "btn yellow", href: url, target: "_blank", rel: "noopener" },
         SRC_LINK[item.src], icon("arrow-square-out")) : null,
       apply && apply !== url ? el("a", { className: "btn dark", href: apply, target: "_blank", rel: "noopener" },
-        "신청 페이지", icon("arrow-square-out")) : null,
-      el("button", { type: "button", className: "btn gray", dataset: { action: "copy" } }, icon("link"), "링크 복사"),
-      el("button", { type: "button", className: "btn gray", dataset: { action: "print" } }, icon("printer"), "인쇄"));
+        "신청 페이지", icon("arrow-square-out")) : null);
 
     var head = el("div", { className: "row-tags" }, statusBadge(item));
     head.append.apply(head, Array.prototype.slice.call(tagsOf(item).childNodes));
@@ -742,25 +740,6 @@
     renderDetail();
     document.querySelectorAll(".row[aria-current]").forEach(function (b) { b.removeAttribute("aria-current"); });
     if (lastRowFocus && document.body.contains(lastRowFocus)) lastRowFocus.focus();
-  }
-
-  function copyLink() {
-    var url = location.href;
-    function fallback() {
-      var ta = el("textarea", { readonly: true });
-      ta.value = url;
-      ta.style.position = "fixed";
-      ta.style.opacity = "0";
-      document.body.append(ta);
-      ta.select();
-      try { document.execCommand("copy"); toast("링크를 복사했습니다"); } catch (e) { toast("복사하지 못했습니다"); }
-      ta.remove();
-    }
-    if (navigator.clipboard && window.isSecureContext) {
-      navigator.clipboard.writeText(url).then(function () { toast("링크를 복사했습니다"); }, fallback);
-    } else {
-      fallback();
-    }
   }
 
   /* ---------- 탭·기준 문구 ---------- */
@@ -1689,8 +1668,6 @@
       if (act === "reset") resetFilters();
       else if (act === "retry") renderList();
       else if (act === "close") closeDetail();
-      else if (act === "copy") copyLink();
-      else if (act === "print") window.print();
     });
 
 
