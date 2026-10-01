@@ -26,7 +26,7 @@ FIELDS = ["uid", "source", "kind", "title", "agency", "operator", "category", "t
           "content", "how", "audience", "personas", "posted", "views", "support",
           "period_text", "period_type", "apply_start", "apply_end", "regions", "region_basis",
           "agri", "agri_basis", "fish", "is_private", "url", "apply_url", "contact", "files",
-          "source_updated", "content_hash"]
+          "conditions", "details", "source_updated", "content_hash"]
 
 SCHEMA = f"""
 CREATE TABLE IF NOT EXISTS notices (

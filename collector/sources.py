@@ -11,6 +11,9 @@ BIZINFO_URL = "https://apis.data.go.kr/1421000/bizinfo/pblancBsnsService"
 KSTARTUP_URL = "https://apis.data.go.kr/B552735/kisedKstartupService01/getAnnouncementInformation01"
 GOV24_LIST_URL = "https://api.odcloud.kr/api/gov24/v3/serviceList"
 GOV24_COND_URL = "https://api.odcloud.kr/api/gov24/v3/supportConditions"
+GOV24_DETAIL_URL = "https://api.odcloud.kr/api/gov24/v3/serviceDetail"
+# 상세에서 쓰는 항목만 원본에 남긴다(지원대상·지원내용 등은 목록에도 있다)
+GOV24_DETAIL_KEYS = ("선정기준", "구비서류", "접수기관명", "온라인신청사이트URL", "법령", "자치법규", "행정규칙")
 BOJO_URL = "https://apis.data.go.kr/1051000/MoefOpenAPI2025/T_OPD_ASBS_PBNS_UNITY"
 
 MAX_PAGES = 100  # 규격이 바뀌어 페이지가 끝없이 이어지는 경우를 막는다
@@ -82,13 +85,23 @@ def fetch_kstartup(key):
 
 
 def fetch_gov24(key):
-    """서비스 목록에 지원조건(JA 코드)을 서비스ID로 붙인다."""
+    """서비스 목록에 지원조건(JA 코드)과 상세(구비서류·선정기준·신청 주소 등)를 서비스ID로 붙인다.
+
+    상세는 보탬 정보라 받지 못해도 목록은 반영한다(그날은 상세 칸 없이 보인다).
+    """
     base = {"serviceKey": key, "returnType": "JSON"}
     services, total = _paged_odcloud(GOV24_LIST_URL, base, "gov24", 1000)
     conds, _ = _paged_odcloud(GOV24_COND_URL, base, "gov24_cond", 1000)
+    try:
+        details, _ = _paged_odcloud(GOV24_DETAIL_URL, base, "gov24_detail", 1000)
+    except FetchError as e:
+        print(f"gov24_detail: 실패 — {str(e)[:200]} (상세 없이 진행)")
+        details = []
     by_id = {c.get("서비스ID"): c for c in conds}
+    detail_by_id = {d.get("서비스ID"): {k: d[k] for k in GOV24_DETAIL_KEYS if d.get(k)} for d in details}
     for s in services:
         s["_지원조건"] = by_id.get(s.get("서비스ID"))
+        s["_상세"] = detail_by_id.get(s.get("서비스ID"))
     return services, total
 
 

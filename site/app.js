@@ -681,6 +681,8 @@
     fact("분야", item.cat);
     fact("지원 방식", (item.sp || []).join(", "));
     if (item.a) fact("농업 분야", (item.tp || []).join(", "));
+    // 출처가 따로 준 조건(나이·소득·창업 기간·사업 예산 등). [이름, 값, 덧붙임]
+    (item.cd || []).forEach(function (c) { fact(c[0], c[1], c[2] || null); });
 
     var actions = el("div", { className: "actions" },
       // 노랑은 화면마다 한 곳, 가장 중요한 행동(원문 보기)에만 쓴다
@@ -703,8 +705,10 @@
       section("지원 대상", item.tg),
       section(item.k === "s" ? "서비스 목적" : "사업 개요", item.sm),
       section("지원 내용", item.ct),
-      section("신청 방법", item.how),
-      section("문의", item.cn),
+      section("신청 방법", item.how));
+    // 출처가 따로 준 글(선정 기준·구비 서류·신청 제외 대상 등). [제목, 글]
+    (item.dt || []).forEach(function (d) { inner.append(section(d[0], d[1]) || ""); });
+    inner.append(section("문의", item.cn) || "",
       el("p", { className: "caution", text: lastRun(item.src) + " 수집, 원문 일부 발췌. 신청 전에 원문을 확인하세요." }));
     pane.replaceChildren(detailBar(), inner);
     pane.scrollTop = 0;
@@ -1487,7 +1491,7 @@
       "aria-label": u.t + ". 작년 " + last + " 접수 시작. " + (u.cid ? "올해 공고가 올라와 있습니다" : "올해 공고는 아직 없습니다") },
       el("span", { className: "row-main" },
         el("span", { className: "row-title", text: u.t }),
-        el("span", { className: "row-meta", text: [u.ag, regionText(u), fmtDate(u.od) + " 시작"]
+        el("span", { className: "row-meta", text: [u.ag, regionText(u), fmtDate(u.od) + " 시작", u.bg ? "사업 예산 " + u.bg : ""]
           .filter(Boolean).join(" · ") })),
       el("span", { className: "row-side" },
         u.cid ? badge("올해 공고 있음", "new") : badge("아직 없음", "soft")));

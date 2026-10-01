@@ -19,12 +19,12 @@ from report import SOURCE_NAMES, load
 SITE_DATA = ROOT / "site" / "data"
 GOV24_URL = "https://www.gov.kr/portal/rcvfvrSvc/dtlEx/"  # 화면에서 서비스ID로 주소를 만든다
 DETAIL_BUCKETS = 64  # 보조금24 상세 글은 목록과 떼어 64개 파일로 나눠 둔다 (열 때만 읽음)
-DETAIL_KEYS = ("tg", "ct", "how", "cn", "op")
+DETAIL_KEYS = ("tg", "ct", "how", "cn", "op", "ap", "cd", "dt")
 
 # 목록 파일 크기를 줄이려고 긴 글은 자른다. 전체 내용은 원문 링크로 안내한다.
 LIMITS = {
-    "공고": {"target": 600, "summary": 600, "content": 400, "how": 300},
-    "제도": {"target": 400, "summary": 80, "content": 400, "how": 150},
+    "공고": {"target": 600, "summary": 600, "content": 400, "how": 300, "detail": 500},
+    "제도": {"target": 400, "summary": 80, "content": 400, "how": 150, "detail": 600},
 }
 
 # 농업 세부 분야 칩(농업인을 골랐을 때): 제목(+분류명)에 들어 있는 말로 나눈다. 한 사업이 여러 분야에 들 수 있다.
@@ -86,6 +86,9 @@ def compact(r):
         "a": 1 if r["agri"] == 2 else 0, "p": int(r["is_private"] or 0),
         "u": r["url"], "ap": r["apply_url"], "cn": trim(r["contact"], 200),
         "up": r["source_updated"],
+        # 상세 화면의 조건 줄 [이름, 값(, 덧붙임)]과 글 칸 [제목, 글] (normalize.py의 conditions, details)
+        "cd": json.loads(r.get("conditions") or "[]"),
+        "dt": [[title, trim(text, lim["detail"])] for title, text in json.loads(r.get("details") or "[]")],
     }
     if r["kind"] == "제도":
         out["fs"] = r["first_seen"]  # 상시 제도 '신규' 배지(공고는 게시일 pd로 판단)
@@ -214,8 +217,9 @@ def upcoming_calls(rows, today):
         key = program_key(r["title"])
         g = groups.get(key)
         if g is None or day < g["od"]:
+            budget = next((c[1] for c in json.loads(r.get("conditions") or "[]") if c[0] == "사업 예산"), "")
             groups[key] = g = {"t": r["title"], "ag": r["agency"], "od": day, "u": r["url"],
-                               "rg": set(), "cid": live_by_key.get(key)}
+                               "rg": set(), "cid": live_by_key.get(key), "bg": budget}
         g["rg"].update(r["regions"])
     out = []
     for g in sorted(groups.values(), key=lambda g: (g["od"], g["t"])):
