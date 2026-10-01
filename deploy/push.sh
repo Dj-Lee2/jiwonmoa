@@ -14,7 +14,7 @@ HOST="${HOST:?deploy/local.env에 HOST=ssh접속별칭 을 적어 주세요}"
 DEST="${DEST:-/srv/jiwonmoa}"
 
 FILES=(README.md .env.example .gitignore collector/*.py deploy/*.sh deploy/README.md docs/api-specs
-       site/index.html site/app.js site/style.css site/vendor)
+       site/index.html site/app.js site/style.css site/sound.js site/sound.css site/vendor site/img)
 if [ "${1:-}" = "--dry-run" ]; then
   printf '%s\n' "${FILES[@]}"
   exit 0

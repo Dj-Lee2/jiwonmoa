@@ -7,10 +7,12 @@
 <meta name="description" content="정부·지자체·공공기관의 지원사업 공고와 제도를 한곳에서 찾아보는 비공식 개인 프로젝트">
 <meta name="color-scheme" content="only light">
 <meta name="theme-color" content="#ffffff">
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23111111'/%3E%3Cpath d='M9 17l5 5 9-11' stroke='white' stroke-width='3.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+<link rel="icon" type="image/png" href="img/favicon.png">
+<link rel="apple-touch-icon" href="img/apple-touch-icon.png">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@phosphor-icons/web@2.1.1/src/regular/style.css">
 <link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="sound.css?v=1">
 </head>
 <body>
 <a class="skip" href="#main">본문으로 건너뛰기</a>
@@ -18,11 +20,16 @@
 <header class="top">
   <div class="wrap top-inner">
     <div class="brand">
-      <h1><a id="homeLink" href="#" aria-label="지원모아, 홈으로">지원모아</a></h1>
+      <h1><a id="homeLink" href="#" aria-label="지원모아, 홈으로"><picture class="brand-mark"><source srcset="img/mascot-still.webp" media="(prefers-reduced-motion: reduce)"><img src="img/mascot.webp" alt="" width="44" height="44"></picture>지원모아</a></h1>
     </div>
-    <button id="fontToggle" class="iconbtn" type="button" aria-pressed="false">
-      <i class="ph ph-text-aa" aria-hidden="true"></i><span>글자 크게</span>
-    </button>
+    <div class="top-actions">
+      <button id="soundToggle" class="iconbtn" type="button" aria-label="버튼 소리" aria-pressed="true" title="버튼 소리 끄기" hidden>
+        <i class="ph ph-speaker-high" aria-hidden="true"></i><span>소리 켬</span>
+      </button>
+      <button id="fontToggle" class="iconbtn" type="button" aria-pressed="false">
+        <i class="ph ph-text-aa" aria-hidden="true"></i><span>글자 크게</span>
+      </button>
+    </div>
   </div>
 </header>
 
@@ -33,6 +40,18 @@
     <button role="tab" id="tab-services" data-tab="services" aria-controls="listPane">상시 지원제도 <span class="tab-count"></span></button>
   </div>
 </nav>
+<script>
+/* 첫 화면 깜빡임 막기: 자료(수 MB)를 받는 동안 목록 화면이 먼저 보이지 않게, 주소(#)로 고를 탭을 미리 정한다.
+   app.js readHash와 같은 규칙. app.js가 화면을 정하면(DOMContentLoaded) 표시를 뗀다 */
+(function () {
+  var p = new URLSearchParams(location.hash.slice(1)), t = p.get("tab");
+  if (["home", "open", "services"].indexOf(t) < 0) t = location.hash.length > 1 ? "open" : "home";
+  var d = document.documentElement;
+  d.setAttribute("data-boot", t === "home" ? "home" : "list");
+  var b = document.getElementById("tab-" + t); if (b) b.setAttribute("aria-selected", "true");
+  document.addEventListener("DOMContentLoaded", function () { d.removeAttribute("data-boot"); });
+})();
+</script>
 
 <div id="main">
 <main id="homePane" class="wrap home" role="tabpanel" aria-labelledby="tab-home" hidden>
@@ -226,6 +245,7 @@
 <script src="vendor/korea-map.js"></script>
 <script src="data/meta.js"></script>
 <script src="data/notices.js"></script>
+<script src="sound.js?v=1"></script>
 <script src="app.js"></script>
 </body>
 </html>

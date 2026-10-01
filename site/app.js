@@ -840,12 +840,22 @@
     return ((svc.region[state.r] || {})[key] || 0) + (state.nat ? svc.national[key] : 0);
   }
 
-  function statTile(num, label, iconName, onClick, tone) {
+  /* 숫자 타일 아래 눈금 막대: 전체(of) 가운데 이 숫자가 차지하는 몫을 40칸 중 칠한 칸으로 보인다.
+   * 막대는 홈을 처음 그릴 때만 자라난다(지역을 바꿔 다시 그릴 때는 칸 수만 바뀐다) */
+  var STAT_TICKS = 40, statsGrown = false;
+  function statTile(num, label, iconName, onClick, tone, of, ofLabel) {
     var mark = icon(iconName);
     mark.classList.add("tone-" + tone);
-    var b = el("button", { type: "button", className: "stat" },
+    var share = of > 0 ? num / of : 0;
+    var on = num > 0 ? Math.max(1, Math.round(share * STAT_TICKS)) : 0;
+    var pct = of > 0 ? (share < 0.01 && num > 0 ? "1% 미만" : Math.round(share * 100) + "%") : "";
+    var ticks = el("span", { className: "stat-ticks tone-" + tone, "aria-hidden": "true" });
+    for (var i = 0; i < STAT_TICKS; i++) ticks.append(el("i", { className: i < on ? "on" : "", style: "--i:" + i }));
+    var b = el("button", { type: "button", className: "stat", "aria-label": label + " " + fmtN(num) + "건, " + ofLabel + " " + fmtN(of) + "건 중 " + pct },
       el("span", { className: "stat-num", text: fmtN(num) }),
-      el("span", { className: "stat-label" }, mark, label, icon("arrow-right")));
+      el("span", { className: "stat-label" }, mark, label, icon("arrow-right")),
+      el("span", { className: "stat-of" }, el("span", null, el("span", { className: "of-what", text: ofLabel + " " }), fmtN(of) + "건 중"), el("span", { text: pct })),
+      ticks);
     b.addEventListener("click", onClick);
     return b;
   }
@@ -867,15 +877,18 @@
       el("strong", { text: fmtN(live.length) }), "건");
     $("#homeSub").textContent = "모집 공고 기준 · " + fmtStamp(at) + " 수집";
 
+    var svcN = svcCount("all");
     $("#homeStats").replaceChildren(
       statTile(live.filter(isSoon).length, "7일 안에 마감", "clock",
-        function () { goTo({ tab: "open", soon: true }); }, "red"),
+        function () { goTo({ tab: "open", soon: true }); }, "red", live.length, "모집 공고"),
       statTile(byStatus["접수 예정"] || 0, "접수 예정", "calendar-check",
-        function () { goTo({ tab: "open", st: ["접수 예정"] }); }, "blue"),
+        function () { goTo({ tab: "open", st: ["접수 예정"] }); }, "blue", live.length, "모집 공고"),
       statTile(byStatus["소진 시까지"] || 0, "예산 소진 시까지", "hourglass-medium",
-        function () { goTo({ tab: "open", st: ["소진 시까지"] }); }, "orange"),
-      statTile(svcCount("all"), "상시 지원제도", "hand-heart",
-        function () { goTo({ tab: "services" }); }, "blue"));
+        function () { goTo({ tab: "open", st: ["소진 시까지"] }); }, "orange", live.length, "모집 공고"),
+      statTile(svcN, "상시 지원제도", "hand-heart",
+        function () { goTo({ tab: "services" }); }, "green", live.length + svcN, "공고·제도"));
+    if (!statsGrown) { $("#homeStats").classList.add("grow"); statsGrown = true; }
+    else $("#homeStats").classList.remove("grow");
 
     renderHomeLists(live);
 
@@ -1378,7 +1391,7 @@
 
     function pick(name) {
       state.r = state.r === name ? "" : name;
-      animScope = "all";
+      animScope = "persona"; // 지도에서 고르면 '누구를 위한 지원' 그래프만 다시 자란다
       renderHome();
       writeHash(false);
     }
@@ -1391,9 +1404,17 @@
       lo = hi + 1;
     });
     var body = koreaMap(counts, bin, pick, scale);
-    return vizCard("어느 지역에 많나요?", "전국 대상 " + fmtN(national) + "건 제외", body, null,
+    var card = vizCard("어느 지역에 많나요?", "전국 대상 " + fmtN(national) + "건 제외", body, null,
       segToggle("map", "지도에 보일 자료", [{ value: "n", label: "모집 공고" }, { value: "s", label: "상시 제도" }], mapKind,
         function (v) { mapKind = v; }));
+    // 고른 지역은 같은 지역을 다시 누르거나, 카드의 빈 곳을 누르거나, Esc로 푼다
+    card.addEventListener("click", function (e) {
+      if (state.r && !e.target.closest(".kmap-region, button, a, select, input")) pick(state.r);
+    });
+    card.addEventListener("keydown", function (e) {
+      if (e.key === "Escape" && state.r) { pick(state.r); }
+    });
+    return card;
   }
 
   /* 공모는 언제 열리나요?: 국고보조금 공모가 접수를 시작한 달, 올해(파랑)와 작년(회색). META.openMonths */
@@ -1525,7 +1546,8 @@
   }
 
   /* ---------- 그래프 움직임 ----------
-   * 카드가 처음 화면에 들어올 때 한 번(play): 카드가 올라오며 나타나고 막대가 자라나고 선이 그려진다.
+   * 카드가 화면에 들어올 때(play): 카드가 올라오며 나타나고 막대가 자라나고 선이 그려진다.
+   * 스크롤로 카드가 화면 밖으로 완전히 나가면 다시 준비(pending)해 두었다가, 돌아오면 또 움직인다.
    * 다른 탭에서 홈으로 돌아오면 seenCards를 비워 다시 처음처럼 움직인다.
    * 지역을 바꾸거나 카드의 전환 단추를 누르면 바뀐 그래프만 다시 자라난다(replay). 창 크기 변경 등은 그대로.
    * 움직임 줄이기 설정이면 style.css에서 모두 끈다. 웹 글꼴을 기다린 뒤 시작한다(글꼴이 오면 다시 그리므로) */
@@ -1540,20 +1562,23 @@
     if (!("IntersectionObserver" in window)) return;
     chartObserver = new IntersectionObserver(function (entries) {
       entries.forEach(function (e) {
-        if (!e.isIntersecting) return;
-        e.target.classList.remove("pending");
-        e.target.classList.add("play");
-        seenCards[e.target.dataset.key] = true;
-        chartObserver.unobserve(e.target);
+        var c = e.target, pending = c.classList.contains("pending");
+        if (!e.isIntersecting) {
+          // 화면 밖으로 완전히 나갔다: 다음에 들어올 때 다시 움직이게 준비
+          if (!pending) { c.classList.remove("play", "replay"); c.classList.add("pending"); delete seenCards[c.dataset.key]; }
+        } else if (pending && e.intersectionRatio >= 0.2) {
+          c.classList.remove("pending");
+          c.classList.add("play");
+          seenCards[c.dataset.key] = true;
+        }
       });
-    }, { threshold: 0.2 });
-    var fresh = [];
+    }, { threshold: [0, 0.2] });
     cards.forEach(function (c) {
-      if (!seenCards[c.dataset.key]) { c.classList.add("pending"); fresh.push(c); }
+      if (!seenCards[c.dataset.key]) c.classList.add("pending");
       else if (scope === "all" || scope === c.dataset.key) c.classList.add("replay");
     });
     fontsReady.then(function () {
-      if (gen === chartGen) fresh.forEach(function (c) { chartObserver.observe(c); });
+      if (gen === chartGen) cards.forEach(function (c) { chartObserver.observe(c); });
     });
   }
 

@@ -2,7 +2,7 @@
  *
  *  - 흰 바탕에 그림자 없는 평평한 면. 글자 #333, 제목 #111, 보조 면 #eee, 선 #dbdbdb
  *  - 조건은 회색 알약, 고른 것은 검정(#111 + 흰 글자). 노랑 #fae100은 화면마다 한 곳(원문 보기)만
- *  - 누르기·가리키기 반응은 즉시. 그래프만 화면에 처음 들어올 때 한 번 움직인다(움직임 줄이기 설정이면 없음)
+ *  - 누르기·가리키기 반응은 즉시. 그래프만 화면에 들어올 때 움직인다(화면 밖으로 나갔다 돌아오면 다시)(움직임 줄이기 설정이면 없음)
  *  - 뜻이 정해진 색만 조금: 빨강 = 오늘~D-3 마감, 주황 = 7일 안 마감, 파랑 = 정보(신규 등)
  *  - 그래프 색은 자료 종류에 붙는다: 파랑 = 모집 공고, 초록 = 상시 제도, 회색 = 비교 대상(app.js SERIES_*)
  *  - 보조 글자 #666(흰 바탕 대비 4.5:1 이상), 누르는 칸은 44px 이상
@@ -482,3 +482,137 @@ select { appearance: none; background-image: linear-gradient(45deg, transparent 
   .detail { display: block !important; position: static !important; max-height: none; overflow: visible; border: 0; }
   .facts { background: none; padding: 0; }
 }
+
+/* ---------- 다듬기(better-ui·emil-design-eng 기준) ----------
+ * 앞 규칙을 덮는 마지막 블록. 새 스타일은 이 블록 안이나 뒤에 둔다.
+ *  - 누르는 것은 scale(.96)로 눌림을 알린다(150ms ease-out). 색 바뀜도 150ms로 부드럽게, 속성은 이름으로만
+ *  - 깊이가 필요한 면(그래프 카드·넓은 화면 상세)은 선 대신 투명 그림자 3겹. 목록 구분선은 그대로 선
+ *  - 한 줄 안의 단추·입력칸은 같은 알약 모양(노랑·검정 단추도 24px)
+ *  - 등장은 12px·400ms·흐림 4px에서, 알림·겹침 화면은 짧게 들어온다. 움직임 줄이기 설정이면 모두 없음
+ */
+:root {
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
+  --shadow-border:
+    0 0 0 1px oklch(0 0 0 / 0.06),
+    0 1px 2px -1px oklch(0 0 0 / 0.06),
+    0 2px 4px 0 oklch(0 0 0 / 0.04);
+  --shadow-border-hover:
+    0 0 0 1px oklch(0 0 0 / 0.08),
+    0 1px 2px -1px oklch(0 0 0 / 0.08),
+    0 2px 4px 0 oklch(0 0 0 / 0.06);
+  --shadow-panel:
+    0 0 0 1px oklch(0 0 0 / 0.06),
+    0 4px 12px -2px oklch(0 0 0 / 0.06),
+    0 16px 32px -8px oklch(0 0 0 / 0.08);
+}
+
+/* 검정 알약(고른 탭·칩·전환, 검정 단추)의 안쪽 흰 테두리는 흰 바탕에서 겹선처럼 보여 뺀다 */
+.tabs [role="tab"][aria-selected="true"], .btn.dark, .chip[aria-pressed="true"], .toggle[aria-pressed="true"] { box-shadow: none; }
+
+/* 알약 모양 통일: 찾기·원문 보기(노랑), 검정 단추도 옆 입력칸·회색 단추와 같은 둥글기 */
+.btn.yellow, .btn.dark { border-radius: 24px; }
+
+/* 키보드 초점: 모든 누르는 것에 같은 고리 */
+:is(a, button, input, select, [tabindex]):focus-visible { outline: 2px solid var(--fg-strong); outline-offset: 2px; }
+.row:focus-visible { outline-offset: -2px; }
+input[type="search"]:focus-visible, select:focus-visible { outline-offset: 0; box-shadow: inset 0 0 0 1px var(--fg-strong); }
+
+/* 깊이: 선 대신 그림자 */
+.viz-card { border: 0; box-shadow: var(--shadow-border); }
+@media (min-width: 1100px) {
+  .detail { border: 0; box-shadow: var(--shadow-panel); }
+}
+@media (min-width: 760px) and (max-width: 1099px) {
+  body.detail-open .detail { border-left: 0; box-shadow: var(--shadow-panel); }
+}
+
+/* 숫자 타일: 가리키면 한 단계 진해지고 화살표가 조금 앞으로 */
+.stat-label .ph-arrow-right, .more-link .ph-arrow-right { transition-property: translate; transition-duration: 150ms; transition-timing-function: var(--ease-out); }
+@media (hover: hover) {
+  .stat:hover .stat-label .ph-arrow-right, .more-link:hover .ph-arrow-right { translate: 3px 0; }
+}
+
+/* 색 바뀜: 150ms, 바뀌는 속성만 */
+.btn, .chip, .toggle, .iconbtn, .tabs [role="tab"], .seg-mini button, .stat, .row, .kmap-list button, .foot-links a, .linkish, .more-link {
+  transition-property: background-color, color, box-shadow, scale;
+  transition-duration: 150ms;
+  transition-timing-function: var(--ease-out);
+}
+.row-arrow { transition-property: opacity, translate; transition-duration: 150ms; transition-timing-function: var(--ease-out); translate: -4px 0; }
+.row:hover .row-arrow, .row:focus-visible .row-arrow, .row[aria-current="true"] .row-arrow { translate: 0 0; }
+.foot-links a:hover { background: var(--pressed); }
+/* 터치 화면에서는 가리키기 색이 눌린 뒤에도 남지 않게 */
+@media (hover: none) {
+  .row:not([aria-current="true"]):hover { background: transparent; }
+  .stat:hover { background: var(--surface-hover); }
+  .tabs [role="tab"]:not([aria-selected="true"]):hover, .iconbtn:not([aria-pressed="true"]):hover { background: transparent; }
+  .active-filters .chip:hover { background: transparent; }
+  .foot-links a:hover { background: var(--surface); }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  /* 누름: 모든 단추·칩·탭은 .96 */
+  .btn:active, .chip:active, .toggle:active, .iconbtn:active, .tabs [role="tab"]:active,
+  .seg-mini button:active, .foot-links a:active, .kmap-list button:active { scale: 0.96; }
+  /* 큰 면(숫자 타일)은 같은 .96이면 과해 보여 조금만 */
+  .stat:active { scale: 0.98; }
+
+  /* 그래프 카드 등장: 24px·.6s → 12px·400ms·흐림 4px */
+  .viz-card.pending { transform: translateY(12px); filter: blur(4px); }
+  .viz-card.play { animation: card-in-soft 400ms var(--ease-out) both; --d0: 120ms; }
+
+  /* 홈 첫 화면: 제목 → 검색 → 숫자 타일 → 대상 칩 순으로 100ms 간격 */
+  .home-hero > *, .home-stats, .who-card { animation: rise-in 400ms var(--ease-out) both; }
+  .home-hero > :nth-child(2) { animation-delay: 60ms; }
+  .home-hero > :nth-child(3) { animation-delay: 120ms; }
+  .home-stats { animation-delay: 200ms; }
+  .who-card { animation-delay: 300ms; }
+
+  /* 알림: 아래에서 짧게 */
+  .toast { animation: toast-in 200ms var(--ease-out) both; }
+
+  /* 좁은 화면의 조건·상세 겹침 화면 */
+  body.filters-open .filters { animation: sheet-up 280ms var(--ease-drawer) both; }
+  body.detail-open .detail { animation: sheet-up 280ms var(--ease-drawer) both; }
+  @media (min-width: 1100px) { body.detail-open .detail { animation: none; } }
+  @media (min-width: 760px) and (max-width: 1099px) { body.detail-open .detail { animation-name: panel-in; } }
+}
+@keyframes card-in-soft { from { opacity: 0; transform: translateY(12px); filter: blur(4px); } to { opacity: 1; transform: none; filter: none; } }
+@keyframes rise-in { from { opacity: 0; translate: 0 12px; filter: blur(4px); } to { opacity: 1; translate: 0 0; filter: none; } }
+@keyframes toast-in { from { opacity: 0; translate: 0 8px; filter: blur(4px); } to { opacity: 1; translate: 0 0; filter: none; } }
+@keyframes sheet-up { from { opacity: 0; translate: 0 16px; } to { opacity: 1; translate: 0 0; } }
+@keyframes panel-in { from { opacity: 0; translate: 24px 0; } to { opacity: 1; translate: 0 0; } }
+
+/* 마스코트(파란 부엉이): 이름 앞 로고. 글자 높이에 맞추고 아래로 살짝 내려 글자 기준선과 눈높이를 맞춘다 */
+.brand h1 a { display: inline-flex; align-items: center; gap: 8px; }
+.brand-mark { width: 2.75rem; height: 2.75rem; flex: none; margin: -4px 0; }
+.brand-mark img { display: block; width: 100%; height: 100%; }
+/* 움직이는 원본(16장)을 1.5배 느리게(3초 반복). 움직임 줄이기 설정이면 index.html의 <picture>가 멈춘 한 장을 쓴다 */
+@media (max-width: 639px) { .brand-mark { width: 2.25rem; height: 2.25rem; } .brand h1 a { gap: 6px; } }
+@media (prefers-reduced-motion: no-preference) {
+  .brand-mark { transition-property: rotate; transition-duration: 150ms; transition-timing-function: var(--ease-out); }
+  @media (hover: hover) { .brand h1 a:hover .brand-mark { rotate: -6deg; } }
+}
+
+/* 첫 화면: index.html의 짧은 스크립트가 정한 탭만 보인다(자료를 받는 동안 목록 화면이 먼저 비치지 않게) */
+html[data-boot="home"] #listLayout { display: none !important; }
+html[data-boot="home"] #homePane[hidden] { display: block !important; }
+html[data-boot="list"] #homePane { display: none !important; }
+
+/* 숫자 타일 눈금 막대(app.js statTile): 40칸 중 칠한 칸 = 전체 가운데 몫. 색은 아이콘과 같게, 상시 제도는 그래프와 같은 초록 */
+.stat-label .tone-green { color: #008300; }
+.stat { width: 100%; }
+.stat-of { display: flex; justify-content: space-between; gap: 8px; width: 100%; margin-top: 10px; font-size: .75rem; line-height: 1.4; color: var(--muted); font-variant-numeric: tabular-nums; }
+.stat-of span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.stat-of > span:last-child { flex: none; white-space: nowrap; }
+@media (max-width: 479px) { .stat-of .of-what { display: none; } }
+.stat-ticks { display: flex; gap: 2px; width: 100%; height: 26px; margin-top: 6px; --c: var(--fg-strong); }
+.stat-ticks.tone-red { --c: var(--red); } .stat-ticks.tone-blue { --c: var(--blue); } .stat-ticks.tone-orange { --c: var(--orange-icon); } .stat-ticks.tone-green { --c: #008300; }
+.stat-ticks i { flex: 1 1 0; min-width: 1px; border-radius: 1px; background: #dcdcdc; }
+.stat-ticks i.on { background: var(--c); }
+@media (max-width: 639px) { .stat-ticks { height: 20px; gap: 1px; } .stat-of { margin-top: 8px; } }
+@media (prefers-reduced-motion: no-preference) {
+  .home-stats.grow .stat-ticks i.on { transform-origin: bottom; animation: tick-grow 400ms var(--ease-out) both; animation-delay: calc(250ms + var(--i) * 12ms); }
+}
+@keyframes tick-grow { from { transform: scaleY(.3); opacity: .3; } }
