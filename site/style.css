@@ -218,6 +218,8 @@ select { appearance: none; background-image: linear-gradient(45deg, transparent 
 .skeleton .bar.w3 { width: 5em; }
 
 .state { background: var(--surface-hover); border-radius: 24px; padding: 40px 20px; text-align: center; }
+/* 결과 없음 상자 바탕의 옅은 빗금 — Pattern adapted from Uiverse.io by AspenBranch (slippery-sheep-50) — MIT License, © 2023 Uiverse.io */
+.state:not(.error) { background: repeating-linear-gradient(45deg, var(--surface-hover), var(--surface-hover) 14px, #f8f8f8 14px, #f8f8f8 28px); }
 .state .ph { font-size: 2rem; color: var(--fg-strong); }
 .state-title { margin: 8px 0 4px; font-weight: 700; font-size: 1rem; color: var(--fg-strong); }
 .state p { margin: 0 0 16px; color: var(--muted); }
@@ -258,7 +260,18 @@ select { appearance: none; background-image: linear-gradient(45deg, transparent 
 /* ---------- 홈 ---------- */
 .brand h1 a { color: inherit; text-decoration: none; }
 .home { padding-top: 28px; padding-bottom: 56px; }
-.home-hero { padding-bottom: 32px; border-bottom: 1px solid var(--divider); margin-bottom: 32px; }
+.home-hero { padding-bottom: 32px; border-bottom: 1px solid var(--divider); margin-bottom: 32px; position: relative; isolation: isolate; }
+/* 홈 머리 뒤 점 격자 — 오른쪽 위에서 옅게 번지고 글 아래에서는 사라진다.
+ * Pattern adapted from Uiverse.io by BadlyWrittenStylesheet (fluffy-bear-71) — MIT License, © 2023 Uiverse.io */
+.home-hero::before {
+  content: ""; position: absolute; inset: -28px -44px 0 30%; z-index: -1; pointer-events: none;
+  background-image: radial-gradient(#d4d4d4 1.4px, transparent 1.6px);
+  background-size: 22px 22px;
+  -webkit-mask-image: radial-gradient(ellipse 75% 85% at 85% 20%, #000 15%, transparent 72%);
+  mask-image: radial-gradient(ellipse 75% 85% at 85% 20%, #000 15%, transparent 72%);
+}
+@media (max-width: 639px) { .home-hero::before { inset: -28px -16px 0 0; opacity: .7; } }
+@media print { .home-hero::before { display: none; } }
 .hero-title { margin: 0; font-size: 3.36rem; line-height: 1.23; font-weight: 700; letter-spacing: -1px; color: var(--fg-strong); }
 .hero-title strong { font-weight: 800; font-variant-numeric: tabular-nums; }
 .hero-sub { margin: 12px 0 28px; color: var(--muted); font-size: 1rem; }
@@ -289,7 +302,11 @@ select { appearance: none; background-image: linear-gradient(45deg, transparent 
 .row-line-main { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .row-line-extra { flex: none; white-space: nowrap; }
 .row-line-extra.sep::before { content: "·"; margin: 0 6px; }
-.list-empty { padding: 24px 8px; color: var(--muted); }
+.list-empty {
+  padding: 32px 16px; color: var(--muted); text-align: center; border-radius: 16px;
+  /* 빈 목록 바탕의 옅은 빗금 — Pattern adapted from Uiverse.io by AspenBranch (slippery-sheep-50) — MIT License, © 2023 Uiverse.io */
+  background: repeating-linear-gradient(45deg, var(--canvas), var(--canvas) 12px, var(--surface-hover) 12px, var(--surface-hover) 24px);
+}
 /* 넓은 화면에서 '더 보기'로 늘어난 목록은 칸 안에서 스크롤(높이는 app.js fitListHeight가 정함) */
 .scroll-list { overflow-y: auto; scrollbar-width: thin; scrollbar-color: #c4c4c4 transparent; }
 /* 홈 목록 줄 높이를 고르게: 제목 2줄, 보조 정보 1줄까지 */
@@ -401,7 +418,8 @@ select { appearance: none; background-image: linear-gradient(45deg, transparent 
 .duecal-fig { display: grid; gap: 12px; justify-items: center; }
 .viz-body svg.duecal { width: 100%; height: auto; max-height: none; }
 .duecal .cell { fill: var(--surface-hover); }
-.duecal .past .cell { fill: none; stroke: var(--divider); stroke-width: 1; }
+/* 지난날은 빗금으로 '고를 수 없음'을 보인다 — Pattern adapted from Uiverse.io by AspenBranch (slippery-sheep-50) — MIT License, © 2023 Uiverse.io */
+.duecal .past .cell { fill: url(#duecal-past); stroke: var(--divider); stroke-width: 1; }
 .duecal .today .cell { stroke: var(--fg-strong); stroke-width: 2; }
 .duecal .mark { cursor: pointer; outline: none; }
 .duecal .mark:focus-visible .cell { stroke: var(--fg-strong); stroke-width: 2.5; }

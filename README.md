@@ -39,6 +39,12 @@ python -m http.server 8765 --directory site   # http://127.0.0.1:8765
 
 수집 자료(`data/`)와 화면용 자료(`site/data/`)는 저장소에 넣지 않는다. 위 순서로 다시 만든다.
 
+규칙을 고친 뒤에는 테스트를 돌린다(표준 라이브러리만, GitHub Actions에서도 같은 명령):
+
+```
+python -m unittest discover -s tests -v
+```
+
 ## 화면
 
 - 탭: 홈 / 지금 모집 중(공고) / 상시 지원제도(보조금24)
@@ -66,6 +72,8 @@ python -m http.server 8765 --directory site   # http://127.0.0.1:8765
 | 내용 | 위치 |
 |---|---|
 | 지역·농업·대상(personas)·지원 방식 판정, 상세 조건·글 | `collector/normalize.py` |
+| 신청기간 종류(기간·상시·소진 시·매월·분기·매년·사유 발생 후·기관별·신청 불필요·확인 필요) | `collector/normalize.py`의 `PERIOD_RULES`·`STATUS_BY_TYPE`, 화면은 `site/app.js`의 `STATUS_BY_TYPE` |
+| 같은 공고 재게시 정리(출처·제목·기관·기간·지역이 모두 같을 때만) | `collector/build_site.py`의 `dedupe_notices` |
 | 농업 세부 분야 칩 | `collector/build_site.py`의 `AGRI_TOPICS` |
 | 홈 집계(지역·대상별 건수, 공모 달, 많이 찾는 제도) | `collector/build_site.py`의 `service_counts`, `open_months`, `top_services` |
 | 곧 열릴 수 있는 공모(같은 사업 묶기) | `collector/build_site.py`의 `upcoming_calls`, `program_key` |
@@ -87,4 +95,6 @@ python -m http.server 8765 --directory site   # http://127.0.0.1:8765
 
 - 코드: [MIT](LICENSE)
 - 지도(`site/vendor/korea-map.js`): 위 원저작자의 CC BY 4.0을 따른다.
+- 배경 무늬(`site/style.css`의 홈 머리 점 격자·빈 목록·마감 달력 지난날 빗금): [Uiverse.io](https://uiverse.io) 패턴
+  (BadlyWrittenStylesheet, AspenBranch)을 고쳐 씀 — MIT License, © 2023 Uiverse.io. 출처는 각 규칙 주석에 적었다.
 - 수집 자료: 각 출처의 이용 조건을 따른다(기업마당은 공공누리 제3유형).

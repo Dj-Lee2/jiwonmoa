@@ -17,8 +17,13 @@
   var SRC_NAME = { bizinfo: "기업마당", kstartup: "K-Startup", bojo: "국고보조금 공모", gov24: "보조금24" };
   var SRC_LINK = { bizinfo: "기업마당에서 원문 보기", kstartup: "K-Startup에서 원문 보기",
     bojo: "보조금 통합포털에서 원문 보기", gov24: "정부24에서 자세히 보기" };
-  var STATUS_BY_TYPE = { "상시": "상시", "소진시": "소진 시까지", "정기": "매년 정기", "신청불필요": "신청 불필요" };
-  var STATUS_ORDER = ["접수 중", "접수 예정", "소진 시까지", "상시", "매년 정기", "신청 불필요", "확인 필요"];
+  // 기간 종류(collector/normalize.py PERIOD_RULES·STATUS_BY_TYPE와 같아야 한다). 날짜가 없는 사업을 원문 표기로 나눈다
+  var STATUS_BY_TYPE = { "상시": "상시", "소진시": "소진 시까지", "정기": "매년 정기", "주기": "매월·분기 접수",
+    "신청불필요": "신청 불필요", "사유발생": "사유 발생 후 신청", "기관별": "기관별로 다름" };
+  var STATUS_ORDER = ["접수 중", "접수 예정", "소진 시까지", "상시", "매월·분기 접수", "매년 정기", "사유 발생 후 신청",
+    "기관별로 다름", "신청 불필요", "확인 필요"];
+  // 목록에서 원문 기간 문구를 한 줄 더 보여 줄 상태(날짜 대신 원문이 답이 되는 경우)
+  var SHOW_PERIOD_TEXT = ["확인 필요", "매년 정기", "매월·분기 접수", "사유 발생 후 신청", "기관별로 다름"];
   var WEEKDAY = ["일", "월", "화", "수", "목", "금", "토"];
 
   var today = localDate(new Date());
@@ -306,11 +311,12 @@
       return items.sort(function (a, b) { return (b.up || "").localeCompare(a.up || "") || byName(a, b); });
     }
     // 마감 임박순: 마감일 있는 접수 중, 접수 예정, 소진 시까지, 상시, 나머지 순. 날짜 없는 것에 날짜를 만들지 않는다.
-    var rankOf = { "접수 중": 0, "접수 예정": 1, "소진 시까지": 2, "상시": 3, "매년 정기": 4 };
+    var rankOf = { "접수 중": 0, "접수 예정": 1, "소진 시까지": 2, "상시": 3, "매월·분기 접수": 4, "매년 정기": 5,
+      "사유 발생 후 신청": 6, "기관별로 다름": 7 };
     function rank(it) {
       var st = statusOf(it);
       if (st === "접수 중" && !it.e) return 2;
-      return st in rankOf ? rankOf[st] : 5;
+      return st in rankOf ? rankOf[st] : 8; // 확인 필요·신청 불필요는 맨 뒤
     }
     function key(it) { return rank(it) === 1 ? (it.s || "") : (it.e || ""); }
     return items.sort(function (a, b) {
@@ -378,7 +384,7 @@
         el("span", { className: "row-title" }, item.t, el("i", { className: "ph ph-arrow-right row-arrow", "aria-hidden": "true" })),
         metaLine,
         // 날짜가 없는 사업 중 '매년 1월'처럼 기간 문구가 도움이 되는 경우만 한 줄 더 보여 준다
-        !compact && !sideDate && item.pt && ["확인 필요", "매년 정기"].indexOf(statusOf(item)) >= 0
+        !compact && !sideDate && item.pt && SHOW_PERIOD_TEXT.indexOf(statusOf(item)) >= 0
           ? el("span", { className: "row-meta", text: periodText(item) }) : null),
       el("span", { className: "row-side" },
         statusBadge(item),
@@ -1289,6 +1295,13 @@
     var H = top + 7 * pitch - gap;
     var root = svgEl("svg", { viewBox: "0 0 " + gridW + " " + H, role: "group", "class": "duecal",
       "aria-label": "앞으로 " + DUE_WEEKS + "주 날짜별 마감 공고 수 달력", style: "max-width:" + gridW + "px" });
+    // 지난날 칸의 빗금 무늬(style.css .duecal .past .cell)
+    var defs = svgEl("defs", {});
+    var hatch = svgEl("pattern", { id: "duecal-past", width: 6, height: 6, patternUnits: "userSpaceOnUse",
+      patternTransform: "rotate(45)" });
+    hatch.append(svgEl("rect", { width: 6, height: 6, fill: "#ffffff" }), svgEl("rect", { width: 3, height: 6, fill: "#f3f3f3" }));
+    defs.append(hatch);
+    root.append(defs);
 
     WEEKDAY.forEach(function (w, d) {
       root.append(svgText(0, top + d * pitch + cell / 2 + 5, w, "tick", "start"));

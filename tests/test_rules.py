@@ -1,0 +1,142 @@
+"""수집 자료를 화면용으로 고르는 규칙(collector/normalize.py, build_site.py) 회귀 테스트.
+
+표준 라이브러리 unittest만 쓴다(이 저장소는 외부 패키지를 설치하지 않는다).
+    python3 -m unittest discover -s tests -v
+"""
+import sys
+import unittest
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(ROOT / "collector"))
+
+import build_site  # noqa: E402
+import normalize as n  # noqa: E402
+
+
+class ParsePeriodTest(unittest.TestCase):
+    """신청기간 원문 → (시작, 마감, 종류). 원문에 없는 날짜를 만들지 않는다."""
+
+    def kind(self, text):
+        return n.parse_period(text)[2]
+
+    def test_dates_win_over_words(self):
+        self.assertEqual(n.parse_period("2026.10.01 ~ 2026.10.15"), ("2026-10-01", "2026-10-15", "기간"))
+        self.assertEqual(n.parse_period("~ 2026년 11월 30일 18:00"), (None, "2026-11-30", "기간"))
+        # 날짜가 있으면 '상이' 같은 단어가 섞여 있어도 기간으로 본다
+        self.assertEqual(self.kind("2026.10.01~2026.10.15 (기관별 상이)"), "기간")
+
+    def test_no_application_needed(self):
+        for text in ("신청 불필요", "직권신청", "서비스 신청없이 자동가입", "별도 신청 없음(추천)"):
+            self.assertEqual(self.kind(text), "신청불필요", text)
+
+    def test_until_budget_runs_out(self):
+        for text in ("예산 소진 시까지", "선착순", "모집규모 충족시", "선순 마감", "출연금 소진 시까지"):
+            self.assertEqual(self.kind(text), "소진시", text)
+
+    def test_always_open(self):
+        for text in ("상시", "연중 수시 접수"):
+            self.assertEqual(self.kind(text), "상시", text)
+
+    def test_deadline_counts_from_an_event(self):
+        for text in ("분만일로부터 6개월 이내", "사고일로부터 3년 이내", "혼인신고일로부터 1년 경과 후 ~ 5년 이내",
+                     "전입일부터 만 5년이내 신청 가능"):
+            self.assertEqual(self.kind(text), "사유발생", text)
+
+    def test_monthly_or_quarterly(self):
+        for text in ("매월 10일 18:00까지", "분기별 사전신청", "매주 월요일 오전 10시 예약"):
+            self.assertEqual(self.kind(text), "주기", text)
+
+    def test_yearly(self):
+        for text in ("매년 3월", "1~2월(모집기간 별도)", "상반기 중"):
+            self.assertEqual(self.kind(text), "정기", text)
+
+    def test_differs_by_agency(self):
+        for text in ("접수기관 별 상이", "세부사업별 상이", "자세한 날짜는 시군구청에 따라 다를 수 있음"):
+            self.assertEqual(self.kind(text), "기관별", text)
+
+    def test_unknown_stays_unknown(self):
+        # 해석할 근거가 없는 글은 '확인 필요'로 남긴다(신청 불필요 등으로 추측하지 않는다)
+        for text in ("추후 공지", "공고에 따름"):
+            self.assertEqual(self.kind(text), "별도", text)
+        for text in ("해당없음", "", "-"):
+            self.assertEqual(self.kind(text), "미상", repr(text))
+
+
+class StatusTest(unittest.TestCase):
+    def rec(self, ptype, start=None, end=None):
+        return {"period_type": ptype, "apply_start": start, "apply_end": end}
+
+    def test_dated_status_by_today(self):
+        today = "2026-10-02"
+        self.assertEqual(n.status_of(self.rec("기간", "2026-10-05", "2026-10-30"), today), "접수 예정")
+        self.assertEqual(n.status_of(self.rec("기간", "2026-09-01", "2026-10-02"), today), "접수 중")
+        self.assertEqual(n.status_of(self.rec("기간", "2026-09-01", "2026-10-01"), today), "마감")
+
+    def test_every_period_type_has_a_label(self):
+        kinds = {kind for kind, _ in n.PERIOD_RULES} | {"미상"}
+        for kind in kinds:
+            self.assertTrue(n.status_of(self.rec(kind), "2026-10-02"), kind)
+        self.assertEqual(n.status_of(self.rec("기관별"), "2026-10-02"), "기관별로 다름")
+        self.assertEqual(n.status_of(self.rec("미상"), "2026-10-02"), "확인 필요")
+
+    def test_app_js_knows_every_label(self):
+        """화면(site/app.js)의 상태 목록이 수집기 상태 이름과 어긋나면 필터 칩·정렬이 빠진다."""
+        app = (ROOT / "site" / "app.js").read_text(encoding="utf-8")
+        for label in set(n.STATUS_BY_TYPE.values()) | {"접수 중", "접수 예정"}:
+            self.assertIn(f'"{label}"', app, label)
+
+
+class TextHelpersTest(unittest.TestCase):
+    def test_clean_text(self):
+        self.assertEqual(n.clean_text("<p>가&amp;나</p><br>다"), "가&나\n다")
+        self.assertEqual(n.clean_text(None), "")
+
+    def test_substantive_drops_filler(self):
+        self.assertEqual(n.substantive("공고문 참조"), "")
+        self.assertEqual(n.substantive("서울시 강남구"), "서울시 강남구")
+
+    def test_money_and_age(self):
+        self.assertEqual(n.won(1234567890), "12억 3,456만 원")
+        self.assertEqual(n.won(0), "")
+        self.assertEqual(n.age_text(19, 39), "19~39세")
+
+    def test_region_from_agency_name(self):
+        self.assertEqual(n.regions_from_name("충청북도 청주시"), {"충북"})
+        self.assertEqual(n.regions_from_name("(재)경기테크노파크"), {"경기"})
+        self.assertEqual(n.regions_from_name("중소벤처기업부"), set())
+
+
+class PersonaTest(unittest.TestCase):
+    def test_title_words(self):
+        self.assertIn("청년", n.personas_for(["2026년 청년 창업 지원사업"]))
+
+    def test_livestock_disease_is_not_a_patient_program(self):
+        # '가축질병'·'온열질환 예방'이 질병·질환자로 걸렸던 회귀
+        self.assertNotIn("질병·질환자", n.personas_for(["가축질병 예방 지원"]))
+
+
+class DedupeTest(unittest.TestCase):
+    def notice(self, nid, pd, **over):
+        base = {"id": nid, "src": "bizinfo", "t": "같은 공고", "ag": "해양수산부", "s": None, "e": "2026-10-30",
+                "rg": ["전국"], "pd": pd}
+        base.update(over)
+        return base
+
+    def test_keeps_latest_of_identical_reposts(self):
+        a, b = self.notice("bizinfo:1", "2026-07-14"), self.notice("bizinfo:2", "2026-08-12")
+        self.assertEqual(build_site.dedupe_notices([a, b]), [b])
+
+    def test_keeps_both_when_anything_differs(self):
+        a = self.notice("bizinfo:1", "2026-07-14")
+        for change in ({"e": "2026-12-31"}, {"ag": "경상남도"}, {"rg": ["경남"]}, {"src": "kstartup"}, {"t": "다른 공고"}):
+            b = self.notice("bizinfo:2", "2026-08-12", **change)
+            self.assertEqual(len(build_site.dedupe_notices([a, b])), 2, change)
+
+    def test_order_is_preserved(self):
+        items = [self.notice(f"x:{i}", "2026-01-01", t=f"공고 {i}") for i in range(5)]
+        self.assertEqual(build_site.dedupe_notices(items), items)
+
+
+if __name__ == "__main__":
+    unittest.main()

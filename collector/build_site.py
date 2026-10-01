@@ -276,6 +276,25 @@ def write_js(name, var, data):
     return path
 
 
+def dedupe_notices(notices):
+    """같은 출처에 같은 공고가 여러 번 올라온 경우(재게시·일련번호만 다른 등록) 하나만 남긴다.
+
+    출처·제목·기관·접수 시작·마감·지역이 모두 같을 때만 같은 공고로 본다(하나라도 다르면 둘 다 둔다).
+    남기는 것은 출처에 가장 최근에 올라온 것(같으면 id가 큰 것).
+    """
+    def key(item):
+        return (item.get("src"), item.get("t"), item.get("ag"), item.get("s"), item.get("e"), tuple(item.get("rg") or ()))
+
+    best = {}
+    for item in notices:
+        k = key(item)
+        cur = best.get(k)
+        if cur is None or (item.get("pd") or "", item.get("id") or "") > (cur.get("pd") or "", cur.get("id") or ""):
+            best[k] = item
+    keep = {id(v) for v in best.values()}
+    return [item for item in notices if id(item) in keep]
+
+
 def main():
     sys.stdout.reconfigure(errors="replace")
     today = datetime.date.today().isoformat()
@@ -286,7 +305,7 @@ def main():
     conn.close()
 
     live = [r for r in rows if status_of(r, today) != "마감"]
-    notices = [compact(r) for r in live if r["kind"] == "공고"]
+    notices = dedupe_notices([compact(r) for r in live if r["kind"] == "공고"])
     services = [compact(r) for r in live if r["kind"] == "제도"]
 
     meta = {
