@@ -238,6 +238,15 @@ select { appearance: none; background-image: linear-gradient(45deg, transparent 
 .pre { white-space: pre-line; margin: 0; max-width: 65ch; }
 .actions { display: flex; flex-wrap: wrap; gap: 8px; margin: 20px 0 4px; }
 .actions .btn.yellow { flex: 1 1 auto; }
+/* 공고문·첨부 파일: 한 줄에 하나, 이름이 길면 두 줄까지 보이고 줄임 */
+.files { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 8px; max-width: 65ch; }
+.file { display: flex; align-items: center; gap: 10px; min-height: 48px; padding: 8px 14px; border-radius: 16px;
+  background: var(--surface-hover); color: var(--fg-strong); text-decoration: none; font-size: .875rem; font-weight: 600; }
+.file:hover { background: var(--surface); }
+.file .ph { font-size: 1.25rem; flex: none; color: var(--muted); }
+.file .ph-download-simple { font-size: 1.125rem; margin-left: auto; }
+.file-name { min-width: 0; overflow-wrap: anywhere; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.file .badge { flex: none; }
 .caution { font-size: .75rem; line-height: 1.5; color: var(--muted); border-top: 1px solid var(--divider); padding-top: 16px; margin: 32px 0 0; }
 .guide { padding: 28px 24px 28px; }
 .guide h2 { font-size: 1.25rem; margin: 0 0 12px; color: var(--fg-strong); }
@@ -544,7 +553,7 @@ input[type="search"]:focus-visible, select:focus-visible { outline-offset: 0; bo
 }
 
 /* 색 바뀜: 150ms, 바뀌는 속성만 */
-.btn, .chip, .toggle, .iconbtn, .tabs [role="tab"], .seg-mini button, .stat, .row, .kmap-list button, .foot-links a, .linkish, .more-link {
+.btn, .chip, .toggle, .iconbtn, .tabs [role="tab"], .seg-mini button, .stat, .row, .kmap-list button, .foot-links a, .linkish, .more-link, .file {
   transition-property: background-color, color, box-shadow, scale;
   transition-duration: 150ms;
   transition-timing-function: var(--ease-out);

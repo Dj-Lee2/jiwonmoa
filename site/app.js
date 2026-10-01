@@ -1,6 +1,6 @@
 /* 지원모아: 화면 동작
  * 데이터: data/meta.js, data/notices.js(공고), data/services.js(상시 제도, 필요할 때 읽음),
- *         data/sd/NN.js(상시 제도 상세 글, 열 때 읽음). collector/build_site.py가 만든다.
+ *         data/sd/NN.js(상시 제도 상세 글·공고 첨부 파일, 열 때 읽음). collector/build_site.py가 만든다.
  */
 (function () {
   "use strict";
@@ -182,7 +182,8 @@
   }
 
   function ensureDetail(item) {
-    if (item.k !== "s" || item._d) return Promise.resolve();
+    // 상세 버킷에 든 것: 보조금24 제도의 상세 글, 공고문·첨부 파일이 있는 공고(fc)의 파일 목록
+    if ((item.k !== "s" && !item.fc) || item._d) return Promise.resolve();
     var b = bucketOf(item.id);
     return loadScript("data/sd/" + (b < 10 ? "0" : "") + b + ".js").then(function () {
       Object.assign(item, (window.HUB_SD || {})[item.id] || {});
@@ -612,6 +613,27 @@
     return el("section", null, el("h3", { text: title }), el("p", { className: "pre", text: text }));
   }
 
+  // 기업마당 공고문·첨부 파일 [이름, 주소, 공고문이면 1]. 파일은 출처 서버에서 바로 내려받는다
+  var FILE_ICON = { pdf: "file-pdf", zip: "file-zip", hwp: "file-text", hwpx: "file-text", doc: "file-doc", docx: "file-doc",
+    odt: "file-doc", xls: "file-xls", xlsx: "file-xls", png: "file-image", jpg: "file-image", jpeg: "file-image" };
+  function fileSection(files) {
+    var links = (files || []).map(function (f) {
+      var href = safeUrl(f[1]);
+      if (!href) return null;
+      var ext = (/\.([a-z0-9]+)$/i.exec(f[0] || "") || [])[1];
+      ext = ext ? ext.toLowerCase() : "";
+      return el("li", null, el("a", { className: "file", href: href, target: "_blank", rel: "noopener" },
+        icon(FILE_ICON[ext] || "file"),
+        el("span", { className: "file-name", text: f[0] || "첨부 파일" }),
+        f[2] ? badge("공고문", "soft") : null,
+        icon("download-simple")));
+    }).filter(Boolean);
+    if (!links.length) return null;
+    var list = el("ul", { className: "files" });
+    list.append.apply(list, links);
+    return el("section", null, el("h3", { text: "공고문·첨부 파일" }), list);
+  }
+
   function lastRun(src) {
     var r = (META.runs || []).filter(function (x) { return x.src === src; })[0];
     return r ? fmtStamp(r.at) : "";
@@ -701,12 +723,13 @@
       facts,
       actions,
       section("지원 대상", item.tg),
-      section(item.k === "s" ? "서비스 목적" : "사업 개요", item.sm),
+      // 보조금24는 상세의 서비스 목적 전문(pu)이 있으면 그것, 없으면 목록의 요약(sm)
+      section(item.k === "s" ? "서비스 목적" : "사업 개요", item.pu || item.sm),
       section("지원 내용", item.ct),
       section("신청 방법", item.how));
     // 출처가 따로 준 글(선정 기준·구비 서류·신청 제외 대상 등). [제목, 글]
     (item.dt || []).forEach(function (d) { inner.append(section(d[0], d[1]) || ""); });
-    inner.append(section("문의", item.cn) || "",
+    inner.append(fileSection(item.fl) || "", section("문의", item.cn) || "",
       el("p", { className: "caution", text: lastRun(item.src) + " 수집, 원문 일부 발췌. 신청 전에 원문을 확인하세요." }));
     pane.replaceChildren(detailBar(), inner);
     pane.scrollTop = 0;

@@ -2,6 +2,7 @@
 
 지역·농업 판정은 규칙 기반이며, 판정 근거를 함께 남겨 사람이 검수할 수 있게 한다.
 """
+import difflib
 import hashlib
 import html
 import json
@@ -61,7 +62,7 @@ BIZINFO_AUDIENCE = {"중소기업": AUD_SME, "중견기업": AUD_SME, "제조업
 GOV24_AUDIENCE = {"개인": AUD_PERSON, "가구": AUD_PERSON, "소상공인": AUD_SOHO, "법인/시설/단체": AUD_ORG}
 
 # 화면의 '누구를 위한 지원' 조건. 한 사업이 여러 대상에 들 수 있다. 농업인은 여러 대상 중 하나다.
-PERSONAS = ["청년", "시니어", "장애인", "임산부·출산", "한부모·다자녀", "구직자", "학생", "보훈대상자",
+PERSONAS = ["청년", "시니어", "장애인", "임산부·출산", "한부모·다자녀", "구직자", "근로자·직장인", "학생", "보훈대상자",
             "질병·질환자", "다문화·북한이탈주민", "무주택", "1인가구", "농업인",
             AUD_SOHO, AUD_SME, AUD_STARTUP, AUD_ORG]
 # 제목(공고는 지원대상 글도)에서 찾는 말. '고령군'·'유통경로'처럼 다른 뜻으로 쓰이는 경우는 뺀다
@@ -79,19 +80,46 @@ PERSONA_WORDS = {
     "다문화·북한이탈주민": [r"다문화", r"북한이탈", r"탈북", r"새터민", r"결혼이민"],
     "무주택": [r"무주택"],
     "1인가구": [r"1인\s?가구", r"독거"],
+    "근로자·직장인": [r"근로자", r"직장인", r"노동자", r"재직자"],
     AUD_STARTUP: [r"창업"],
 }
 PERSONA_PATTERNS = {p: re.compile("|".join(ws)) for p, ws in PERSONA_WORDS.items()}
 # 이 대상들은 제목에서만 찾는다. 지원대상 글은 '대학생·일반인·…'처럼 여럿을 늘어놓는 경우가 많아 잘못 걸린다
-TITLE_ONLY_PERSONAS = {"학생", "보훈대상자", "질병·질환자", "다문화·북한이탈주민", "무주택", "1인가구"}
+TITLE_ONLY_PERSONAS = {"학생", "보훈대상자", "질병·질환자", "다문화·북한이탈주민", "무주택", "1인가구", "근로자·직장인"}
+# 이 대상은 보조금24(사람 대상 제도)에서만 말로 찾는다. 기업 공고의 '외국인 근로자 고용'·'근로자 재해예방 시설'은
+# 기업이 신청하는 사업이라 근로자 대상이 아니다
+PERSON_ONLY_PERSONAS = {"근로자·직장인"}
 # 보조금24 지원조건 코드 → 대상. 그 묶음에서 몇 개만 Y인 제도만 '그 대상 전용'으로 본다(전부 Y면 누구나 대상)
 JA_PERSONA = {"장애인": ["JA0328"], "임산부·출산": ["JA0301", "JA0302", "JA0303"],
-              "한부모·다자녀": ["JA0403", "JA0411"], "구직자": ["JA0327"],
+              "한부모·다자녀": ["JA0403", "JA0411"], "구직자": ["JA0327"], "근로자·직장인": ["JA0326"],
               "학생": ["JA0317", "JA0318", "JA0319", "JA0320"], "보훈대상자": ["JA0329"],
               "질병·질환자": ["JA0330"], "다문화·북한이탈주민": ["JA0401", "JA0402"],
               "무주택": ["JA0412"], "1인가구": ["JA0404"],
-              AUD_STARTUP: ["JA1101"], AUD_SOHO: ["JA1102"], AUD_SME: ["JA2101"]}
+              AUD_STARTUP: ["JA1101"], AUD_SOHO: ["JA1102"], AUD_SME: ["JA2101"],
+              AUD_ORG: ["JA2102", "JA2103"]}
 JA_GROUPS = [("JA03", {"JA0322"}, 4), ("JA04", {"JA0410"}, 4), ("JA11", set(), 2), ("JA21", set(), 2)]
+# 상세 화면에 보이는 지원조건 이름(docs/api-specs 코드표, 표기만 다듬음. '음식적업'은 코드표의 오타)
+JA_LABEL = {
+    "JA0301": "예비부모·난임", "JA0302": "임산부", "JA0303": "출산·입양", "JA0313": "농업인", "JA0314": "어업인",
+    "JA0315": "축산업인", "JA0316": "임업인", "JA0317": "초등학생", "JA0318": "중학생", "JA0319": "고등학생",
+    "JA0320": "대학생·대학원생", "JA0326": "근로자·직장인", "JA0327": "구직자·실업자", "JA0328": "장애인",
+    "JA0329": "국가보훈대상자", "JA0330": "질병·질환자",
+    "JA0401": "다문화가족", "JA0402": "북한이탈주민", "JA0403": "한부모·조손 가정", "JA0404": "1인 가구",
+    "JA0411": "다자녀 가구", "JA0412": "무주택 세대", "JA0413": "신규 전입", "JA0414": "확대가족",
+    "JA1101": "예비창업자", "JA1102": "영업 중", "JA1103": "생계곤란·폐업 예정",
+    "JA1201": "음식점업", "JA1202": "제조업", "JA1299": "기타 업종",
+    "JA2101": "중소기업", "JA2102": "사회복지시설", "JA2103": "기관·단체",
+    "JA2201": "제조업", "JA2202": "농업·임업·어업", "JA2203": "정보통신업", "JA2299": "기타 업종",
+}
+# 이 코드는 대상 이름과 뜻이 같아, 그 대상이 이미 붙어 있으면 조건 줄로 또 쓰지 않는다
+JA_SAME_AS_PERSONA = {"JA0326": "근로자·직장인", "JA0327": "구직자", "JA0328": "장애인", "JA0329": "보훈대상자",
+                      "JA0330": "질병·질환자", "JA0313": "농업인", "JA0404": "1인가구", "JA0412": "무주택",
+                      "JA1102": AUD_SOHO, "JA2101": AUD_SME}
+# (화면 이름, 덧붙임, 코드 묶음 앞자리, 빼는 코드). 묶음의 일부만 Y일 때만 조건으로 쓴다(전부 Y = 누구나)
+JA_FACTS = [("개인 특성", "", "JA03", {"JA0322"}), ("가구 특성", "", "JA04", {"JA0410"}),
+            ("영업 상태", "소상공인 기준", "JA11", set()), ("업종", "소상공인 기준", "JA12", set()),
+            ("법인 유형", "", "JA21", set()), ("업종", "기업 기준", "JA22", set())]
+JA_FACT_MOST = {"JA03": 4, "JA04": 4}  # 개인·가구 특성은 4개 넘게 Y면 사실상 누구나라 쓰지 않는다
 # 나이 조건으로 청년을 가린다: 시작 나이 15~24, 끝 나이 29~39(청년 정책의 흔한 범위).
 # 18~44세(임산부·영유아 사업에 많다)처럼 넓은 범위는 청년으로 보지 않는다. 제목에 '청년'이 있으면 따로 잡힌다.
 YOUTH_START, YOUTH_END = (15, 24), (29, 39)
@@ -364,15 +392,17 @@ def classify_sector(titles, weak_texts, agencies, tags=(), extra_agri=None, extr
     return 0, "", fish
 
 
-def personas_for(texts, base=(), agri=0, cond=None):
+def personas_for(texts, base=(), agri=0, cond=None, person=False):
     """'누구를 위한 지원' 대상 목록. 글에 나온 말, 기존 대상 구분, 농업 판정, 보조금24 지원조건을 합친다.
 
     texts[0]은 제목이다(TITLE_ONLY_PERSONAS는 제목에서만 찾는다).
+    person: 사람이 신청하는 제도(보조금24)인지. PERSON_ONLY_PERSONAS는 이때만 말로 찾는다.
     """
     found = {b for b in base if b in PERSONAS}
     text, title = match_text(texts), match_text(texts[:1])
     found.update(p for p, pat in PERSONA_PATTERNS.items()
-                 if pat.search(title if p in TITLE_ONLY_PERSONAS else text))
+                 if (person or p not in PERSON_ONLY_PERSONAS)
+                 and pat.search(title if p in TITLE_ONLY_PERSONAS else text))
     if agri == 2:
         found.add("농업인")
     if cond:
@@ -390,11 +420,71 @@ def personas_for(texts, base=(), agri=0, cond=None):
     return [p for p in PERSONAS if p in found]
 
 
+def gov24_condition_facts(cond, personas):
+    """보조금24 지원조건 중 대상 칩으로 다 나타나지 않는 것(개인·가구 특성, 영업 상태, 업종, 법인 유형)을 조건 줄로.
+
+    묶음의 일부만 Y일 때만 쓴다. 고른 칸 이름을 그대로 늘어놓고, '기타 업종'을 '○○ 제외'처럼 바꿔 읽지 않는다.
+    고른 칸이 모두 이미 붙은 대상과 같은 뜻이면(예: 장애인 하나, 중소기업 하나) 쓰지 않는다.
+    """
+    facts = []
+    for label, note, prefix, skip in JA_FACTS:
+        group = [k for k in JA_LABEL if k.startswith(prefix) and k not in skip]
+        ys = [k for k in group if cond.get(k) == "Y"]
+        if not ys or len(ys) == len(group) or len(ys) > JA_FACT_MOST.get(prefix, len(group)):
+            continue
+        if all(JA_SAME_AS_PERSONA.get(k) in personas for k in ys):
+            continue
+        value = ", ".join(JA_LABEL[k] for k in ys)
+        facts.append((label, value, note) if note else (label, value))
+    # 소상공인 업종과 기업 업종이 같으면 한 줄로
+    trades = [f for f in facts if f[0] == "업종"]
+    if len(trades) == 2 and trades[0][1] == trades[1][1]:
+        facts = [f for f in facts if f[0] != "업종"] + [("업종", trades[0][1], "소상공인·기업 기준")]
+    return facts
+
+
+def _squash(text):
+    return re.sub(r"[\s\W_]+", "", text or "")
+
+
+def purpose_text(summary, purpose):
+    """상세 화면 '서비스 목적' 글. 목록의 요약(서비스목적요약)과 상세의 원문(서비스목적)이 겹치면 긴 쪽 하나,
+    서로 다른 말이면 둘 다(요약에만 '수강료 50% 감면' 같은 구체적인 내용이 있는 경우가 있다).
+    빈 문자열이면 화면은 요약을 그대로 쓴다."""
+    p = substantive(purpose)
+    if not p:
+        return ""
+    a, b = _squash(summary), _squash(p)
+    if not a:
+        return p
+    # 짧은 쪽 글자가 긴 쪽에 거의 다(85%) 순서대로 들어 있으면 같은 말이다(상세가 요약 중간에 말을 보탠 경우 포함)
+    common = sum(m.size for m in difflib.SequenceMatcher(None, a, b, autojunk=False).get_matching_blocks())
+    if common >= 0.85 * min(len(a), len(b)):
+        return p if len(b) > len(a) else ""
+    return f"{summary}\n{p}"
+
+
+def file_links(notice_name, notice_url, names, urls):
+    """기업마당 공고문·첨부 파일 [이름, 주소, 공고문이면 1]. 이름과 주소는 '@'로 이어져 오고 순서가 같다.
+
+    개수가 안 맞으면 어느 이름이 어느 파일인지 알 수 없으므로 첨부는 싣지 않는다(공고문만).
+    """
+    files = []
+    if notice_name and re.match(r"https?://", notice_url or ""):
+        files.append([clean_text(notice_name), notice_url.strip(), 1])
+    names = [n for n in (names or "").split("@") if n.strip()]
+    urls = [u for u in (urls or "").split("@") if u.strip()]
+    if len(names) == len(urls):
+        files += [[clean_text(n), u.strip(), 0] for n, u in zip(names, urls)
+                  if re.match(r"https?://", u.strip()) and u.strip() != (notice_url or "").strip()]
+    return files
+
+
 def content_hash(rec):
     keys = ("title", "period_text", "target", "summary", "content", "how", "apply_url", "files")
     values = [rec.get(k) for k in keys]
     # 조건·글 칸은 내용이 있을 때만 넣는다: 없는 공고는 칸이 생기기 전과 같은 값이 되어 '바뀜'으로 잡히지 않는다
-    values += [rec[k] for k in ("conditions", "details") if rec.get(k)]
+    values += [rec[k] for k in ("conditions", "details", "purpose") if rec.get(k)]
     blob = json.dumps(values, ensure_ascii=False)
     return hashlib.sha256(blob.encode("utf-8")).hexdigest()
 
@@ -409,6 +499,8 @@ def _finish(rec):
     rec["source_updated"] = to_date(rec["source_updated"])
     rec.setdefault("conditions", [])
     rec.setdefault("details", [])
+    rec.setdefault("purpose", "")
+    rec.setdefault("attachments", [])  # 파일 이름·주소는 files(이름)로 이미 '바뀜'을 가린다 → 해시에 넣지 않는다
     rec["content_hash"] = content_hash(rec)
     rec["regions"] = json.dumps(rec["regions"], ensure_ascii=False)
     rec["audience"] = json.dumps(rec["audience"], ensure_ascii=False)
@@ -416,6 +508,7 @@ def _finish(rec):
     rec["support"] = json.dumps(rec.get("support", []), ensure_ascii=False)
     rec["conditions"] = json.dumps(rec["conditions"], ensure_ascii=False)
     rec["details"] = json.dumps(rec["details"], ensure_ascii=False)
+    rec["attachments"] = json.dumps(rec["attachments"], ensure_ascii=False)
     return rec
 
 
@@ -447,6 +540,8 @@ def from_bizinfo(item):
         "agri": agri, "agri_basis": agri_basis, "fish": int(fish), "is_private": 0,
         "url": item.get("pblancUrl") or "", "apply_url": item.get("rceptEngnHmpgUrl") or "",
         "contact": clean_text(item.get("refrncNm")), "files": item.get("fileNm") or "",
+        "attachments": file_links(item.get("printFileNm"), item.get("printFlpthNm"),
+                                  item.get("fileNm"), item.get("flpthNm")),
         "source_updated": item.get("updtPnttm") or item.get("creatPnttm") or "",
         "posted": to_date(item.get("creatPnttm")), "views": int(re.sub(r'\D', '', str(item.get("inqireCo") or '')) or 0),
     })
@@ -458,6 +553,15 @@ KSTARTUP_HOW = [("온라인", "aply_mthd_onli_rcpt_istc"), ("방문", "aply_mthd
 # 창업 기간 칩: '예비창업자,1년미만,…,7년미만'에서 예비창업자 여부와 가장 긴 업력만 뽑는다
 KSTARTUP_YEARS = ["1년미만", "2년미만", "3년미만", "5년미만", "7년미만", "10년미만"]
 KSTARTUP_AGES = ["만 20세 미만", "만 20세 이상 ~ 만 39세 이하", "만 40세 이상"]
+KSTARTUP_TARGETS = ["청소년", "대학생", "일반인", "대학", "연구기관", "일반기업", "1인 창조기업"]
+
+
+def kstartup_targets(value):
+    """신청 대상 구분. 일곱 칸을 다 고른 공고(누구나)는 쓰지 않는다."""
+    parts = [p.strip() for p in (value or "").split(",") if p.strip()]
+    if not parts or all(t in parts for t in KSTARTUP_TARGETS):
+        return ""
+    return ", ".join(parts)
 
 
 def kstartup_years(value):
@@ -490,6 +594,7 @@ def kstartup_ages(value):
 
 def from_kstartup(item):
     title = clean_text(item.get("biz_pbanc_nm"))
+    program = clean_text(item.get("intg_pbanc_biz_nm"))
     found = regions_from_tokens(re.split(r"[,ㆍ·]", item.get("supt_regin") or ""))
     start, end = ymd8(item.get("pbanc_rcpt_bgng_dt")), ymd8(item.get("pbanc_rcpt_end_dt"))
     agencies = [item.get("pbanc_ntrp_nm"), item.get("sprv_inst")]
@@ -505,7 +610,10 @@ def from_kstartup(item):
         "summary": clean_text(item.get("pbanc_ctnt")), "content": "",
         "how": " / ".join(f"{label}: {clean_text(item.get(k))}" for label, k in KSTARTUP_HOW if item.get(k)),
         "audience": [AUD_STARTUP],
-        "conditions": pairs(("창업 기간", kstartup_years(item.get("biz_enyy"))),
+        # 통합공고는 여러 공고를 묶는 정부 사업 이름이 따로 있다(예: '창업보육센터 지원')
+        "conditions": pairs(("사업명", program if item.get("intg_pbanc_yn") == "Y" and program != title else ""),
+                            ("신청 대상", kstartup_targets(item.get("aply_trgt"))),
+                            ("창업 기간", kstartup_years(item.get("biz_enyy"))),
                             ("나이", kstartup_ages(item.get("biz_trgt_age")))),
         "details": pairs(("신청 제외 대상", substantive(item.get("aply_excl_trgt_ctnt"))),
                          ("우대 사항", substantive(item.get("prfn_matr")))),
@@ -553,20 +661,27 @@ def from_gov24(item, sigungu):
     detail = item.get("_상세") or {}
     laws = [x.strip() for k in ("법령", "자치법규", "행정규칙")
             for x in (detail.get(k) or "").split("||") if x.strip()]
+    personas = personas_for([title], audience, agri, cond, person=True)
     return _finish({
         "uid": f"gov24:{item.get('서비스ID')}", "source": "gov24", "kind": "제도",
-        "personas": personas_for([title], audience, agri, cond),
+        "personas": personas,
         "support": support_groups(item.get("지원유형")),
         "title": title, "agency": item.get("소관기관명") or "", "operator": item.get("부서명") or "",
         "category": item.get("서비스분야") or "", "target": clean_text(item.get("지원대상")),
         "summary": clean_text(item.get("서비스목적요약")), "content": clean_text(item.get("지원내용")),
-        "how": clean_text((item.get("신청방법") or "").replace("||", ", ")),
+        # 상세 화면의 '서비스 목적' 글(요약과 상세 원문을 합친 것, 없으면 화면이 요약을 쓴다). 요약은 목록·검색에 쓴다
+        "purpose": purpose_text(clean_text(item.get("서비스목적요약")), detail.get("서비스목적")),
+        # 목록의 신청방법은 '방문신청' 같은 구분뿐이고, 상세에는 어디로 어떻게 내는지가 적혀 있다
+        "how": substantive(detail.get("신청방법")) or clean_text((item.get("신청방법") or "").replace("||", ", ")),
         "audience": audience,
         "conditions": pairs(("나이", age_text(cond.get("JA0110"), cond.get("JA0111"))),
                             ("소득", income_text(cond)), ("성별", gender_text(cond)),
+                            *gov24_condition_facts(cond, personas),
                             ("접수 기관", substantive(detail.get("접수기관명")))),
         "details": pairs(("선정 기준", substantive(detail.get("선정기준"))),
                          ("구비 서류", substantive(detail.get("구비서류"))),
+                         ("공무원이 확인하는 서류", substantive(detail.get("공무원확인구비서류"))),
+                         ("본인 확인이 필요한 서류", substantive(detail.get("본인확인필요구비서류"))),
                          ("근거 법령", "\n".join(dict.fromkeys(laws)))),
         "period_text": clean_text(item.get("신청기한")), "period_type": ptype,
         "apply_start": start, "apply_end": end,
@@ -583,6 +698,12 @@ def _money(value):
     return int(re.sub(r"[^\d]", "", str(value or "")) or 0)
 
 
+# 국고보조금 사업비 분담 칸(순서 = 화면 순서, 자부담은 세 번째)과 자부담 언급을 찾는 글 칸
+BOJO_SHARES = [("GOVSUBY", "국고"), ("LOCGOV_ALOTM", "지방비"), ("SALM", "자부담"), ("ETC_ALOTM", "기타")]
+BOJO_TEXT_KEYS = ("SPORT_CND_CN", "SPORT_CN_DC", "SPORT_TRGET_CN", "PRESENTN_PAPERS_GUIDANCE_CN",
+                  "SLCTN_STDR_DC", "EXCL_TRGET_CN", "DDTLBZ_BSNS_PURPS_DC", "PBLANC_NM")
+
+
 def _bsns_day(value):
     """'2025.04.01.' → 2025.4.1"""
     m = DATE_RE.search(str(value or ""))
@@ -590,19 +711,40 @@ def _bsns_day(value):
 
 
 def bojo_conditions(first, rows):
-    """국고보조금 공모의 사업 예산·자부담·사업 기간. 예산은 사업 전체 규모이지 한 곳이 받는 돈이 아니다.
+    """국고보조금 공모의 사업 예산·사업비 분담·사업 기간. 예산은 사업 전체 규모이지 한 곳이 받는 돈이 아니다.
 
-    자부담은 금액이 있을 때만 쓴다. 금액 0이어도 글에 '자부담 10%'가 있는 공고가 있어(약 5%) '없음'이라 쓰지 않는다.
-    수행기관 행마다 비율이 다르면(같은 공고에 여러 기관) 쓰지 않는다.
+    사업비 분담(국고·지방비·자부담·기타의 비율)은 수행기관 행마다 비율이 같고, 넷을 더해 사업비와 맞을 때만 쓴다.
+    국고만 100%이면 쓰지 않는다: 자부담 금액이 0이어도 글에 '자부담 10%'가 있는 공고가 있어(약 5%)
+    '자부담 없음'으로 읽힐 수 있는 표시는 하지 않는다. 같은 까닭으로 자부담이 0인데 글에 자부담·자기부담이
+    나오면 분담 줄을 통째로 뺀다.
     """
     budget = won(_money(first.get("SPORT_BGAMT")))
-    ratios = set()
+    shares = set()
     for r in rows:
-        total, own = _money(r.get("TGYL_YEAR_BSNS_AMOUNT")), _money(r.get("SALM"))
-        ratios.add(max(1, round(100 * own / total)) if total and own else None)
-    own = f"사업비의 약 {next(iter(ratios))}%" if len(ratios) == 1 and None not in ratios else ""
+        total = _money(r.get("TGYL_YEAR_BSNS_AMOUNT"))
+        parts = [_money(r.get(k)) for k, _ in BOJO_SHARES]
+        if not total or abs(total - sum(parts)) > max(1, total // 1000):
+            shares.add(None)
+            continue
+        shares.add(tuple(round(100 * p / total) for p in parts))
+    split = ""
+    if len(shares) == 1 and None not in shares:
+        pct = next(iter(shares))
+        named = [f"{name} {p}%" for (_, name), p in zip(BOJO_SHARES, pct) if p]
+        own_zero = pct[2] == 0
+        text = " ".join(str(first.get(k) or "") for k in BOJO_TEXT_KEYS)
+        if len(named) >= 2 and not (own_zero and re.search(r"자부담|자기\s*부담", text)):
+            split = ", ".join(named)
+    # 네 칸 합이 사업비와 안 맞아 분담을 못 쓰는 공고도 자부담 금액이 있고 비율이 한 가지면 자부담만 쓴다
+    own = ""
+    if not split:
+        ratios = set()
+        for r in rows:
+            total, paid = _money(r.get("TGYL_YEAR_BSNS_AMOUNT")), _money(r.get("SALM"))
+            ratios.add(max(1, round(100 * paid / total)) if total and paid and paid <= total else None)
+        own = f"사업비의 약 {next(iter(ratios))}%" if len(ratios) == 1 and None not in ratios else ""
     begin, end = _bsns_day(first.get("BSNS_BEGIN_DE")), _bsns_day(first.get("BSNS_END_DE"))
-    return pairs(("사업 예산", budget, "사업 전체 규모"), ("자부담", own),
+    return pairs(("사업 예산", budget, "사업 전체 규모"), ("사업비 분담", split), ("자부담", own),
                  ("사업 기간", f"{begin} ~ {end}" if begin and end else ""))
 
 

@@ -12,8 +12,10 @@ KSTARTUP_URL = "https://apis.data.go.kr/B552735/kisedKstartupService01/getAnnoun
 GOV24_LIST_URL = "https://api.odcloud.kr/api/gov24/v3/serviceList"
 GOV24_COND_URL = "https://api.odcloud.kr/api/gov24/v3/supportConditions"
 GOV24_DETAIL_URL = "https://api.odcloud.kr/api/gov24/v3/serviceDetail"
-# 상세에서 쓰는 항목만 원본에 남긴다(지원대상·지원내용 등은 목록에도 있다)
-GOV24_DETAIL_KEYS = ("선정기준", "구비서류", "접수기관명", "온라인신청사이트URL", "법령", "자치법규", "행정규칙")
+# 상세에서 쓰는 항목만 원본에 남긴다(지원대상·지원내용 등은 목록과 같다). 서비스목적·신청방법은 목록의
+# 요약('방문신청' 같은 구분)보다 자세한 원문이다
+GOV24_DETAIL_KEYS = ("서비스목적", "신청방법", "선정기준", "구비서류", "공무원확인구비서류", "본인확인필요구비서류",
+                     "접수기관명", "온라인신청사이트URL", "법령", "자치법규", "행정규칙")
 BOJO_URL = "https://apis.data.go.kr/1051000/MoefOpenAPI2025/T_OPD_ASBS_PBNS_UNITY"
 
 MAX_PAGES = 100  # 규격이 바뀌어 페이지가 끝없이 이어지는 경우를 막는다

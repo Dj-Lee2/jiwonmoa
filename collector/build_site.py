@@ -18,13 +18,14 @@ from report import SOURCE_NAMES, load
 
 SITE_DATA = ROOT / "site" / "data"
 GOV24_URL = "https://www.gov.kr/portal/rcvfvrSvc/dtlEx/"  # 화면에서 서비스ID로 주소를 만든다
-DETAIL_BUCKETS = 64  # 보조금24 상세 글은 목록과 떼어 64개 파일로 나눠 둔다 (열 때만 읽음)
-DETAIL_KEYS = ("tg", "ct", "how", "cn", "op", "ap", "cd", "dt")
+DETAIL_BUCKETS = 64  # 상세 화면에서만 쓰는 것(제도 상세 글, 공고 첨부 파일)은 목록과 떼어 64개 파일로 나눠 둔다 (열 때만 읽음)
+DETAIL_KEYS = ("tg", "ct", "how", "cn", "op", "ap", "cd", "dt", "pu")
 
 # 목록 파일 크기를 줄이려고 긴 글은 자른다. 전체 내용은 원문 링크로 안내한다.
+# 제도의 신청 방법·서비스 목적은 상세 파일(sd)에만 들어가 목록 크기와 상관없다
 LIMITS = {
-    "공고": {"target": 600, "summary": 600, "content": 400, "how": 300, "detail": 500},
-    "제도": {"target": 400, "summary": 80, "content": 400, "how": 150, "detail": 600},
+    "공고": {"target": 600, "summary": 600, "content": 400, "how": 300, "detail": 500, "purpose": 600},
+    "제도": {"target": 400, "summary": 80, "content": 400, "how": 600, "detail": 600, "purpose": 600},
 }
 
 # 농업 세부 분야 칩(농업인을 골랐을 때): 제목(+분류명)에 들어 있는 말로 나눈다. 한 사업이 여러 분야에 들 수 있다.
@@ -89,6 +90,9 @@ def compact(r):
         # 상세 화면의 조건 줄 [이름, 값(, 덧붙임)]과 글 칸 [제목, 글] (normalize.py의 conditions, details)
         "cd": json.loads(r.get("conditions") or "[]"),
         "dt": [[title, trim(text, lim["detail"])] for title, text in json.loads(r.get("details") or "[]")],
+        # 보조금24 서비스 목적 전문(목록의 요약 sm 대신 상세에 보인다), 기업마당 공고문·첨부 [이름, 주소, 공고문=1]
+        "pu": trim(r.get("purpose"), lim["purpose"]),
+        "fl": json.loads(r.get("attachments") or "[]"),
     }
     if r["kind"] == "제도":
         out["fs"] = r["first_seen"]  # 상시 제도 '신규' 배지(공고는 게시일 pd로 판단)
@@ -102,8 +106,12 @@ def bucket_of(uid):
     return sum(ord(c) for c in uid) % DETAIL_BUCKETS
 
 
-def split_services(services):
-    """보조금24 항목에서 상세 글을 떼어 버킷별로 모은다. 목록 파일에는 검색·필터용 항목만 남긴다."""
+def split_details(services, notices):
+    """상세 화면에서만 쓰는 것을 목록에서 떼어 버킷별로 모은다. 목록 파일에는 검색·필터용 항목만 남긴다.
+
+    보조금24 제도는 상세 글(DETAIL_KEYS), 공고는 공고문·첨부 파일 목록(fl)을 뗀다. 파일이 있는 공고에는
+    파일 수(fc)를 남겨 화면이 그 공고를 열 때만 버킷을 읽게 한다.
+    """
     buckets = [dict() for _ in range(DETAIL_BUCKETS)]
     for item in services:
         detail = {k: item.pop(k) for k in DETAIL_KEYS if k in item}
@@ -111,6 +119,11 @@ def split_services(services):
             del item["u"]
         if detail:
             buckets[bucket_of(item["id"])][item["id"]] = detail
+    for item in notices:
+        if item.get("fl"):
+            files = item.pop("fl")
+            item["fc"] = len(files)
+            buckets[bucket_of(item["id"])][item["id"]] = {"fl": files}
     return buckets
 
 
@@ -292,7 +305,7 @@ def main():
         "serviceCats": service_cats(services),
         "counts": {"services": len(services)},
     }
-    buckets = split_services(services)
+    buckets = split_details(services, notices)
     paths = [write_js("meta", "HUB_META", meta), write_js("notices", "HUB_NOTICES", notices),
              write_js("services", "HUB_SERVICES", services)]
     detail_dir = SITE_DATA / "sd"
