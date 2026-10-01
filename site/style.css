@@ -396,6 +396,28 @@ select { appearance: none; background-image: linear-gradient(45deg, transparent 
 .viz-tip { position: fixed; z-index: 90; pointer-events: none; background: var(--dark); color: var(--on-dark); border-radius: 12px; padding: 8px 12px; font-size: .8125rem; line-height: 1.45; max-width: 240px; }
 .viz-tip strong { display: block; font-size: 1rem; }
 
+/* 마감 달력(app.js dueCard): 한 열 = 한 주, 한 칸 = 하루. 빈 날은 옅은 회색, 지난날은 더 옅게, 오늘은 테두리.
+ * 칸 색은 지도와 같은 파랑 4단계(인라인 fill). 가장 진한 칸의 숫자만 흰 글자 */
+.duecal-fig { display: grid; gap: 12px; justify-items: center; }
+.viz-body svg.duecal { width: 100%; height: auto; max-height: none; }
+.duecal .cell { fill: var(--surface-hover); }
+.duecal .past .cell { fill: none; stroke: var(--divider); stroke-width: 1; }
+.duecal .today .cell { stroke: var(--fg-strong); stroke-width: 2; }
+.duecal .mark { cursor: pointer; outline: none; }
+.duecal .mark:focus-visible .cell { stroke: var(--fg-strong); stroke-width: 2.5; }
+.duecal .dcnt { fill: var(--fg-strong); font-size: 12px; font-weight: 700; pointer-events: none; font-variant-numeric: tabular-nums; }
+.duecal .dcnt.on { fill: #fff; }
+.duecal-foot { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 16px; width: 100%; }
+.duecal-scale { gap: 4px; }
+.duecal-scale i { width: 14px; height: 14px; }
+.duecal-later { font-size: .875rem; }
+.viz svg.duecal:has(.mark:hover) .mark:not(:hover) .cell,
+.viz svg.duecal:has(.mark:focus-visible) .mark:not(:focus-visible) .cell { opacity: .45; }
+@media (prefers-reduced-motion: no-preference) {
+  .duecal .cell { transition: opacity .15s; }
+  .viz-card:is(.play, .replay) .duecal .day { animation: fade-in .4s ease-out both; animation-delay: calc(var(--d0, 0ms) + var(--i, 0) * 6ms); }
+}
+
 /* 지역 지도(svg-maps South Korea, CC BY 4.0): 지역 사이 흰 선 1px, 고른 지역은 굵은 테두리.
  * 선 굵기는 확대·축소와 관계없이 같게(vector-effect) */
 .kmap-wrap { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px 24px; width: 100%; align-items: center; }

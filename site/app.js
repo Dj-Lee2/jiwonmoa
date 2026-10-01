@@ -95,6 +95,7 @@
 
   function dueLabel(due) {
     var r = due.split("~");
+    if (r[0] === r[1]) return fmtDate(r[0]) + " 마감";
     return r[1] === "9999-12-31" ? fmtDate(r[0]) + " 이후 마감" : fmtDate(r[0]) + "~" + fmtDate(r[1]) + " 마감";
   }
 
@@ -1006,10 +1007,6 @@
   // 색은 자료 종류에 붙인다: 파랑 = 모집 공고, 초록 = 상시 제도, 회색 = 비교 대상·나머지.
   // 파랑·초록 짝은 dataviz validate_palette.js 통과(색각 이상 포함). 값·이름 글자는 늘 글자색으로 쓴다
   var SERIES_BLUE = "#2a78d6", SERIES_GREEN = "#008300", SERIES_GRAY = "#8a8a8a";
-  // 마감까지 남은 날: 1주씩 8칸 + 그 뒤(회색). [시작일, 끝일, 이름, 좁은 화면용 짧은 이름]
-  var DUE_BUCKETS = [[0, 7, "~7일", "1주"], [8, 14, "~14일", "2주"], [15, 21, "~21일", "3주"], [22, 28, "~28일", "4주"],
-    [29, 35, "~35일", "5주"], [36, 42, "~42일", "6주"], [43, 49, "~49일", "7주"], [50, 56, "~56일", "8주"],
-    [57, null, "57일~", "그 뒤"]];
   // 지역 지도 5단계(많을수록 진함): 모집 공고는 파랑, 상시 제도는 초록
   var MAP_SHADES = ["#cde2fb", "#86b6ef", "#3987e5", "#1c5cab", "#0d366b"];
   var MAP_SHADES_GREEN = ["#d3efd3", "#8fd08f", "#3fa33f", "#1d721d", "#0c440c"];
@@ -1100,12 +1097,6 @@
     var box = el("div", { className: "viz-legend" });
     series.forEach(function (x) { box.append(el("span", null, el("i", { style: "background:" + x.color }), x.name)); });
     return box;
-  }
-
-  function colPath(x, y, w, h) {
-    var r = Math.min(4, h, w / 2);
-    return "M" + x + " " + (y + h) + "V" + (y + r) + "Q" + x + " " + y + " " + (x + r) + " " + y +
-      "H" + (x + w - r) + "Q" + (x + w) + " " + y + " " + (x + w) + " " + (y + r) + "V" + (y + h) + "Z";
   }
 
   function hbarPath(x, y, w, h) {
@@ -1246,33 +1237,6 @@
 
   function chartHeight(W) { return Math.max(236, Math.min(290, Math.round(W * 0.4))); }
 
-  /* 세로 막대: 막대 폭은 칸의 56%(최대 32px), 윗모서리만 4px 둥글게, 바닥선 하나, 값은 막대 위.
-   * muted인 막대는 회색(나머지 묶음) */
-  function columns(data, label, W, color, height) {
-    var H = height || chartHeight(W), top = 26, bottom = 30, side = 6;
-    var base = H - bottom, plotH = base - top;
-    var band = (W - side * 2) / data.length;
-    var bw = Math.min(32, band * 0.56);
-    var max = Math.max.apply(null, data.map(function (d) { return d.n; })) || 1;
-    var root = svgEl("svg", { viewBox: "0 0 " + W + " " + H, role: "group", "aria-label": label,
-      style: "--bar:" + color });
-    root.append(svgEl("line", { x1: side, x2: W - side, y1: base + 0.5, y2: base + 0.5, "class": "axis" }));
-    data.forEach(function (d, i) {
-      var cx = side + band * i + band / 2;
-      var h = Math.round(plotH * d.n / max);
-      var g = svgEl("g", { "class": "mark", style: "--i:" + i });
-      g.append(svgEl("rect", { x: cx - band / 2 + 1, y: 2, width: band - 2, height: H - 4, rx: 8, "class": "hit" }));
-      if (h > 0) g.append(svgEl("path", { d: colPath(cx - bw / 2, base - h, bw, h),
-        "class": "bar" + (d.muted ? " muted" : "") }));
-      g.append(svgText(cx, base - h - 8, fmtN(d.n), "val"));
-      g.append(svgText(cx, base + 18, d.label, "tick"));
-      activate(g, d.aria, d.onPick);
-      tipFor(g, d.tipValue, d.tipLabel);
-      root.append(g);
-    });
-    return root;
-  }
-
   /* 누구를 위한 지원이 많나요?: 대상 11가지별 모집 공고(파랑)와 상시 제도(초록) 수.
    * 한 사업이 여러 대상일 수 있다. 상시 제도 수는 META.svc에 미리 센 값 */
   function personaCard(live) {
@@ -1294,27 +1258,96 @@
     return card;
   }
 
+  /* 언제 마감되나요?: 앞으로 12주 마감 달력. 한 열 = 한 주(위에서 아래로 일~토), 한 칸 = 하루.
+   * 진할수록 그날 마감하는 접수 중 공고가 많다. 칸을 누르면 그날 마감 공고 목록으로 간다(due = 그날~그날).
+   * 12주 뒤에 마감하는 공고는 아래 '이후 마감' 단추로 모아 본다.
+   * 색 4단계 경계는 지금 자료에서 마감이 있는 날들의 분포(33·66·90%)로 정한다 */
+  var DUE_WEEKS = 12;
+  var DUE_SHADES = ["#cde2fb", "#86b6ef", "#3987e5", "#1c5cab"]; // 지도 파랑 단계와 같은 색
+
   function dueCard(live) {
     var W = chartWidth();
-    var roomy = (W - 12) / DUE_BUCKETS.length >= 50;
-    var data = DUE_BUCKETS.map(function (b) {
-      var cnt = live.filter(function (it) {
-        if (statusOf(it) !== "접수 중" || !it.e) return false;
-        var d = daysBetween(today, it.e);
-        return d >= b[0] && (b[1] === null || d <= b[1]);
-      }).length;
-      var start = addDays(today, b[0]);
-      var end = b[1] === null ? "9999-12-31" : addDays(today, b[1]);
-      var range = dueLabel(start + "~" + end);
-      var name = b[1] === null ? b[0] + "일 이상 남은 공고" : b[2].replace("~", "") + " 안";
-      return { n: cnt, label: roomy ? b[2] : b[3], muted: b[1] === null,
-        aria: "마감까지 " + name + " " + cnt + "건, " + range + ". 누르면 목록으로 갑니다",
-        tipValue: fmtN(cnt) + "건", tipLabel: range,
-        onPick: function () { goTo({ tab: "open", due: start + "~" + end }); } };
+    var dow = new Date(Date.parse(today + "T00:00:00Z")).getUTCDay();
+    var start = addDays(today, -dow); // 이번 주 일요일
+    var last = addDays(start, DUE_WEEKS * 7 - 1);
+    var perDay = {}, later = 0;
+    live.forEach(function (it) {
+      if (statusOf(it) !== "접수 중" || !it.e) return;
+      if (it.e > last) later++;
+      else perDay[it.e] = (perDay[it.e] || 0) + 1;
     });
-    return vizCard("언제 마감되나요?", null,
-      // 옆 카드(공모 시기)의 부제·범례 높이만큼 더 높게 그려 빈 곳을 줄인다
-      columns(data, "마감까지 남은 기간별 모집 공고 막대 그래프", W, SERIES_BLUE, chartHeight(W) + 40), null);
+    var values = Object.keys(perDay).map(function (k) { return perDay[k]; }).sort(function (a, b) { return a - b; });
+    var breaks = values.length >= 8 ?
+      [0.33, 0.66, 0.9].map(function (q) { return values[Math.floor(q * (values.length - 1))]; }) : [1, 2, 3];
+    function level(n) { return n ? 1 + breaks.filter(function (b) { return n > b; }).length : 0; }
+
+    // 칸 간격은 폭에 맞춘다: 휴대폰 24px(누르기 최소) ~ 넓은 화면 45px(글자 크기 유지, 높이 340px 안)
+    var left = 20, top = 22, gap = 3;
+    var pitch = Math.max(24, Math.min(45, Math.floor((W - left) / DUE_WEEKS)));
+    var cell = pitch - gap;
+    var gridW = left + DUE_WEEKS * pitch - gap;
+    var H = top + 7 * pitch - gap;
+    var root = svgEl("svg", { viewBox: "0 0 " + gridW + " " + H, role: "group", "class": "duecal",
+      "aria-label": "앞으로 " + DUE_WEEKS + "주 날짜별 마감 공고 수 달력", style: "max-width:" + gridW + "px" });
+
+    WEEKDAY.forEach(function (w, d) {
+      root.append(svgText(0, top + d * pitch + cell / 2 + 5, w, "tick", "start"));
+    });
+    // 달이 바뀌는 주의 열 위에 'N월'. 첫 열은 이번 달. 다음 표시와 두 열 안으로 붙으면 앞의 것을 뺀다
+    var marks = [];
+    for (var c = 0; c < DUE_WEEKS; c++) {
+      for (var r = 0; r < 7; r++) {
+        var iso0 = addDays(start, c * 7 + r);
+        if ((c === 0 && iso0 === today) || (iso0 > today && iso0.slice(8) === "01")) {
+          marks.push({ c: c, text: (+iso0.slice(5, 7)) + "월" });
+          break;
+        }
+      }
+    }
+    marks.filter(function (m, i) { return !marks[i + 1] || marks[i + 1].c - m.c >= 2; }).forEach(function (m) {
+      root.append(svgText(left + m.c * pitch, 14, m.text, "tick", "start"));
+    });
+
+    for (var wk = 0; wk < DUE_WEEKS; wk++) {
+      for (var d = 0; d < 7; d++) {
+        var iso = addDays(start, wk * 7 + d);
+        var past = iso < today;
+        var n = past ? 0 : (perDay[iso] || 0);
+        var lvl = level(n);
+        var x = left + wk * pitch, y = top + d * pitch;
+        var g = svgEl("g", { "class": "day" + (n ? " mark" : "") + (past ? " past" : "") + (iso === today ? " today" : ""),
+          style: "--i:" + (wk * 7 + d) });
+        g.append(svgEl("rect", { x: x, y: y, width: cell, height: cell, rx: Math.min(6, cell / 4),
+          "class": "cell", style: lvl ? "fill:" + DUE_SHADES[lvl - 1] : "" }));
+        if (n && cell >= 30) g.append(svgText(x + cell / 2, y + cell / 2 + 5, fmtN(n), "dcnt" + (lvl === 4 ? " on" : "")));
+        if (n) {
+          (function (day, cnt) {
+            activate(g, fmtDate(day, true) + " 마감 " + cnt + "건. 누르면 목록으로 갑니다",
+              function () { goTo({ tab: "open", due: day + "~" + day }); });
+            tipFor(g, fmtN(cnt) + "건", fmtDate(day, true) + " 마감");
+          })(iso, n);
+        } else {
+          g.setAttribute("aria-hidden", "true");
+        }
+        root.append(g);
+      }
+    }
+
+    var busiest = Object.keys(perDay).sort(function (a, b) { return perDay[b] - perDay[a] || a.localeCompare(b); }).slice(0, 3);
+    var sub = busiest.length ?
+      "마감이 몰린 날: " + busiest.map(function (k) { return fmtDate(k) + " " + fmtN(perDay[k]) + "건"; }).join(" · ") : null;
+    var scale = el("div", { className: "scale duecal-scale", "aria-hidden": "true" }, "적음");
+    DUE_SHADES.forEach(function (color) { scale.append(el("i", { style: "background:" + color })); });
+    scale.append("많음");
+    var laterBtn = null;
+    if (later) {
+      var after = addDays(last, 1);
+      laterBtn = el("button", { type: "button", className: "more-link duecal-later" },
+        fmtDate(after) + " 이후 마감 " + fmtN(later) + "건", el("i", { className: "ph ph-arrow-right", "aria-hidden": "true" }));
+      laterBtn.addEventListener("click", function () { goTo({ tab: "open", due: after + "~9999-12-31" }); });
+    }
+    return vizCard("언제 마감되나요?", sub,
+      el("div", { className: "viz-fig duecal-fig" }, root, el("div", { className: "duecal-foot" }, scale, laterBtn)), null);
   }
 
   /* 실제 지도(vendor/korea-map.js, svg-maps CC BY 4.0). 작은 광역시는 지도 위 숫자가 가려지므로
