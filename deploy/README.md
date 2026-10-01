@@ -30,5 +30,5 @@
 
 ## 코드 고친 뒤
 
-로컬(Windows의 Git Bash)에서 `bash deploy/push.sh`를 실행한다. 서버 접속 별칭은 `deploy/local.env`(저장소에 올리지 않음)에 `HOST=별칭`으로 적어 둔다. 고친 코드만 서버에 덮어쓰고 화면용 자료를 다시 만든다.
-`.env`, `data/`, `site/data/`, `logs/`는 서버의 것을 그대로 둔다. `--dry-run`을 붙이면 올릴 파일만 보여 준다.
+서버 폴더 `/srv/jiwonmoa`는 GitHub과 연결된 git 저장소다. 커밋해서 GitHub에 올린 뒤 로컬(Windows의 Git Bash)에서 `bash deploy/push.sh`를 실행하면 서버가 GitHub main을 받아(`git pull`) 화면용 자료를 다시 만든다. 서버에서 직접 고쳤다면 서버에서 커밋·push한 뒤 `python3 collector/build_site.py`를 실행한다.
+서버 접속 별칭은 `deploy/local.env`(저장소에 올리지 않음)에 `HOST=별칭`으로 적어 둔다. `.env`, `data/`, `site/data/`, `logs/`는 git에서 제외되어 서버의 것이 그대로 남는다.
