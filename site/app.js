@@ -1125,14 +1125,23 @@
       if (!glider || !on || !on.offsetWidth) return; // 홈이 가려져 잴 수 없으면 다음에 그릴 때 맞춘다
       var name = box.dataset.seg, from = name && segFrom[name];
       function put(p) { glider.style.width = p.width + "px"; glider.style.transform = "translateX(" + p.left + "px)"; }
+      var to = { left: on.offsetLeft, width: on.offsetWidth };
       if (from) {
         segFrom[name] = null;
         glider.style.transition = "none";
         put(from);
         void glider.offsetWidth; // 이전 자리를 먼저 그리게 해야 미끄러짐이 보인다
         glider.style.transition = "";
+        put(to);
+      } else if (!glider.style.width) {
+        // 처음 놓는 알약(홈을 다시 그려 새로 만든 다른 카드의 단추)은 폭 0에서 자라나지 않게 제자리에 바로 놓는다
+        glider.style.transition = "none";
+        put(to);
+        void glider.offsetWidth;
+        glider.style.transition = "";
+      } else {
+        put(to); // 이미 놓인 알약: 미끄러지는 중이면 그대로 이어 간다
       }
-      put({ left: on.offsetLeft, width: on.offsetWidth });
       box.classList.add("glide");
     });
   }
