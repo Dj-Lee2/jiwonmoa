@@ -156,6 +156,36 @@ class NoticeFieldTest(unittest.TestCase):
                 self.assertIn(v, build_site.NOTICE_FIELDS)
 
 
+class TwiceADayTest(unittest.TestCase):
+    """하루 두 번 수집: 오전에 있다가 오후 수집에서 사라진 공고는 '현재 자료'에서 빠진다"""
+
+    def test_load_by_run_time(self):
+        import sqlite3
+        import collect
+        import report
+        conn = sqlite3.connect(":memory:")
+        conn.row_factory = sqlite3.Row
+        conn.executescript(collect.SCHEMA)
+
+        def rec(uid):
+            r = {f: "" for f in collect.FIELDS}
+            r.update(uid=uid, source="bizinfo", kind="공고", title=uid, regions="[]", agri="0", content_hash=uid)
+            return r
+        am, pm = "2026-10-03T09:00:01", "2026-10-03T16:00:01"
+        collect.upsert(conn, [rec("a"), rec("b")], "2026-10-03", am)
+        conn.execute("INSERT INTO runs VALUES (?, 'bizinfo', 1, 2, 2, 2, 1, '')", (am,))
+        self.assertEqual(sorted(r["uid"] for r in report.load(conn)[0]), ["a", "b"])
+        collect.upsert(conn, [rec("a")], "2026-10-03", pm)
+        conn.execute("INSERT INTO runs VALUES (?, 'bizinfo', 1, 1, 1, 1, 1, '')", (pm,))
+        self.assertEqual([r["uid"] for r in report.load(conn)[0]], ["a"])
+        # 오후 수집이 실패하면 오전 자료를 그대로 쓴다
+        conn.execute("INSERT INTO runs VALUES ('2026-10-04T09:00:01', 'bizinfo', 0, 0, 0, 0, 1, 'x')")
+        self.assertEqual([r["uid"] for r in report.load(conn)[0]], ["a"])
+        # 다시 정리(seen_at 없음)는 수집 시각을 지우지 않는다
+        collect.upsert(conn, [rec("a")], "2026-10-03")
+        self.assertEqual([r["uid"] for r in report.load(conn)[0]], ["a"])
+
+
 class SigunguRegionTest(unittest.TestCase):
     """기관 이름 앞 법인 종류를 떼고 시군구로 지역을 찾는다"""
 

@@ -31,7 +31,7 @@ FIELDS = ["uid", "source", "kind", "title", "agency", "operator", "category", "t
 SCHEMA = f"""
 CREATE TABLE IF NOT EXISTS notices (
     {", ".join(f + " TEXT" for f in FIELDS)},
-    first_seen TEXT, last_seen TEXT, changed_at TEXT,
+    first_seen TEXT, last_seen TEXT, changed_at TEXT, seen_at TEXT,
     PRIMARY KEY (uid)
 );
 CREATE TABLE IF NOT EXISTS runs (
@@ -47,7 +47,9 @@ def connect():
     conn.row_factory = sqlite3.Row
     conn.executescript(SCHEMA)
     have = {r["name"] for r in conn.execute("PRAGMA table_info(notices)")}
-    for f in FIELDS:  # 항목이 늘어난 경우 기존 DB에 열을 더한다
+    # 항목이 늘어난 경우 기존 DB에 열을 더한다. seen_at = 마지막으로 보인 수집 시각(하루 여러 번 수집하므로
+    # 날짜(last_seen)만으로는 오전에 있다가 오후에 사라진 공고를 가릴 수 없다)
+    for f in FIELDS + ["seen_at"]:
         if f not in have:
             conn.execute(f"ALTER TABLE notices ADD COLUMN {f} TEXT")
     return conn
@@ -66,21 +68,22 @@ def prune_raw():
         shutil.rmtree(old)
 
 
-def upsert(conn, records, day):
-    """새 공고는 first_seen, 내용이 바뀐 공고는 changed_at을 오늘로 기록한다."""
+def upsert(conn, records, day, seen_at=None):
+    """새 공고는 first_seen, 내용이 바뀐 공고는 changed_at을 오늘로 기록한다. seen_at은 이번 수집 시각
+    (없으면 — 다시 정리할 때 — 그대로 둔다)."""
     for rec in records:
         row = conn.execute("SELECT content_hash FROM notices WHERE uid = ?", (rec["uid"],)).fetchone()
         values = [rec.get(f) for f in FIELDS]
         if row is None:
             conn.execute(
-                f"INSERT INTO notices ({', '.join(FIELDS)}, first_seen, last_seen, changed_at) "
-                f"VALUES ({', '.join('?' * len(FIELDS))}, ?, ?, NULL)", values + [day, day])
+                f"INSERT INTO notices ({', '.join(FIELDS)}, first_seen, last_seen, changed_at, seen_at) "
+                f"VALUES ({', '.join('?' * len(FIELDS))}, ?, ?, NULL, ?)", values + [day, day, seen_at])
         else:
             changed = row["content_hash"] != rec["content_hash"]
             conn.execute(
-                f"UPDATE notices SET {', '.join(f + ' = ?' for f in FIELDS)}, last_seen = ?"
+                f"UPDATE notices SET {', '.join(f + ' = ?' for f in FIELDS)}, last_seen = ?, seen_at = COALESCE(?, seen_at)"
                 + (", changed_at = ?" if changed else "") + " WHERE uid = ?",
-                values + [day] + ([day] if changed else []) + [rec["uid"]])
+                values + [day, seen_at] + ([day] if changed else []) + [rec["uid"]])
 
 
 def main(selected):
@@ -95,7 +98,7 @@ def main(selected):
             items, expected = SOURCES[source](key)
             save_raw(day, source, items)
             records = normalize(source, items)
-            upsert(conn, records, day)
+            upsert(conn, records, day, run_at)
             ok, error = 1, "" if len(items) >= expected else f"일부만 수집 ({len(items)}/{expected})"
             print(f"{source}: 원본 {len(items)}건 → 공고 {len(records)}건 {error}")
         except FetchError as e:
@@ -122,7 +125,10 @@ def reprocess(selected):
         with gzip.open(path, "rt", encoding="utf-8") as f:
             items = json.load(f)
         records = normalize(source, items)
-        upsert(conn, records, path.parent.name)
+        # 원본은 날마다 마지막 수집만 남으므로, 그날 마지막 성공 수집 시각을 그대로 붙인다
+        last = conn.execute("SELECT MAX(run_at) FROM runs WHERE source = ? AND ok = 1 AND run_at LIKE ?",
+                            (source, path.parent.name + "%")).fetchone()[0]
+        upsert(conn, records, path.parent.name, last)
         conn.commit()
         print(f"{source}: {path.parent.name} 원본 {len(items)}건 → {len(records)}건 다시 정리")
     conn.close()

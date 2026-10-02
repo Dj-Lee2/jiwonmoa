@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # 지원모아 매일 갱신: 공공 API 수집 → 화면용 자료 다시 만들기. 예약 작업이 이 파일만 실행하면 된다(sudo 불필요).
-#   예) 매일 06:30 한국 시간. 서버 시간대가 UTC라면 crontab에:  30 21 * * * /srv/jiwonmoa/deploy/update.sh
+#   예) 매일 09:00·16:00 한국 시간. 서버 시간대가 UTC라면 crontab에:  0 0,7 * * * /srv/jiwonmoa/deploy/update.sh
 # 마감·신규 날짜 계산은 한국 시간이어야 하므로 TZ를 여기서 정한다. 기록: logs/update.log
 set -uo pipefail
 cd "$(dirname "$(readlink -f "$0")")/.."

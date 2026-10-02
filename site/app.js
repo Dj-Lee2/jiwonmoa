@@ -142,8 +142,8 @@
     return daysBetween(item.pd, today) <= days;
   }
 
-  /* '오늘 새 공고': 가장 최근 수집(매일 06:30)에서 처음 들어온 모집 공고(fs = 처음 수집한 날).
-   * 첫 수집 날(META.firstDay)은 모두가 처음이라 세지 않는다. 오늘 수집 전(자정~6:30)에는 어제 수집분을 '어제 새 공고'로 */
+  /* '오늘 올라온 공고': 마지막 수집일(매일 09:00·16:00 수집)에 처음 들어온 모집 공고(fs = 처음 수집한 날).
+   * 첫 수집 날(META.firstDay)은 모두가 처음이라 세지 않는다. 오늘 첫 수집 전(자정~9:00)에는 어제 수집분을 '어제 새 공고'로 */
   // 기준일 = 마지막 수집일(화면 자료를 손으로 다시 만든 날이 아니라). 수집 기록이 없으면 자료 만든 날
   var NEW_DAY = ((META.runs || []).map(function (r) { return r.at; }).sort().pop() || META.builtAt || "").slice(0, 10);
   function isTodayNew(item) {
@@ -1191,7 +1191,7 @@
     var at = runs.map(function (r) { return r.at; }).sort().pop() || META.builtAt;
     var basis = $("#basisShort");
     basis.replaceChildren(fmtStamp(at) + " 수집");
-    $("#footRun").textContent = "매일 오전 6시 30분 공공 API에서 새로 모읍니다 · 마지막 수집 " + fmtStamp(at);
+    $("#footRun").textContent = "매일 오전 9시·오후 4시 공공 API에서 새로 모읍니다 · 마지막 수집 " + fmtStamp(at);
     var failed = runs.filter(function (r) { return !r.ok; });
     if (failed.length) {
       basis.append(" ", el("span", { className: "warn", text: failed.map(function (r) { return SRC_NAME[r.src]; })
@@ -1205,7 +1205,7 @@
       var counts = META.counts || {};
       var open = NOTICES.filter(function (n) { return statusOf(n) !== "마감"; }).length;
       return [
-        ["무엇을 모으나요", "기업마당·K-Startup·국고보조금(보조금 통합포털)의 모집 공고와 보조금24의 상시 제도를 매일 오전 6시 30분에 공공데이터포털 API로 모읍니다. 지금 모집 공고 " +
+        ["무엇을 모으나요", "기업마당·K-Startup·국고보조금(보조금 통합포털)의 모집 공고와 보조금24의 상시 제도를 매일 오전 9시와 오후 4시에 공공데이터포털 API로 모읍니다. 지금 모집 공고 " +
           fmtN(open) + "건, 상시 제도 " + fmtN(counts.services || 0) + "건이 있습니다."],
         ["모집 공고와 상시 제도", "모집 공고는 신청 기간이 정해진 공고, 상시 제도는 언제든 신청할 수 있는 보조금24의 제도입니다. 둘을 합쳐 '지원사업'이라고 부릅니다."],
         ["찾는 방법", "홈에서 지역·대상을 고르거나 검색하세요. 목록의 '조건'에서 대상·분야·신청 상태·내 조건(나이·소득·성별)으로 좁힐 수 있습니다. 홈 그래프의 막대·칸·지역을 누르면 요약이 먼저 뜹니다."],

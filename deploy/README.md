@@ -15,12 +15,12 @@
 
 ## 매일 갱신(예약 작업)
 
-`/srv/jiwonmoa/deploy/update.sh`를 하루 한 번 실행한다. sudo는 필요 없다.
+`/srv/jiwonmoa/deploy/update.sh`를 하루 두 번 실행한다. sudo는 필요 없다.
 
-- 권장 시각: 매일 06:30 한국 시간. 서버 시간대가 UTC이므로 crontab에는 21:30으로 적는다.
+- 시각: 매일 09:00·16:00 한국 시간(하루 두 번). 서버 시간대가 UTC이므로 crontab에는 `0 0,7 * * *`로 적는다.
 
   ```
-  30 21 * * * /srv/jiwonmoa/deploy/update.sh
+  0 0,7 * * * /srv/jiwonmoa/deploy/update.sh
   ```
 
 - 한 번에 5~10분 걸린다. 앞선 실행이 끝나지 않았으면 다음 실행은 건너뛴다.

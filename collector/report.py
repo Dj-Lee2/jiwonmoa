@@ -22,13 +22,17 @@ STATUS_ORDER = ["접수 중", "접수 예정", "소진 시까지", "상시", "�
 
 
 def load(conn):
-    """출처별 마지막 성공 수집일에 보였던 공고만 '현재 자료'로 본다."""
-    last = {r["source"]: r["run_at"][:10] for r in conn.execute(
+    """출처별 마지막 성공 수집에 보였던 공고만 '현재 자료'로 본다.
+
+    하루 두 번 이상 수집하므로 수집 시각(seen_at)으로 맞춘다. seen_at이 없는 옛 기록은 날짜(last_seen)로 본다.
+    """
+    last = {r["source"]: r["run_at"] for r in conn.execute(
         "SELECT source, MAX(run_at) AS run_at FROM runs WHERE ok = 1 GROUP BY source")}
     rows = []
     for r in conn.execute("SELECT * FROM notices"):
         r = dict(r)
-        if last.get(r["source"]) == r["last_seen"]:
+        run = last.get(r["source"]) or ""
+        if r.get("seen_at") == run if r.get("seen_at") else run[:10] == r["last_seen"]:
             r["regions"] = json.loads(r["regions"] or "[]")
             r["agri"] = int(r["agri"] or 0)
             rows.append(r)
