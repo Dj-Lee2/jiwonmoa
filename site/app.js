@@ -1014,6 +1014,7 @@
   // 색은 자료 종류에 붙인다: 파랑 = 모집 공고, 초록 = 상시 제도, 회색 = 비교 대상·나머지.
   // 파랑·초록 짝은 dataviz validate_palette.js 통과(색각 이상 포함). 값·이름 글자는 늘 글자색으로 쓴다
   var SERIES_BLUE = "#2a78d6", SERIES_GREEN = "#008300", SERIES_GRAY = "#8a8a8a";
+  var LAST_YEAR_BAR = "#dcdcdc"; // 겹친 막대의 작년(뒤) 막대
   // 지역 지도 5단계(많을수록 진함): 모집 공고는 파랑, 상시 제도는 초록
   var MAP_SHADES = ["#cde2fb", "#86b6ef", "#3987e5", "#1c5cab", "#0d366b"];
   var MAP_SHADES_GREEN = ["#d3efd3", "#8fd08f", "#3fa33f", "#1d721d", "#0c440c"];
@@ -1221,57 +1222,98 @@
 
   function pt(p) { return p[0].toFixed(1) + " " + p[1].toFixed(1); }
 
-  /* 1~12월 선 그래프(두 계열). 선 2px, 점 8px, 옅은 눈금 3줄, 선 끝에 이름.
-   * 달마다 세로 띠를 가리키면(또는 초점) 그 달 두 계열 값을 한 번에 보여 준다.
-   * partial: 마지막 점이 아직 끝나지 않은 달이면 점선·빈 점으로 그린다 */
-  function lineChart(series, label, W, tipAt, fitH) {
-    // fitH를 주면 카드 남는 높이를 채운다(옆 카드가 길 때 제목과 그래프 사이가 비지 않게, 최대 440px)
+  /* 공모 그래프 공통 틀: 1~12월 칸, 옅은 눈금 3줄, 이번 달(자료를 모은 마지막 달) 자리에 옅은 띠.
+   * fitH를 주면 카드 남는 높이를 채운다(옆 카드가 길 때 제목과 그래프 사이가 비지 않게, 최대 440px) */
+  function monthFrame(W, fitH, max, right) {
     var H = fitH ? Math.max(chartHeight(W) - 4, Math.min(440, Math.floor(fitH))) : chartHeight(W) - 4;
-    var top = 18, bottom = 30, left = 46, right = 40;
-    var base = H - bottom, plotH = base - top, plotW = W - left - right;
-    var n = 12, step = plotW / (n - 1);
-    var max = 1;
-    series.forEach(function (x) { x.values.forEach(function (v) { max = Math.max(max, v); }); });
-    max = niceMax(max);
-    function X(i) { return left + step * i; }
-    function Y(v) { return base - plotH * v / max; }
-    var root = svgEl("svg", { viewBox: "0 0 " + W + " " + H, role: "group", "aria-label": label, "class": "line-chart" });
-    [0, 0.5, 1].forEach(function (f) {
-      var y = Math.round(Y(max * f)) + 0.5;
-      root.append(svgEl("line", { x1: left, x2: W - right, y1: y, y2: y, "class": f ? "grid" : "axis" }));
-      root.append(svgText(left - 8, y + 4, fmtN(max * f), "tick", "end"));
+    var f = { W: W, H: H, top: 22, bottom: 30, left: 46, right: right || 8 };
+    f.base = H - f.bottom; f.plotH = f.base - f.top; f.band = (W - f.left - f.right) / 12;
+    f.max = niceMax(Math.max(1, max));
+    f.Y = function (v) { return f.base - f.plotH * v / f.max; };
+    f.cx = function (i) { return f.left + f.band * (i + 0.5); };
+    return f;
+  }
+
+  function monthAxes(root, f, nowIdx) {
+    if (nowIdx >= 0) {
+      root.append(svgEl("rect", { x: f.left + f.band * nowIdx + 1, y: f.top - 18, width: f.band - 2,
+        height: f.base - f.top + 18, rx: 6, "class": "now-band" }));
+      root.append(svgText(f.cx(nowIdx), f.top - 6, "이번 달", "now-t"));
+    }
+    [0, 0.5, 1].forEach(function (k) {
+      var y = Math.round(f.Y(f.max * k)) + 0.5;
+      root.append(svgEl("line", { x1: f.left, x2: f.W - f.right, y1: y, y2: y, "class": k ? "grid" : "axis" }));
+      root.append(svgText(f.left - 8, y + 4, fmtN(f.max * k), "tick", "end"));
     });
-    var roomy = step >= 34;
-    for (var m = 0; m < n; m++) root.append(svgText(X(m), base + 20, (m + 1) + (roomy ? "월" : ""), "tick"));
-    var P = series.map(function (x) { return x.values.map(function (v, i) { return [X(i), Y(v)]; }); });
-    series.slice().reverse().forEach(function (x) { // 첫 계열(올해)을 맨 위에 그린다
-      var pts = P[series.indexOf(x)];
-      if (!pts.length) return;
-      var cut = x.partial && pts.length > 1;
-      var solid = cut ? pts.slice(0, -1) : pts;
-      if (solid.length > 1) root.append(svgEl("path", { d: "M" + solid.map(pt).join("L"), pathLength: 1,
-        "class": "line", style: "stroke:" + x.color }));
-      if (cut) root.append(svgEl("path", { d: "M" + pt(pts[pts.length - 2]) + "L" + pt(pts[pts.length - 1]),
-        "class": "line dash", style: "stroke:" + x.color }));
-      if (x.marks) pts.forEach(function (p, i) {
-        var hollow = x.partial && i === pts.length - 1;
-        root.append(svgEl("circle", { cx: p[0], cy: p[1], r: 4, "class": "dot" + (hollow ? " hollow" : ""),
-          style: (hollow ? "stroke:" : "fill:") + x.color + ";--i:" + i }));
-      });
-      var last = pts[pts.length - 1], atEnd = pts.length === n;
-      root.append(svgText(atEnd ? last[0] + 8 : last[0], atEnd ? last[1] + 4 : last[1] - 12, x.short, "cat halo",
-        atEnd ? "start" : "middle"));
-    });
-    for (var k = 0; k < n; k++) (function (i) {
-      var g = svgEl("g", { "class": "mark" });
-      g.append(svgEl("rect", { x: X(i) - step / 2, y: 0, width: step, height: H, rx: 6, "class": "hit" }));
-      g.append(svgEl("line", { x1: X(i), x2: X(i), y1: top, y2: base, "class": "cross" }));
-      series.forEach(function (x, j) {
-        if (P[j][i]) g.append(svgEl("circle", { cx: P[j][i][0], cy: P[j][i][1], r: 6, "class": "hover-dot", style: "fill:" + x.color }));
+    var roomy = f.band >= 34;
+    for (var m = 0; m < 12; m++) root.append(svgText(f.cx(m), f.base + 20, (m + 1) + (roomy ? "월" : ""), "tick"));
+  }
+
+  function vbarPath(x, y, w, h) {
+    var r = Math.min(3, w / 2, h); // 바닥은 네모, 위 끝만 둥글게
+    return "M" + x + " " + (y + h) + "V" + (y + r) + "Q" + x + " " + y + " " + (x + r) + " " + y + "H" + (x + w - r) +
+      "Q" + (x + w) + " " + y + " " + (x + w) + " " + (y + r) + "V" + (y + h) + "Z";
+  }
+
+  /* 달별: 작년(넓은 옅은 회색) 막대 위에 올해(좁은 파랑) 막대를 겹친다. 올해가 작년을 넘는 달이 바로 보인다.
+   * 아직 끝나지 않은 이번 달 막대는 옅게 + 점선 테두리 */
+  function monthBars(A, B, W, fitH, tipAt) {
+    var f = monthFrame(W, fitH, Math.max.apply(null, A.concat(B)));
+    var root = svgEl("svg", { viewBox: "0 0 " + W + " " + f.H, role: "group", "class": "month-chart",
+      "aria-label": "달별 국고보조금 공모 수, 올해와 작년 비교 막대 그래프" });
+    monthAxes(root, f, B.length - 1);
+    var wp = Math.min(30, f.band * 0.72), wc = Math.max(5, Math.round(wp * 0.46));
+    for (var i = 0; i < 12; i++) {
+      var g = svgEl("g", { "class": "mark", style: "--i:" + i });
+      g.append(svgEl("rect", { x: f.left + f.band * i, y: 0, width: f.band, height: f.H, rx: 6, "class": "hit" }));
+      var bars = [{ v: A[i], w: wp, c: LAST_YEAR_BAR }];
+      if (i < B.length) bars.push({ v: B[i], w: wc, c: SERIES_BLUE, partial: i === B.length - 1 });
+      bars.forEach(function (b) {
+        if (!b.v) return;
+        var h = Math.max(2, f.base - f.Y(b.v));
+        g.append(svgEl("path", { d: vbarPath(f.cx(i) - b.w / 2, f.base - h, b.w, h), "class": "bar" + (b.partial ? " partial" : ""),
+          style: "fill:" + b.c + (b.partial ? ";stroke:" + b.c : "") }));
       });
       var t = tipAt(i);
       activate(g, t.value + ". " + t.label, null);
       tipFor(g, t.value, t.label);
+      root.append(g);
+    }
+    return root;
+  }
+
+  /* 누적: 1월부터 쌓은 수. 작년은 회색 선과 옅은 면, 올해는 파랑 선과 옅은 면. 선 끝에 합계 */
+  function monthCum(CA, CB, W, fitH) {
+    var f = monthFrame(W, fitH, Math.max(CA[11], CB[CB.length - 1] || 0), 64);
+    var root = svgEl("svg", { viewBox: "0 0 " + W + " " + f.H, role: "group", "class": "month-chart",
+      "aria-label": "1월부터 쌓은 국고보조금 공모 수, 올해와 작년 비교 선 그래프" });
+    monthAxes(root, f, CB.length - 1);
+    function pts(v) { return v.map(function (x, i) { return [f.cx(i), f.Y(x)]; }); }
+    function area(p, cls) {
+      root.append(svgEl("path", { d: "M" + p[0][0] + " " + f.base + "L" + p.map(pt).join("L") + "L" + p[p.length - 1][0] + " " + f.base + "Z",
+        "class": cls }));
+    }
+    var PA = pts(CA), PB = pts(CB);
+    area(PA, "area last");
+    root.append(svgEl("path", { d: "M" + PA.map(pt).join("L"), pathLength: 1, "class": "line", style: "stroke:" + SERIES_GRAY }));
+    if (PB.length) {
+      area(PB, "area cur");
+      root.append(svgEl("path", { d: "M" + PB.map(pt).join("L"), pathLength: 1, "class": "line thick", style: "stroke:" + SERIES_BLUE }));
+      var e = PB[PB.length - 1];
+      root.append(svgEl("circle", { cx: e[0], cy: e[1], r: 4.5, "class": "dot", style: "fill:" + SERIES_BLUE }));
+      root.append(svgText(e[0] + 8, e[1] + 4, "올해 " + fmtN(CB[CB.length - 1]), "cat halo", "start"));
+      root.append(svgText(e[0] + 8, e[1] + 20, "(" + CB.length + "월 진행 중)", "tick halo", "start"));
+    }
+    root.append(svgText(PA[11][0] + 8, PA[11][1] + 4, "작년 " + fmtN(CA[11]), "cat halo muted", "start"));
+    for (var k = 0; k < 12; k++) (function (i) {
+      var g = svgEl("g", { "class": "mark" });
+      g.append(svgEl("rect", { x: f.left + f.band * i, y: 0, width: f.band, height: f.H, rx: 6, "class": "hit" }));
+      g.append(svgEl("line", { x1: f.cx(i), x2: f.cx(i), y1: f.top, y2: f.base, "class": "cross" }));
+      g.append(svgEl("circle", { cx: PA[i][0], cy: PA[i][1], r: 5, "class": "hover-dot", style: "fill:" + SERIES_GRAY }));
+      if (PB[i]) g.append(svgEl("circle", { cx: PB[i][0], cy: PB[i][1], r: 5, "class": "hover-dot", style: "fill:" + SERIES_BLUE }));
+      var label = (i < CB.length ? "올해 " + fmtN(CB[i]) + "건 · " : "") + "작년 " + fmtN(CA[i]) + "건";
+      activate(g, (i + 1) + "월까지 " + label, null);
+      tipFor(g, (i + 1) + "월까지", label);
       root.append(g);
     })(k);
     return root;
@@ -1527,7 +1569,10 @@
     return card;
   }
 
-  /* 공모는 언제 열리나요?: 국고보조금 공모가 접수를 시작한 달, 올해(파랑)와 작년(회색). META.openMonths */
+  /* 공모는 언제 열리나요?: 국고보조금 공모가 접수를 시작한 달, 올해(파랑)와 작년(회색). META.openMonths.
+   * 카드 머리 단추로 '달별'(겹친 막대)과 '누적'(1월부터 쌓은 선)을 바꾼다. 누적 보기의 부제는
+   * 지난달까지(이번 달은 아직 진행 중이라 빼고) 올해와 작년을 비교한다 */
+  var monthsView = "month";
   function openMonthsCard() {
     var am = META.openMonths;
     var title = "공모는 언제 열리나요?";
@@ -1541,23 +1586,35 @@
       });
     }
     function sum(a) { return a.reduce(function (t, v) { return t + v; }, 0); }
+    function cum(a) { var t = 0; return a.map(function (v) { return (t += v); }); }
     var A = vals(prev), B = vals(cur).slice(0, upto); // 올해는 자료를 모은 달까지만
     if (!sum(A) && !sum(B)) {
       return vizCard(title, null, el("p", { className: "muted", text: "이 지역의 공모 자료가 없습니다." }), foot);
     }
+    var byCum = monthsView === "cum";
     var sub = "국고보조금 공모 기준";
-    var series = [
-      { name: cur + "년(올해)", short: "올해", color: SERIES_BLUE, values: B, marks: true, partial: true },
-      { name: prev + "년(작년)", short: "작년", color: SERIES_GRAY, values: A }];
+    if (byCum) {
+      var done = B.length - 1, sa = sum(A.slice(0, done)), sb = sum(B.slice(0, done));
+      sub = "1월부터 쌓은 수";
+      if (done > 0 && sa) {
+        var d = Math.round((sb - sa) / sa * 100);
+        sub += " · " + done + "월까지 올해 " + fmtN(sb) + "건, 작년 " + fmtN(sa) + "건(" + (d > 0 ? "+" : d < 0 ? "−" : "") + Math.abs(d) + "%)";
+      }
+    }
+    var CA = cum(A), CB = cum(B);
     function draw(fitH) {
-      return lineChart(series, "달별 국고보조금 공모 수, 올해와 작년 비교 선 그래프", chartWidth(), function (i) {
+      if (byCum) return monthCum(CA, CB, chartWidth(), fitH);
+      return monthBars(A, B, chartWidth(), fitH, function (i) {
         var parts = [];
         if (i < B.length) parts.push("올해 " + fmtN(B[i]) + "건" + (i === B.length - 1 ? "(모은 날까지)" : ""));
         parts.push("작년 " + fmtN(A[i]) + "건");
         return { value: (i + 1) + "월", label: parts.join(" · ") };
-      }, fitH);
+      });
     }
-    var card = vizCard(title, sub, el("div", { className: "viz-fig" }, legend(series), draw()), foot);
+    var series = [{ name: cur + "년(올해)", color: SERIES_BLUE }, { name: prev + "년(작년)", color: byCum ? SERIES_GRAY : LAST_YEAR_BAR }];
+    var card = vizCard(title, sub, el("div", { className: "viz-fig" }, legend(series), draw()), foot,
+      segToggle("months", "공모 그래프 보기", [{ value: "month", label: "달별" }, { value: "cum", label: "누적" }], monthsView,
+        function (v) { monthsView = v; }));
     card._redraw = draw;
     return card;
   }
@@ -1763,7 +1820,7 @@
   }
 
   function fillCard(card) {
-    var body = card.querySelector(".viz-body"), svg = body.querySelector("svg.hb, svg.line-chart, .donut-wrap");
+    var body = card.querySelector(".viz-body"), svg = body.querySelector("svg.hb, svg.month-chart, .donut-wrap");
     if (!svg || !card._redraw) return;
     var used = (svg.closest(".viz-fig") || svg).getBoundingClientRect().height;
     var free = body.clientHeight - (parseFloat(getComputedStyle(body).paddingTop) || 0) - used;
