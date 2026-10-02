@@ -156,6 +156,32 @@ class NoticeFieldTest(unittest.TestCase):
                 self.assertIn(v, build_site.NOTICE_FIELDS)
 
 
+class LimitsTest(unittest.TestCase):
+    """'내 조건으로 거르기'용 나이·소득·성별 값"""
+
+    def test_age(self):
+        f = build_site.age_range
+        self.assertEqual(f("19~34세"), [19, 34])
+        self.assertEqual(f("만 20세 이상"), [20, 999])
+        self.assertEqual(f("17세 이하"), [0, 17])
+        self.assertEqual(f("만 20세 미만"), [0, 19])
+        self.assertEqual(f("만 20~39세"), [20, 39])
+        self.assertIsNone(f("만 20세 미만, 만 40세 이상"))  # 여러 구간은 거르지 않는다
+        self.assertIsNone(f(""))
+
+    def test_income(self):
+        f = build_site.income_range
+        self.assertEqual(f("중위소득 50% 이하"), [0, 50])
+        self.assertEqual(f("중위소득 75% 초과"), [76, 999])
+        self.assertEqual(f("중위소득 51~100%"), [51, 100])
+        self.assertIsNone(f("소득 무관"))
+
+    def test_limits(self):
+        cd = [["나이", "19~34세"], ["소득", "중위소득 100% 이하"], ["성별", "여성"], ["개인 특성", "대학생"]]
+        self.assertEqual(build_site.limits(cd), {"na": [19, 34], "ic": [0, 100], "sx": "f"})
+        self.assertEqual(build_site.limits([["나이", "만 20세 미만, 만 40세 이상"]]), {})
+
+
 class NoticeTextSplitTest(unittest.TestCase):
     """첫 화면을 가볍게: 공고 목록에서 긴 글만 떼고 검색·목록에 쓰는 칸은 남긴다"""
 

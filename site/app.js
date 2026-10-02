@@ -33,7 +33,21 @@
   NOTICES.forEach(function (n) { byId.set(n.id, n); });
 
   var DEFAULT = { tab: "open", q: "", r: "", nat: true, au: [], st: [], src: [], pv: true,
-    tp: [], sp: [], cg: [], soon: false, nw: false, td: false, due: "", om: "", sort: "", id: "" };
+    tp: [], sp: [], cg: [], soon: false, nw: false, td: false, due: "", om: "", ag: "", ic: "", sx: "", sort: "", id: "" };
+
+  /* 내 조건(나이·소득·성별): 상시 제도 대부분과 일부 공고가 가진 나이(na)·중위소득(ic)·성별(sx) 조건으로 거른다.
+   * 조건이 없는 사업은 늘 남긴다. 이 기기 localStorage "hub-me"에 기억해 다음에 열어도 그대로 쓴다(서버로 보내지 않음).
+   * 소득은 구간으로 고른다: 값 = 구간 끝(50·75·100·200), 201 = 200% 초과 */
+  var ME_KEY = "hub-me";
+  var INCOME_BANDS = [{ v: "50", lo: 0, hi: 50, label: "중위소득 50% 이하" }, { v: "75", lo: 51, hi: 75, label: "51~75%" },
+    { v: "100", lo: 76, hi: 100, label: "76~100%" }, { v: "200", lo: 101, hi: 200, label: "101~200%" }, { v: "201", lo: 201, hi: 999, label: "200% 초과" }];
+  function loadMe() {
+    try { var v = JSON.parse(localStorage.getItem(ME_KEY) || "{}"); return v && typeof v === "object" ? v : {}; } catch (e) { return {}; }
+  }
+  function cleanMe(v) {
+    return { ag: /^\d{1,3}$/.test(v.ag || "") && +v.ag <= 120 ? String(+v.ag) : "",
+      ic: INCOME_BANDS.some(function (b) { return b.v === v.ic; }) ? v.ic : "", sx: v.sx === "f" || v.sx === "m" ? v.sx : "" };
+  }
 
   /* 빈 조건. 배열은 매번 새로 만든다(DEFAULT의 배열을 같이 쓰면 칩을 누를 때 DEFAULT가 바뀐다) */
   function blankState(extra) {
@@ -434,6 +448,9 @@
     s.om = /^\d{4}-\d{2}$/.test(p.get("om") || "") ? p.get("om") : ""; // 접수를 시작한 달(홈 '공고는 언제 올라오나요?' 막대)
     s.nw = p.get("new") === "1";
     s.td = p.get("today") === "1"; // 마지막 수집에서 처음 들어온 공고(홈 '오늘 새 공고')
+    // 내 조건: 주소에 있으면 그것(공유 링크), 없으면 이 기기에 기억한 것
+    var me = cleanMe(p.has("age") || p.has("inc") || p.has("sex") ? { ag: p.get("age"), ic: p.get("inc"), sx: p.get("sex") } : loadMe());
+    s.ag = me.ag; s.ic = me.ic; s.sx = me.sx;
     s.sp = list(p.get("sp"));
     s.cg = list(p.get("cat"));
     s.sort = ["deadline", "posted", "recent", "name"].indexOf(p.get("sort")) >= 0 ? p.get("sort") : defaultSort(s);
@@ -453,6 +470,9 @@
       if (state.soon) p.set("soon", "1");
       if (state.due) p.set("due", state.due);
       if (state.om) p.set("om", state.om);
+      if (state.ag) p.set("age", state.ag);
+      if (state.ic) p.set("inc", state.ic);
+      if (state.sx) p.set("sex", state.sx);
       if (state.nw) p.set("new", "1");
       if (state.td) p.set("today", "1");
       if (state.sp.length && state.tab === "services") p.set("sp", state.sp.join(","));
@@ -492,6 +512,27 @@
     return item._h;
   }
 
+  function fitsMe(item) {
+    if (state.ag && item.na && (+state.ag < item.na[0] || +state.ag > item.na[1])) return false;
+    if (state.ic && item.ic) {
+      var band = INCOME_BANDS.filter(function (b) { return b.v === state.ic; })[0];
+      if (band && (band.hi < item.ic[0] || band.lo > item.ic[1])) return false;
+    }
+    if (state.sx && item.sx && item.sx !== state.sx) return false;
+    return true;
+  }
+  function meLabel() {
+    var band = INCOME_BANDS.filter(function (b) { return b.v === state.ic; })[0];
+    return [state.ag ? state.ag + "세" : "", band ? (band.v === "50" ? band.label : "중위소득 " + band.label) : "",
+      state.sx === "f" ? "여성" : state.sx === "m" ? "남성" : ""].filter(Boolean).join(" · ");
+  }
+  function saveMe() {
+    try {
+      if (state.ag || state.ic || state.sx) localStorage.setItem(ME_KEY, JSON.stringify({ ag: state.ag, ic: state.ic, sx: state.sx }));
+      else localStorage.removeItem(ME_KEY);
+    } catch (e) { /* 저장 못 해도 이번 화면에는 쓴다 */ }
+  }
+
   function matches(item, terms, skipSoon) {
     if (!inTab(item)) return false;
     if (terms.length) {
@@ -503,6 +544,7 @@
       if (rg.indexOf(state.r) < 0 && !(state.nat && rg[0] === "전국")) return false;
     }
     if (state.au.length && !(item.pp || []).some(function (a) { return state.au.indexOf(a) >= 0; })) return false;
+    if (!fitsMe(item)) return false;
     if (state.st.length && state.st.indexOf(statusOf(item)) < 0) return false;
     if (state.src.length && state.src.indexOf(item.src) < 0) return false;
     if (!state.pv && item.p) return false;
@@ -707,6 +749,7 @@
     function add(label, clear) { items.push({ label: label, clear: clear }); }
     if (state.q) add("‘" + state.q + "’ 검색", function () { state.q = ""; });
     if (state.r) add(state.r + (state.nat ? " + 전국" : " 한정"), function () { state.r = ""; });
+    if (state.ag || state.ic || state.sx) add("내 조건: " + meLabel(), function () { state.ag = state.ic = state.sx = ""; saveMe(); });
     if (state.soon && isNoticeView()) add("7일 안에 마감", function () { state.soon = false; });
     if (state.due && isNoticeView()) add(dueLabel(state.due), function () { state.due = ""; });
     if (state.om && isNoticeView()) add((+state.om.slice(5)) + "월 접수 시작", function () { state.om = ""; });
@@ -808,9 +851,13 @@
     $("#withNational").closest("label").hidden = !state.r;
     $("#priv").checked = state.pv;
     $("#sort").value = state.sort;
-    document.querySelectorAll("#filters .chip").forEach(function (c) {
+    document.querySelectorAll("#filters .chip[data-key]").forEach(function (c) {
       c.setAttribute("aria-pressed", String(state[c.dataset.key].indexOf(c.dataset.value) >= 0));
     });
+    if (document.activeElement !== $("#meAge")) $("#meAge").value = state.ag;
+    $("#meInc").value = state.ic;
+    document.querySelectorAll("#meSex button").forEach(function (b) { b.setAttribute("aria-pressed", String(b.dataset.sx === state.sx)); });
+    $("#meClear").hidden = !(state.ag || state.ic || state.sx);
     document.querySelectorAll("[role=tab]").forEach(function (t) {
       var on = t.dataset.tab === state.tab;
       t.setAttribute("aria-selected", String(on));
@@ -821,12 +868,13 @@
   function activeFilterCount() {
     return (state.q ? 1 : 0) + (state.r ? 1 : 0) + state.au.length + state.st.length + state.src.length +
       (state.pv ? 0 : 1) + (agriSelected() ? state.tp.length : 0) + (state.soon ? 1 : 0) + (state.due ? 1 : 0) + (state.om ? 1 : 0) + (state.nw ? 1 : 0) + (state.td ? 1 : 0) +
+      (state.ag || state.ic || state.sx ? 1 : 0) +
       state.cg.length + (state.tab === "services" ? state.sp.length : 0);
   }
 
   /* 좁은 화면의 '조건' 버튼에는 조건 창 안에서 고른 것만 센다 */
   function updateFilterBadge() {
-    var n = state.au.length + state.st.length + state.src.length + (state.pv ? 0 : 1) +
+    var n = state.au.length + state.st.length + state.src.length + (state.pv ? 0 : 1) + (state.ag || state.ic || state.sx ? 1 : 0) +
       (agriSelected() ? state.tp.length : 0) + state.cg.length + (state.tab === "services" ? state.sp.length : 0);
     var b = $("#filterBadge");
     b.hidden = !n;
@@ -842,6 +890,7 @@
 
   function resetFilters() {
     state = blankState({ tab: state.tab, id: state.id });
+    saveMe(); // '조건 지우기'는 기억한 내 조건도 지운다
     setupTopics();
     state.sort = defaultSort(state);
     changed(false);
@@ -1188,7 +1237,7 @@
   function goTo(partial) {
     $("#vizTip").hidden = true;
     closePeek(false, true);
-    state = Object.assign(blankState({ r: state.r, nat: state.nat }), partial);
+    state = Object.assign(blankState({ r: state.r, nat: state.nat, ag: state.ag, ic: state.ic, sx: state.sx }), partial);
     state.sort = partial.sort || defaultSort(state);
     shown = PAGE;
     applyView();
@@ -2683,11 +2732,29 @@
     $("#region").addEventListener("change", function (e) { state.r = e.target.value; changed(false); });
     $("#withNational").addEventListener("change", function (e) { state.nat = e.target.checked; changed(false); });
     $("#priv").addEventListener("change", function (e) { state.pv = e.target.checked; changed(false); });
+    // 내 조건: 나이는 입력을 멈추면(0.4초) 바로 거른다
+    var ageTimer = null;
+    $("#meAge").addEventListener("input", function (e) {
+      clearTimeout(ageTimer);
+      ageTimer = setTimeout(function () {
+        var v = e.target.value.replace(/\D/g, "").slice(0, 3);
+        state.ag = v && +v <= 120 ? String(+v) : "";
+        saveMe(); changed(false);
+      }, 400);
+    });
+    $("#meInc").addEventListener("change", function (e) { state.ic = e.target.value; saveMe(); changed(false); });
+    $("#meSex").addEventListener("click", function (e) {
+      var b = e.target.closest("button[data-sx]");
+      if (!b) return;
+      state.sx = state.sx === b.dataset.sx ? "" : b.dataset.sx;
+      saveMe(); changed(false);
+    });
+    $("#meClear").addEventListener("click", function () { state.ag = state.ic = state.sx = ""; saveMe(); changed(false); });
     $("#sort").addEventListener("change", function (e) { state.sort = e.target.value; changed(false); });
     $("#soonToggle").addEventListener("click", function () { state.soon = !state.soon; changed(false); });
 
     $("#filters").addEventListener("click", function (e) {
-      var c = e.target.closest(".chip");
+      var c = e.target.closest(".chip[data-key]");
       if (!c) return;
       var arr = state[c.dataset.key];
       var i = arr.indexOf(c.dataset.value);

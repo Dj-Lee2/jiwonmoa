@@ -988,3 +988,24 @@ svg.has-pick .mark.picked .cell, svg.has-pick .mark.picked .bar { stroke: var(--
 .badge.change { white-space: nowrap; }
 /* 휴대폰은 인쇄 단추를 숨긴다(휴대폰 인쇄는 드묾, 단추 줄이 두 줄이 되지 않게) */
 @media (max-width: 639px) { .wide-only-print { display: none; } }
+
+/* ---------- 내 조건(나이·소득·성별) ---------- */
+.me-box { padding: 14px 14px 12px; border-radius: 20px; background: var(--surface-hover); }
+/* legend를 상자 안 첫 줄로(기본은 테두리 위에 걸린다) */
+.me-box > legend { float: left; width: 100%; margin-bottom: 4px; }
+.me-box > legend + * { clear: both; }
+.label-note { display: block; margin-top: 2px; font-weight: 400; font-size: .8125rem; color: var(--muted); }
+.me-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
+.me-k { flex: none; width: 2.6em; font-size: .875rem; font-weight: 700; color: var(--fg-strong); white-space: nowrap; }
+.me-field { display: flex; align-items: center; gap: 6px; font-size: .875rem; color: var(--fg-strong); min-width: 0; }
+.me-field.grow { flex: 1 1 auto; }
+.me-field input { width: 72px; min-height: 44px; padding: 0 12px; border: 0; border-radius: 30px; background: var(--canvas); box-shadow: inset 0 0 0 1px var(--line);
+  font-size: 1rem; color: var(--fg-strong); text-align: center; font-variant-numeric: tabular-nums; }
+.me-field input:focus-visible { outline: none; box-shadow: inset 0 0 0 2px var(--fg-strong); }
+.me-field em { font-style: normal; }
+.me-field select { flex: 1 1 auto; min-width: 0; min-height: 44px; padding-left: 16px; background-color: var(--canvas); box-shadow: inset 0 0 0 1px var(--line); font-size: .9375rem; }
+#meSex .chip.sm { flex: 0 0 auto; justify-content: center; min-width: 72px; align-items: center; padding: 0 16px; min-height: 40px; font-size: .9375rem; background: var(--canvas); box-shadow: inset 0 0 0 1px var(--line); }
+#meSex .chip.sm[aria-pressed="true"] { background: var(--dark); color: var(--on-dark); box-shadow: none; }
+#meClear { margin-left: auto; }
+.me-note { margin: 10px 0 0; font-size: .75rem; line-height: 1.5; color: var(--muted); }
+.me-note a { color: inherit; }

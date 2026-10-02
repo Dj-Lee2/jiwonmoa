@@ -157,6 +157,26 @@
       </button>
     </div>
 
+    <!-- 내 조건: 나이·소득·성별 조건이 있는 사업 중 맞지 않는 것을 뺀다(조건 없는 사업은 남김). 이 기기에 기억(app.js fitsMe) -->
+    <fieldset class="group me-box" id="meBox">
+      <legend class="label">내 조건 <span class="label-note">나이·소득 조건이 맞지 않는 사업을 빼요</span></legend>
+      <div class="me-row">
+        <label class="me-field"><span class="me-k">나이</span>
+          <input id="meAge" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="3" placeholder="예: 34" autocomplete="off"><em>세</em></label>
+      </div>
+      <div class="me-row">
+        <label class="me-field grow"><span class="me-k">소득</span>
+          <select id="meInc"><option value="">모름·상관없음</option><option value="50">중위소득 50% 이하</option><option value="75">중위소득 51~75%</option><option value="100">중위소득 76~100%</option><option value="200">중위소득 101~200%</option><option value="201">중위소득 200% 초과</option></select></label>
+      </div>
+      <div class="me-row" id="meSex" role="group" aria-label="성별">
+        <span class="me-k">성별</span>
+        <button type="button" class="chip sm" data-sx="f" aria-pressed="false">여성</button>
+        <button type="button" class="chip sm" data-sx="m" aria-pressed="false">남성</button>
+        <button type="button" class="linkish" id="meClear" hidden>지우기</button>
+      </div>
+      <p class="me-note"><i class="ph ph-lock-simple" aria-hidden="true"></i> 이 기기에만 기억돼요. 중위소득은 <a href="https://www.bokjiro.go.kr" target="_blank" rel="noopener">복지로</a>에서 모의계산할 수 있어요.</p>
+    </fieldset>
+
     <fieldset class="group">
       <legend class="label">누구를 위한 지원</legend>
       <div class="chips" id="aud"></div>

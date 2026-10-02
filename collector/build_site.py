@@ -90,6 +90,52 @@ def agri_topics(r):
     return found or [AGRI_TOPIC_OTHER]
 
 
+AGE_MAX = 999
+
+
+def age_range(text):
+    """조건 글 '19~34세'·'만 20세 이상'·'17세 이하'·'만 20세 미만'을 [시작, 끝] 나이로. 여러 구간이거나 못 읽으면 None.
+
+    화면의 '내 나이로 거르기'가 쓴다(끝이 없으면 999)."""
+    t = re.sub(r"만\s*(?=\d)", "", text or "").replace(" ", "")  # '만 20세'의 만(나이)만 지운다('미만'은 남김)
+    if not t or "," in t:
+        return None
+    m = re.fullmatch(r"(\d+)~(\d+)세", t)
+    if m:
+        return [int(m.group(1)), int(m.group(2))]
+    m = re.fullmatch(r"(\d+)세(이상|이하|미만|초과)", t)
+    if not m:
+        return None
+    n, w = int(m.group(1)), m.group(2)
+    return {"이상": [n, AGE_MAX], "이하": [0, n], "미만": [0, n - 1], "초과": [n + 1, AGE_MAX]}[w]
+
+
+def income_range(text):
+    """'중위소득 50% 이하'·'중위소득 75% 초과'·'중위소득 51~100%'를 [시작, 끝] 퍼센트로. 못 읽으면 None."""
+    t = (text or "").replace(" ", "")
+    m = re.fullmatch(r"중위소득(\d+)~(\d+)%", t)
+    if m:
+        return [int(m.group(1)), int(m.group(2))]
+    m = re.fullmatch(r"중위소득(\d+)%(이하|초과)", t)
+    if not m:
+        return None
+    n = int(m.group(1))
+    return [0, n] if m.group(2) == "이하" else [n + 1, AGE_MAX]
+
+
+def limits(conditions):
+    """조건 줄에서 화면 거르기용 값: na(나이 [시작, 끝]), ic(중위소득 [시작, 끝]%), sx(성별 f|m). 없으면 뺀다."""
+    out = {}
+    for c in conditions:
+        if c[0] == "나이":
+            out["na"] = age_range(c[1])
+        elif c[0] == "소득":
+            out["ic"] = income_range(c[1])
+        elif c[0] == "성별":
+            out["sx"] = {"여성": "f", "남성": "m"}.get(c[1])
+    return {k: v for k, v in out.items() if v}
+
+
 def compact(r):
     """화면에서 쓰는 짧은 키로 줄이고, 빈 값은 뺀다."""
     lim = LIMITS[r["kind"]]
@@ -120,6 +166,7 @@ def compact(r):
     out["fs"] = (r["first_seen"] or "")[:10]
     if out["a"]:
         out["tp"] = agri_topics(r)
+    out.update(limits(out["cd"]))  # 목록에 남는 짧은 거르기 값(조건 글 cd는 상세용으로 떼어 낸다)
     return {k: v for k, v in out.items() if v not in (None, "", [], 0)}
 
 
