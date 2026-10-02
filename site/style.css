@@ -636,6 +636,8 @@ select { appearance: none; background-image: linear-gradient(45deg, transparent 
 }
 @media (min-width: 900px) {
   .home-charts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  /* 카드 수가 홀수면 마지막 카드(곧 올라올 수 있는 공고 목록)가 한 줄을 다 쓴다 */
+  .home-charts > .viz-card:last-child:nth-child(odd) { grid-column: 1 / -1; }
 }
 @media (max-width: 639px) {
   .wrap { padding-left: 16px; padding-right: 16px; }

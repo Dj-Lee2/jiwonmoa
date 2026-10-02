@@ -56,6 +56,23 @@ AGRI_TOPICS = [
 ]
 AGRI_TOPIC_OTHER = "기타 농업"
 
+# 모집 공고 분야(홈 '공고는 무엇을 지원하나요?'와 모집 공고 탭 '분야' 조건): 출처마다 다른 분류를 한 목록으로 맞춘다.
+# 기업마당 지원분야(8개)와 K-Startup 지원사업 분류(11개)를 옮기고, 국고보조금은 분류가 사업 이름뿐이라 '기타'.
+NOTICE_FIELDS = ["자금·융자", "기술·R&D", "경영·컨설팅·교육", "판로·수출", "인력", "창업·사업화", "시설·공간", "행사·네트워크", "기타"]
+NOTICE_FIELD_OF = {
+    "bizinfo": {"금융": "자금·융자", "기술": "기술·R&D", "경영": "경영·컨설팅·교육", "수출": "판로·수출", "내수": "판로·수출",
+                "인력": "인력", "창업": "창업·사업화"},
+    "kstartup": {"융자ㆍ보증": "자금·융자", "정책자금": "자금·융자", "기술개발(R&D)": "기술·R&D",
+                 "멘토링ㆍ컨설팅ㆍ교육": "경영·컨설팅·교육", "창업교육": "경영·컨설팅·교육", "판로ㆍ해외진출": "판로·수출",
+                 "글로벌": "판로·수출", "인력": "인력", "사업화": "창업·사업화", "시설ㆍ공간ㆍ보육": "시설·공간",
+                 "행사ㆍ네트워크": "행사·네트워크"},
+}
+
+
+def notice_field(source, category):
+    """출처 분류 이름 → NOTICE_FIELDS 하나. 모르는 분류(새로 생긴 것 포함)는 '기타'."""
+    return NOTICE_FIELD_OF.get(source, {}).get((category or "").strip(), "기타")
+
 
 def trim(text, limit):
     text = (text or "").strip()
@@ -94,6 +111,8 @@ def compact(r):
         "pu": trim(r.get("purpose"), lim["purpose"]),
         "fl": json.loads(r.get("attachments") or "[]"),
     }
+    if r["kind"] == "공고":
+        out["nf"] = notice_field(r["source"], r["category"])
     if r["kind"] == "제도":
         out["fs"] = r["first_seen"]  # 상시 제도 '신규' 배지(공고는 게시일 pd로 판단)
     if out["a"]:
@@ -379,6 +398,7 @@ def main():
         "personas": PERSONAS,
         "supports": SUPPORTS,
         "serviceCats": service_cats(services),
+        "noticeFields": NOTICE_FIELDS,
         "counts": {"services": len(services)},
     }
     buckets = split_details(services, notices)

@@ -138,6 +138,24 @@ class DedupeTest(unittest.TestCase):
         self.assertEqual(build_site.dedupe_notices(items), items)
 
 
+class NoticeFieldTest(unittest.TestCase):
+    """출처별 분류 → 모집 공고 분야. 모르는 분류와 국고보조금은 '기타'."""
+
+    def test_mapping(self):
+        f = build_site.notice_field
+        self.assertEqual(f("bizinfo", "금융"), "자금·융자")
+        self.assertEqual(f("bizinfo", "내수"), "판로·수출")
+        self.assertEqual(f("kstartup", "멘토링ㆍ컨설팅ㆍ교육"), "경영·컨설팅·교육")
+        self.assertEqual(f("kstartup", "시설ㆍ공간ㆍ보육"), "시설·공간")
+        self.assertEqual(f("bojo", "지역급식관리지원센터 운영"), "기타")
+        self.assertEqual(f("bizinfo", "새 분류"), "기타")
+
+    def test_every_target_is_listed(self):
+        for table in build_site.NOTICE_FIELD_OF.values():
+            for v in table.values():
+                self.assertIn(v, build_site.NOTICE_FIELDS)
+
+
 class PersonaHistoryTest(unittest.TestCase):
     """대상별 올해 공고 집계: 끝난 공고(마감·목록에서 사라짐)를 따로 세고, 다른 해·제도·재게시는 빼거나 하나로."""
 

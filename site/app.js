@@ -241,7 +241,7 @@
       if (state.due) p.set("due", state.due);
       if (state.nw) p.set("new", "1");
       if (state.sp.length && state.tab === "services") p.set("sp", state.sp.join(","));
-      if (state.cg.length && state.tab === "services") p.set("cat", state.cg.join(","));
+      if (state.cg.length && state.tab !== "home") p.set("cat", state.cg.join(","));
       if (state.sort !== defaultSort(state)) p.set("sort", state.sort);
       if (state.id) p.set("id", state.id);
     }
@@ -264,6 +264,9 @@
   function inTab(item) {
     return statusOf(item) !== "마감";
   }
+
+  /* 분야: 상시 제도는 보조금24 서비스분야(cat), 모집 공고는 출처 분류를 맞춘 분야(nf, build_site.py NOTICE_FIELDS) */
+  function fieldOf(item) { return item.k === "s" ? item.cat : item.nf; }
 
   function haystack(item) {
     if (item._h === undefined) {
@@ -293,7 +296,7 @@
     if (state.nw && isNoticeView() && !postedWithin(item, RECENT_DAYS)) return false;
     if (state.sp.length && state.tab === "services" &&
         !(item.sp || []).some(function (x) { return state.sp.indexOf(x) >= 0; })) return false;
-    if (state.cg.length && state.tab === "services" && state.cg.indexOf(item.cat) < 0) return false;
+    if (state.cg.length && state.cg.indexOf(fieldOf(item)) < 0) return false;
     if (state.due && isNoticeView()) {
       var range = state.due.split("~");
       if (statusOf(item) !== "접수 중" || !item.e || item.e < range[0] || item.e > range[1]) return false;
@@ -479,7 +482,7 @@
     if (state.soon && isNoticeView()) add("7일 안에 마감", function () { state.soon = false; });
     if (state.due && isNoticeView()) add(dueLabel(state.due), function () { state.due = ""; });
     if (state.nw && isNoticeView()) add("최근 " + RECENT_DAYS + "일 새 공고", function () { state.nw = false; });
-    if (state.tab === "services") state.cg.forEach(function (x) { add(x + " 분야", function () { remove("cg", x); }); });
+    state.cg.forEach(function (x) { add(x + " 분야", function () { remove("cg", x); }); });
     if (state.tab === "services") state.sp.forEach(function (x) { add(x + " 지원", function () { remove("sp", x); }); });
     state.au.forEach(function (a) {
       add(a, function () { remove("au", a); if (a === "농업인") state.tp = []; });
@@ -540,11 +543,12 @@
     setupTopics(base);
     var isSvc = state.tab === "services";
     $("#fsSupport").hidden = !isSvc;
-    $("#fsCat").hidden = !isSvc;
+    var cgCount = countBy(base, fieldOf);
+    var fields = (isSvc ? META.serviceCats : META.noticeFields) || [];
+    chips($("#cats"), "cg", fields.filter(function (x) { return cgCount[x] || state.cg.indexOf(x) >= 0; })
+      .map(function (x) { return { value: x, label: x }; }), cgCount);
+    $("#fsCat").hidden = !$("#cats").children.length;
     if (isSvc) {
-      var cgCount = countBy(base, function (i) { return i.cat; });
-      chips($("#cats"), "cg", (META.serviceCats || []).filter(function (x) { return cgCount[x] || state.cg.indexOf(x) >= 0; })
-        .map(function (x) { return { value: x, label: x }; }), cgCount);
       var spCount = countBy(base, function (i) { return i.sp; });
       chips($("#support"), "sp", META.supports.filter(function (x) { return spCount[x] || state.sp.indexOf(x) >= 0; })
         .map(function (x) { return { value: x, label: x }; }), spCount);
@@ -587,13 +591,13 @@
   function activeFilterCount() {
     return (state.q ? 1 : 0) + (state.r ? 1 : 0) + state.au.length + state.st.length + state.src.length +
       (state.pv ? 0 : 1) + (agriSelected() ? state.tp.length : 0) + (state.soon ? 1 : 0) + (state.due ? 1 : 0) + (state.nw ? 1 : 0) +
-      (state.tab === "services" ? state.sp.length + state.cg.length : 0);
+      state.cg.length + (state.tab === "services" ? state.sp.length : 0);
   }
 
   /* 좁은 화면의 '조건' 버튼에는 조건 창 안에서 고른 것만 센다 */
   function updateFilterBadge() {
     var n = state.au.length + state.st.length + state.src.length + (state.pv ? 0 : 1) +
-      (agriSelected() ? state.tp.length : 0) + (state.tab === "services" ? state.sp.length + state.cg.length : 0);
+      (agriSelected() ? state.tp.length : 0) + state.cg.length + (state.tab === "services" ? state.sp.length : 0);
     var b = $("#filterBadge");
     b.hidden = !n;
     b.textContent = n;
@@ -1269,9 +1273,11 @@
     return root;
   }
 
-  /* 누적: 1월부터 쌓은 수. 작년은 회색 선과 옅은 면, 올해는 파랑 선과 옅은 면. 선 끝에 합계 */
+  /* 누적: 1월부터 쌓은 수. 작년은 회색 선과 옅은 면, 올해는 파랑 선과 옅은 면.
+   * 그림 칸은 달별 막대와 같은 폭(오른쪽 여백을 따로 두지 않는다). 합계 글은 선 끝 안쪽에 쓴다:
+   * 작년은 12월 점 위 왼쪽, 올해는 이번 달 점 아래 왼쪽(선이 오른쪽 위로 오르므로 아래 왼쪽은 비어 있다) */
   function monthCum(CA, CB, W, fitH) {
-    var f = monthFrame(W, fitH, Math.max(CA[11], CB[CB.length - 1] || 0), 64);
+    var f = monthFrame(W, fitH, Math.max(CA[11], CB[CB.length - 1] || 0));
     var root = svgEl("svg", { viewBox: "0 0 " + W + " " + f.H, role: "group", "class": "month-chart",
       "aria-label": "1월부터 쌓은 국고보조금 공고 수, 올해와 작년 비교 선 그래프" });
     monthAxes(root, f, CB.length - 1);
@@ -1288,10 +1294,10 @@
       root.append(svgEl("path", { d: "M" + PB.map(pt).join("L"), pathLength: 1, "class": "line thick", style: "stroke:" + SERIES_BLUE }));
       var e = PB[PB.length - 1];
       root.append(svgEl("circle", { cx: e[0], cy: e[1], r: 4.5, "class": "dot", style: "fill:" + SERIES_BLUE }));
-      root.append(svgText(e[0] + 8, e[1] + 4, "올해 " + fmtN(CB[CB.length - 1]), "cat halo", "start"));
-      root.append(svgText(e[0] + 8, e[1] + 20, "(" + CB.length + "월 진행 중)", "tick halo", "start"));
+      root.append(svgText(e[0] - 8, e[1] + 20, "올해 " + fmtN(CB[CB.length - 1]), "cat halo", "end"));
+      root.append(svgText(e[0] - 8, e[1] + 36, "(" + CB.length + "월 진행 중)", "tick halo", "end"));
     }
-    root.append(svgText(PA[11][0] + 8, PA[11][1] + 4, "작년 " + fmtN(CA[11]), "cat halo muted", "start"));
+    root.append(svgText(PA[11][0], PA[11][1] - 12, "작년 " + fmtN(CA[11]), "cat halo muted", "end"));
     for (var k = 0; k < 12; k++) (function (i) {
       var g = svgEl("g", { "class": "mark" });
       g.append(svgEl("rect", { x: f.left + f.band * i, y: 0, width: f.band, height: f.H, rx: 6, "class": "hit" }));
@@ -1620,6 +1626,7 @@
    * 가리키기가 서로 이어지고, 조각이나 목록을 누르면 그 조건의 상시 제도 목록으로 간다 */
   var svcKind = "cat";
   var DONUT_GREENS = ["#0c440c", "#155c15", "#1d721d", "#2b8a2b", "#3fa33f", "#62b862", "#8fd08f", "#addfad", "#c4e9c4", "#d9f2d9"]; // --green-900 → --green-100 사이를 10단계로
+  var DONUT_BLUES = ["#0d366b", "#164a8c", "#1c5cab", "#2a6fc6", "#3987e5", "#5c9ce9", "#86b6ef", "#a9cbf4", "#cde2fb"]; // --blue-900 → --blue-100
   var DONUT_OTHER = "var(--gray-300)";
 
   function donutArc(cx, cy, R, r, a0, a1) {
@@ -1629,78 +1636,100 @@
       "L" + p(r, a1) + "A" + r + " " + r + " 0 " + big + " 0 " + p(r, a0) + "Z";
   }
 
+  /* 도넛 + 목록(분야별 건수). data = [{key, n, color, what, pct}], total = 가운데 수, cap = 가운데 아랫말.
+   * 조각과 목록 줄의 가리키기가 서로 이어지고, 누르면 go(d). fitH를 주면(옆 카드가 길 때) 도넛과 목록 줄 간격을 키운다 */
+  function donutFigure(data, total, cap, listLabel, go, fitH) {
+    var sum = data.reduce(function (t, d) { return t + d.n; }, 0);
+    var W = chartWidth(), wide = W >= 460;
+    var S = wide ? Math.min(fitH ? 300 : 240, Math.round(W * (fitH ? 0.5 : 0.46)), fitH ? Math.floor(fitH) - 8 : 999)
+      : Math.min(230, W - 40);
+    var rowH = wide && fitH ? Math.max(32, Math.min(46, Math.floor((fitH - 4) / data.length))) : 32;
+    var c = S / 2, R = c - 4, r = R * 0.6;
+    var svg = svgEl("svg", { viewBox: "0 0 " + S + " " + S, "class": "donut", "aria-hidden": "true", style: "max-width:" + S + "px" });
+    var list = el("ol", { className: "donut-list", style: "--row:" + rowH + "px", "aria-label": listLabel });
+    var rows = [], slices = [];
+    function hover(i) {
+      rows.forEach(function (b, k) { b.classList.toggle("hover", k === i); });
+      slices.forEach(function (g, k) { g.classList.toggle("hover", k === i); });
+      svg.classList.toggle("has-hover", i >= 0);
+    }
+    var gapA = data.length > 1 ? 0.012 : 0, a = 0;
+    data.forEach(function (d, i) {
+      var span = sum ? d.n / sum * Math.PI * 2 : 0;
+      var a0 = a + gapA / 2, a1 = Math.max(a0 + 0.001, a + span - gapA / 2);
+      if (data.length === 1) { a0 = 0; a1 = Math.PI * 2 - 0.0001; }
+      a += span;
+      var g = svgEl("g", { "class": "slice", style: "--i:" + i });
+      g.append(svgEl("path", { d: donutArc(c, c, R, r, a0, a1), style: "fill:" + d.color }));
+      g.addEventListener("pointerenter", function () { hover(i); });
+      g.addEventListener("pointerleave", function () { hover(-1); });
+      g.addEventListener("click", function () { go(d); });
+      tipFor(g, fmtN(d.n) + "건", d.what + " · 전체의 " + d.pct + "%");
+      slices.push(g);
+      svg.append(g);
+
+      var b = el("button", { type: "button", "aria-label": d.what + " " + d.n + "건, 전체의 " + d.pct + "%. 누르면 목록으로 갑니다" },
+        el("i", { style: "background:" + d.color }),
+        el("span", { className: "name", text: d.key }),
+        el("span", { className: "cnt", text: fmtN(d.n) }),
+        el("span", { className: "pct", text: d.pct + "%" }));
+      b.addEventListener("click", function () { go(d); });
+      b.addEventListener("pointerenter", function () { hover(i); });
+      b.addEventListener("pointerleave", function () { hover(-1); });
+      b.addEventListener("focus", function () { hover(i); });
+      b.addEventListener("blur", function () { hover(-1); });
+      rows.push(b);
+      list.append(el("li", { style: "--i:" + i }, b));
+    });
+    svg.append(svgText(c, c - 4, fmtN(total), "donut-total"), svgText(c, c + 18, cap, "donut-cap"));
+    return el("div", { className: "donut-wrap" + (wide ? " wide" : "") }, svg, list);
+  }
+
+  /* 조각 색: 많은 순으로 진한 색부터, '기타'는 회색. 비율은 전체(total) 대비 */
+  function donutData(rows, palette, total, what) {
+    var shade = 0;
+    return rows.filter(function (d) { return d.n > 0; })
+      .sort(function (a, b) { return (a.key === "기타") - (b.key === "기타") || b.n - a.n; })
+      .map(function (d) {
+        d.color = d.key === "기타" ? DONUT_OTHER : palette[Math.min(palette.length - 1, shade++)];
+        d.what = what(d.key);
+        d.pct = total ? Math.round(d.n / total * 100) : 0;
+        return d;
+      });
+  }
+
   function supportCard() {
     var byCat = svcKind === "cat";
     var keys = byCat ? (META.serviceCats || []) : META.supports;
     var all = svcCount("all") || 0;
-    var data = keys.map(function (x) { return { key: x, n: svcCount((byCat ? "cat:" : "sp:") + x) || 0 }; })
-      .filter(function (d) { return d.n > 0; })
-      .sort(function (a, b) { return (a.key === "기타") - (b.key === "기타") || b.n - a.n; });
-    var sum = data.reduce(function (t, d) { return t + d.n; }, 0);
-    var shade = 0;
-    data.forEach(function (d) {
-      d.color = d.key === "기타" ? DONUT_OTHER : DONUT_GREENS[Math.min(DONUT_GREENS.length - 1, shade++)];
-      d.what = byCat ? d.key + " 분야 상시 제도" : d.key + " 방식으로 지원하는 상시 제도";
-      d.pct = all ? Math.round(d.n / all * 100) : 0;
-    });
+    var data = donutData(keys.map(function (x) { return { key: x, n: svcCount((byCat ? "cat:" : "sp:") + x) || 0 }; }),
+      DONUT_GREENS, all, function (k) { return byCat ? k + " 분야 상시 제도" : k + " 방식으로 지원하는 상시 제도"; });
     function go(d) { goTo(byCat ? { tab: "services", cg: [d.key] } : { tab: "services", sp: [d.key] }); }
-
-    // fitH를 주면(옆 카드가 길 때) 도넛과 목록 줄 간격을 키워 그 높이를 채운다(fillCard)
     function draw(fitH) {
-      var W = chartWidth(), wide = W >= 460;
-      var S = wide ? Math.min(fitH ? 300 : 240, Math.round(W * (fitH ? 0.5 : 0.46)), fitH ? Math.floor(fitH) - 8 : 999)
-        : Math.min(230, W - 40);
-      var rowH = wide && fitH ? Math.max(32, Math.min(46, Math.floor((fitH - 4) / data.length))) : 32;
-      var c = S / 2, R = c - 4, r = R * 0.6;
-      var svg = svgEl("svg", { viewBox: "0 0 " + S + " " + S, "class": "donut", "aria-hidden": "true", style: "max-width:" + S + "px" });
-      var list = el("ol", { className: "donut-list", style: "--row:" + rowH + "px",
-        "aria-label": byCat ? "분야별 상시 제도 수" : "지원 방식별 상시 제도 수" });
-      var rows = [], slices = [];
-      function hover(i) {
-        rows.forEach(function (b, k) { b.classList.toggle("hover", k === i); });
-        slices.forEach(function (g, k) { g.classList.toggle("hover", k === i); });
-        svg.classList.toggle("has-hover", i >= 0);
-      }
-      var gapA = data.length > 1 ? 0.012 : 0, a = 0;
-      data.forEach(function (d, i) {
-        var span = sum ? d.n / sum * Math.PI * 2 : 0;
-        var a0 = a + gapA / 2, a1 = Math.max(a0 + 0.001, a + span - gapA / 2);
-        if (data.length === 1) { a0 = 0; a1 = Math.PI * 2 - 0.0001; }
-        a += span;
-        var g = svgEl("g", { "class": "slice", style: "--i:" + i });
-        g.append(svgEl("path", { d: donutArc(c, c, R, r, a0, a1), style: "fill:" + d.color }));
-        g.addEventListener("pointerenter", function () { hover(i); });
-        g.addEventListener("pointerleave", function () { hover(-1); });
-        g.addEventListener("click", function () { go(d); });
-        tipFor(g, fmtN(d.n) + "건", d.what + " · 전체의 " + d.pct + "%");
-        slices.push(g);
-        svg.append(g);
-
-        var b = el("button", { type: "button", "aria-label": d.what + " " + d.n + "건, 전체의 " + d.pct + "%. 누르면 목록으로 갑니다" },
-          el("i", { style: "background:" + d.color }),
-          el("span", { className: "name", text: d.key }),
-          el("span", { className: "cnt", text: fmtN(d.n) }),
-          el("span", { className: "pct", text: d.pct + "%" }));
-        b.addEventListener("click", function () { go(d); });
-        b.addEventListener("pointerenter", function () { hover(i); });
-        b.addEventListener("pointerleave", function () { hover(-1); });
-        b.addEventListener("focus", function () { hover(i); });
-        b.addEventListener("blur", function () { hover(-1); });
-        rows.push(b);
-        list.append(el("li", { style: "--i:" + i }, b));
-      });
-      svg.append(svgText(c, c - 4, fmtN(all), "donut-total"), svgText(c, c + 18, "상시 제도", "donut-cap"));
-
-      return el("div", { className: "donut-wrap" + (wide ? " wide" : "") }, svg, list);
+      return donutFigure(data, all, "상시 제도", byCat ? "분야별 상시 제도 수" : "지원 방식별 상시 제도 수", go, fitH);
     }
-
-    var card = vizCard(byCat ? "무엇을 지원하나요?" : "어떤 방식으로 지원하나요?",
+    var card = vizCard(byCat ? "제도는 무엇을 지원하나요?" : "제도는 어떤 방식으로 지원하나요?",
       byCat ? "상시 제도 기준" : "상시 제도 기준 · 한 제도가 여러 방식이면 겹쳐 셈", draw(), null,
       segToggle("svc", "상시 제도 나누는 기준", [{ value: "cat", label: "분야" }, { value: "sp", label: "지원 방식" }], svcKind,
         function (v) { svcKind = v; }));
     card._redraw = draw;
     return card;
   }
+
+  /* 공고는 무엇을 지원하나요?: 지금 신청할 수 있는 모집 공고(홈에서 고른 지역 적용)의 분야(nf) 도넛, 파랑.
+   * 분야는 기업마당 지원분야·K-Startup 분류를 맞춘 것(build_site.py NOTICE_FIELDS), 국고보조금은 '기타'.
+   * 조각이나 목록을 누르면 그 분야의 모집 공고 목록으로 간다 */
+  function noticeFieldCard(live) {
+    var n = countBy(live, function (i) { return i.nf; });
+    var data = donutData((META.noticeFields || []).map(function (x) { return { key: x, n: n[x] || 0 }; }),
+      DONUT_BLUES, live.length, function (k) { return k + " 분야 모집 공고"; });
+    function go(d) { goTo({ tab: "open", cg: [d.key] }); }
+    function draw(fitH) { return donutFigure(data, live.length, "모집 공고", "분야별 모집 공고 수", go, fitH); }
+    var card = vizCard("공고는 무엇을 지원하나요?", "모집 공고 기준", draw(), null);
+    card._redraw = draw;
+    return card;
+  }
+
 
   /* 곧 올라올 수 있는 공고: 작년 이맘때 접수를 시작한 국고보조금 공고(META.upcoming, build_site.py가 사업별로 묶음) */
   var upcomingShown = HOME_FIRST;
@@ -1759,12 +1788,14 @@
     months.querySelector(".viz-body").classList.add("top"); // 범례를 제목 바로 아래에, 남는 높이는 그래프가 채운다
     var persona = personaCard(live);
     persona.querySelector(".viz-body").classList.add("top"); // 범례를 제목 바로 아래에
+    var fields = noticeFieldCard(live);
+    fields.querySelector(".viz-body").classList.add("top");
     var upcoming = upcomingCard(), region = regionCard();
-    var cards = [persona, region, due, months, support, upcoming];
-    ["persona", "map", "due", "months", "svc", "upcoming"].forEach(function (k, i) { cards[i].dataset.key = k; });
+    var cards = [persona, region, due, months, fields, support, upcoming];
+    ["persona", "map", "due", "months", "nf", "svc", "upcoming"].forEach(function (k, i) { cards[i].dataset.key = k; });
     $("#homeCharts").replaceChildren.apply($("#homeCharts"), cards);
     fitListHeight(upcoming.querySelector(".results"), upcoming._expandable, WIDE_CHARTS); // 막대 채우기보다 먼저
-    [persona, support, months].forEach(fillCard);
+    [persona, fields, support, months].forEach(fillCard);
     setupMotion(cards);
     placeSegGliders(); // 글꼴이 온 뒤 그래프만 다시 그릴 때도 전환 단추 알약을 맞춘다
   }
