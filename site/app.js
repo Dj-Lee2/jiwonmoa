@@ -1235,7 +1235,7 @@
   }
   function bindFooter() {
     var d = $("#infoDialog");
-    document.querySelectorAll(".foot-menu-btn").forEach(function (b) {
+    document.querySelectorAll(".foot-menu-btn, .sn-more").forEach(function (b) {
       b.addEventListener("click", function () { openInfo(b.dataset.info, b); });
     });
     $("#infoClose").addEventListener("click", function () { d.close ? d.close() : d.removeAttribute("open"); });

@@ -1077,3 +1077,18 @@ body.peek-lock .to-top, body.detail-open .to-top, body.filters-open .to-top, bod
 @media (prefers-reduced-motion: no-preference) {
   .to-top:not([hidden]) { animation: fade-in .2s ease-out; }
 }
+
+/* ---------- 맨 위 안내 띠(정부 공식 사이트가 아님을 밝힘) ---------- */
+.site-note { background: var(--surface); color: var(--fg); font-size: .8125rem; line-height: 1.4; }
+.site-note-inner { display: flex; align-items: center; gap: 6px; min-height: 34px; }
+.site-note .ph { flex: none; font-size: .9375rem; color: var(--muted); }
+.site-note p { margin: 0; min-width: 0; }
+.site-note .sn-short { display: none; }
+.sn-more { flex: none; margin-left: 4px; min-height: 34px; padding: 0 2px; border: 0; background: none; font: inherit; font-weight: 700;
+  color: var(--fg-strong); text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
+@media (max-width: 639px) {
+  .site-note .sn-long { display: none; }
+  .site-note .sn-short { display: inline; }
+  .site-note-inner { padding-left: 16px; padding-right: 16px; }
+}
+@media print { .site-note { display: none; } }
