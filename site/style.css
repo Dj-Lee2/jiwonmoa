@@ -483,6 +483,32 @@ select { appearance: none; background-image: linear-gradient(45deg, transparent 
   .viz-card:is(.play, .replay) .duecal .day { animation: fade-in .4s ease-out both; animation-delay: calc(var(--d0, 0ms) + var(--i, 0) * 6ms); }
 }
 
+/* 상시 제도 도넛(app.js supportCard): 조각 사이 흰 틈, 가리키면 나머지가 옅어진다. 목록과 가리키기가 이어진다 */
+.donut-wrap { display: grid; grid-template-columns: minmax(0, 1fr); justify-items: center; gap: 16px; width: 100%; align-items: center; }
+.donut-wrap.wide { grid-template-columns: auto minmax(0, 1fr); gap: 24px; }
+.viz-body svg.donut { width: 100%; height: auto; max-height: none; overflow: visible; }
+.donut .slice { cursor: pointer; }
+.donut .slice path { transition: opacity .15s; }
+.donut.has-hover .slice:not(.hover) path { opacity: .3; }
+.donut .donut-total { fill: var(--fg-strong); font-size: 22px; font-weight: 800; font-variant-numeric: tabular-nums; }
+.donut .donut-cap { fill: var(--muted); font-size: 12px; font-weight: 600; }
+.donut-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 1px; width: 100%; }
+.donut-list button {
+  display: flex; align-items: center; gap: 8px; width: 100%; min-height: var(--row, 32px); border: 0; background: none;
+  padding: 4px 10px; border-radius: 10px; cursor: pointer; font-size: .875rem; color: var(--fg-strong); text-align: left;
+}
+.donut-list button:hover, .donut-list button.hover { background: var(--surface-hover); }
+.donut-list i { width: 12px; height: 12px; border-radius: 3px; flex: none; }
+.donut-list .name { flex: 1; min-width: 0; }
+.donut-list .cnt { font-weight: 700; font-variant-numeric: tabular-nums; }
+.donut-list .pct { width: 3.2em; text-align: right; color: var(--muted); font-size: .8125rem; font-variant-numeric: tabular-nums; }
+@media (prefers-reduced-motion: no-preference) {
+  .viz-card:is(.play, .replay) .donut .slice { animation: fade-in .45s ease-out both; animation-delay: calc(var(--d0, 0ms) + var(--i, 0) * 50ms); }
+  .viz-card:is(.play, .replay) svg.donut { animation: donut-spin .7s cubic-bezier(.2, .7, .2, 1) both; animation-delay: var(--d0, 0ms); }
+  .viz-card:is(.play, .replay) .donut-list li { animation: fade-in .35s ease-out both; animation-delay: calc(var(--d0, 0ms) + var(--i, 0) * 40ms + 150ms); }
+}
+@keyframes donut-spin { from { rotate: -40deg; scale: .9; } to { rotate: 0deg; scale: 1; } }
+
 /* 지역 지도(svg-maps South Korea, CC BY 4.0): 지역 사이 흰 선 1px, 고른 지역은 굵은 테두리.
  * 선 굵기는 확대·축소와 관계없이 같게(vector-effect) */
 .kmap-wrap { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px 24px; width: 100%; align-items: center; }
@@ -640,7 +666,7 @@ input[type="search"]:focus-visible, select:focus-visible { outline-offset: 0; bo
 }
 
 /* 색 바뀜: 150ms, 바뀌는 속성만 */
-.btn, .chip, .toggle, .iconbtn, .tabs [role="tab"], .seg-mini button, .stat, .row, .kmap-list button, .foot-links a, .linkish, .more-link, .file {
+.btn, .chip, .toggle, .iconbtn, .tabs [role="tab"], .seg-mini button, .stat, .row, .kmap-list button, .donut-list button, .foot-links a, .linkish, .more-link, .file {
   transition-property: background-color, color, box-shadow, scale;
   transition-duration: 150ms;
   transition-timing-function: var(--ease-out);
@@ -660,7 +686,7 @@ input[type="search"]:focus-visible, select:focus-visible { outline-offset: 0; bo
 @media (prefers-reduced-motion: no-preference) {
   /* 누름: 모든 단추·칩·탭은 .96 */
   .btn:active, .chip:active, .toggle:active, .iconbtn:active, .tabs [role="tab"]:active,
-  .seg-mini button:active, .foot-links a:active, .kmap-list button:active { scale: 0.96; }
+  .seg-mini button:active, .foot-links a:active, .kmap-list button:active, .donut-list button:active { scale: 0.96; }
   /* 큰 면(숫자 타일)은 같은 .96이면 과해 보여 조금만 */
   .stat:active { scale: 0.98; }
 

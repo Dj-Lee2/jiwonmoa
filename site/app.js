@@ -1570,23 +1570,88 @@
     }, 200);
   });
 
-  /* 상시 제도 분야(무엇을)·지원 방식(어떻게) 가로 막대. 지역별 건수는 META.svc에 미리 셈("cat:", "sp:") */
+  /* 상시 제도 분야(무엇을)·지원 방식(어떻게) 도넛. 지역별 건수는 META.svc에 미리 셈("cat:", "sp:", "all").
+   * 조각 크기 = 그 분야(방식)의 제도 수. 한 제도가 여러 지원 방식일 수 있어 방식별 합은 가운데 전체보다 크다.
+   * 색은 한 계열(초록) 진하기로, 큰 조각일수록 진하다. '기타'는 회색. 오른쪽(좁으면 아래) 목록과
+   * 가리키기가 서로 이어지고, 조각이나 목록을 누르면 그 조건의 상시 제도 목록으로 간다 */
   var svcKind = "cat";
+  var DONUT_GREENS = ["#0c440c", "#155c15", "#1d721d", "#2b8a2b", "#3fa33f", "#62b862", "#8fd08f", "#addfad", "#c4e9c4", "#d9f2d9"];
+  var DONUT_OTHER = "#b8b8b8";
+
+  function donutArc(cx, cy, R, r, a0, a1) {
+    function p(rad, a) { return (cx + rad * Math.sin(a)).toFixed(2) + " " + (cy - rad * Math.cos(a)).toFixed(2); }
+    var big = a1 - a0 > Math.PI ? 1 : 0;
+    return "M" + p(R, a0) + "A" + R + " " + R + " 0 " + big + " 1 " + p(R, a1) +
+      "L" + p(r, a1) + "A" + r + " " + r + " 0 " + big + " 0 " + p(r, a0) + "Z";
+  }
+
   function supportCard() {
     var byCat = svcKind === "cat";
     var keys = byCat ? (META.serviceCats || []) : META.supports;
+    var all = svcCount("all") || 0;
     var data = keys.map(function (x) { return { key: x, n: svcCount((byCat ? "cat:" : "sp:") + x) || 0 }; })
-      .sort(function (a, b) { return (a.key === "기타") - (b.key === "기타") || b.n - a.n; })
-      .map(function (d) {
-        var what = byCat ? d.key + " 분야 상시 제도" : d.key + " 방식으로 지원하는 상시 제도";
-        return { n: d.n, label: d.key, aria: what + " " + d.n + "건" + (d.n ? ". 누르면 목록으로 갑니다" : ""),
-          tipValue: fmtN(d.n) + "건", tipLabel: what,
-          onPick: d.n ? function () { goTo(byCat ? { tab: "services", cg: [d.key] } : { tab: "services", sp: [d.key] }); } : null };
-      });
+      .filter(function (d) { return d.n > 0; })
+      .sort(function (a, b) { return (a.key === "기타") - (b.key === "기타") || b.n - a.n; });
+    var sum = data.reduce(function (t, d) { return t + d.n; }, 0);
+    var shade = 0;
+    data.forEach(function (d) {
+      d.color = d.key === "기타" ? DONUT_OTHER : DONUT_GREENS[Math.min(DONUT_GREENS.length - 1, shade++)];
+      d.what = byCat ? d.key + " 분야 상시 제도" : d.key + " 방식으로 지원하는 상시 제도";
+      d.pct = all ? Math.round(d.n / all * 100) : 0;
+    });
+    function go(d) { goTo(byCat ? { tab: "services", cg: [d.key] } : { tab: "services", sp: [d.key] }); }
+
+    // fitH를 주면(옆 카드가 길 때) 도넛과 목록 줄 간격을 키워 그 높이를 채운다(fillCard)
     function draw(fitH) {
-      return hbars(data, (byCat ? "분야별" : "지원 방식별") + " 상시 제도 가로 막대 그래프", chartWidth(), SERIES_GREEN, fitH);
+      var W = chartWidth(), wide = W >= 460;
+      var S = wide ? Math.min(fitH ? 300 : 240, Math.round(W * (fitH ? 0.5 : 0.46)), fitH ? Math.floor(fitH) - 8 : 999)
+        : Math.min(230, W - 40);
+      var rowH = wide && fitH ? Math.max(32, Math.min(46, Math.floor((fitH - 4) / data.length))) : 32;
+      var c = S / 2, R = c - 4, r = R * 0.6;
+      var svg = svgEl("svg", { viewBox: "0 0 " + S + " " + S, "class": "donut", "aria-hidden": "true", style: "max-width:" + S + "px" });
+      var list = el("ol", { className: "donut-list", style: "--row:" + rowH + "px",
+        "aria-label": byCat ? "분야별 상시 제도 수" : "지원 방식별 상시 제도 수" });
+      var rows = [], slices = [];
+      function hover(i) {
+        rows.forEach(function (b, k) { b.classList.toggle("hover", k === i); });
+        slices.forEach(function (g, k) { g.classList.toggle("hover", k === i); });
+        svg.classList.toggle("has-hover", i >= 0);
+      }
+      var gapA = data.length > 1 ? 0.012 : 0, a = 0;
+      data.forEach(function (d, i) {
+        var span = sum ? d.n / sum * Math.PI * 2 : 0;
+        var a0 = a + gapA / 2, a1 = Math.max(a0 + 0.001, a + span - gapA / 2);
+        if (data.length === 1) { a0 = 0; a1 = Math.PI * 2 - 0.0001; }
+        a += span;
+        var g = svgEl("g", { "class": "slice", style: "--i:" + i });
+        g.append(svgEl("path", { d: donutArc(c, c, R, r, a0, a1), style: "fill:" + d.color }));
+        g.addEventListener("pointerenter", function () { hover(i); });
+        g.addEventListener("pointerleave", function () { hover(-1); });
+        g.addEventListener("click", function () { go(d); });
+        tipFor(g, fmtN(d.n) + "건", d.what + " · 전체의 " + d.pct + "%");
+        slices.push(g);
+        svg.append(g);
+
+        var b = el("button", { type: "button", "aria-label": d.what + " " + d.n + "건, 전체의 " + d.pct + "%. 누르면 목록으로 갑니다" },
+          el("i", { style: "background:" + d.color }),
+          el("span", { className: "name", text: d.key }),
+          el("span", { className: "cnt", text: fmtN(d.n) }),
+          el("span", { className: "pct", text: d.pct + "%" }));
+        b.addEventListener("click", function () { go(d); });
+        b.addEventListener("pointerenter", function () { hover(i); });
+        b.addEventListener("pointerleave", function () { hover(-1); });
+        b.addEventListener("focus", function () { hover(i); });
+        b.addEventListener("blur", function () { hover(-1); });
+        rows.push(b);
+        list.append(el("li", { style: "--i:" + i }, b));
+      });
+      svg.append(svgText(c, c - 4, fmtN(all), "donut-total"), svgText(c, c + 18, "상시 제도", "donut-cap"));
+
+      return el("div", { className: "donut-wrap" + (wide ? " wide" : "") }, svg, list);
     }
-    var card = vizCard(byCat ? "무엇을 지원하나요?" : "어떤 방식으로 지원하나요?", "상시 제도 기준", draw(), null,
+
+    var card = vizCard(byCat ? "무엇을 지원하나요?" : "어떤 방식으로 지원하나요?",
+      byCat ? "상시 제도 기준" : "상시 제도 기준 · 한 제도가 여러 방식이면 겹쳐 셈", draw(), null,
       segToggle("svc", "상시 제도 나누는 기준", [{ value: "cat", label: "분야" }, { value: "sp", label: "지원 방식" }], svcKind,
         function (v) { svcKind = v; }));
     card._redraw = draw;
@@ -1698,7 +1763,7 @@
   }
 
   function fillCard(card) {
-    var body = card.querySelector(".viz-body"), svg = body.querySelector("svg.hb, svg.line-chart");
+    var body = card.querySelector(".viz-body"), svg = body.querySelector("svg.hb, svg.line-chart, .donut-wrap");
     if (!svg || !card._redraw) return;
     var used = (svg.closest(".viz-fig") || svg).getBoundingClientRect().height;
     var free = body.clientHeight - (parseFloat(getComputedStyle(body).paddingTop) || 0) - used;
