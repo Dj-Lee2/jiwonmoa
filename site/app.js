@@ -226,6 +226,37 @@
     if (e.key === FAV_KEY) { favs = loadFavs(); favChanged(); }
   });
 
+  /* 담은 뒤 바뀐 접수 기간: 관심·내 달력에 담을 때 적어 둔 시작일(s)·마감일(e)과 지금 자료를 견준다.
+   * 돌려주는 것 { text: 배지 글, tone, note: 상세에 보일 문장 } 또는 null. '확인'을 누르면 적어 둔 날을 지금 날로 바꾼다 */
+  function changeOf(id) {
+    var now = byId.get(id);
+    var snap = favs.filter(function (f) { return f.id === id; })[0] || cals.filter(function (f) { return f.id === id; })[0];
+    if (!now || !snap || now.k === "s") return null;
+    if (snap.e && now.e && snap.e !== now.e) {
+      var later = now.e > snap.e;
+      return { text: (later ? "마감 연장 " : "마감 당겨짐 ") + fmtDate(now.e), tone: later ? "new" : "urgent",
+        note: "담은 뒤 마감일이 " + (later ? "늦춰졌어요" : "앞당겨졌어요") + ": " + fmtDate(snap.e) + " → " + fmtDate(now.e) };
+    }
+    if (!snap.e && now.e) return { text: "마감일 생김 " + fmtDate(now.e), tone: "soon", note: "담은 뒤 마감일이 정해졌어요: " + fmtDate(now.e) };
+    if (snap.s && now.s && snap.s !== now.s) {
+      return { text: "시작일 바뀜 " + fmtDate(now.s), tone: "soft", note: "담은 뒤 접수 시작일이 바뀌었어요: " + fmtDate(snap.s) + " → " + fmtDate(now.s) };
+    }
+    return null;
+  }
+  function ackChange(id) {
+    var now = byId.get(id);
+    if (!now) return;
+    [favs, cals].forEach(function (list) {
+      list.forEach(function (f) { if (f.id === id) { f.e = now.e; f.s = now.s; f.py = now.py; } });
+    });
+    saveFavs();
+    try { localStorage.setItem(CAL_KEY, JSON.stringify(cals)); } catch (e) { /* 저장 못 해도 화면은 그대로 */ }
+  }
+  function markChange(btn, id) {
+    var ch = changeOf(id), side = btn.querySelector(".row-side");
+    if (ch && side) side.prepend(badge(ch.text, ch.tone + " change"));
+  }
+
   /* 홈 맨 위 칸: 마감 있는 것은 가까운 순, 나머지는 담은 순. 마감이 7일 안이면 머리에 배지 */
   function renderFavs() {
     var block = $("#homeFavBlock");
@@ -243,12 +274,14 @@
     var headStar = $("#homeFavTitle .ph-star");
     if (headStar) headStar.replaceWith(starIcon(true));
     var flag = $("#homeFavFlag");
-    flag.hidden = !soonN;
-    flag.className = "badge " + (urgent ? "urgent" : "soon");
-    flag.textContent = "7일 안 마감 " + soonN + "건";
+    var changedN = items.filter(function (it) { return changeOf(it.id); }).length;
+    flag.hidden = !soonN && !changedN;
+    flag.className = "badge " + (urgent ? "urgent" : soonN ? "soon" : "new");
+    flag.textContent = [soonN ? "7일 안 마감 " + soonN + "건" : "", changedN ? "기간 바뀜 " + changedN + "건" : ""].filter(Boolean).join(" · ");
     var ul = $("#homeFav");
     ul.replaceChildren.apply(ul, order.map(function (o) {
       var li = row(o.it, byId.has(o.it.id) || o.it.k === "s" ? null : "목록에서 내려감", true);
+      markChange(li.querySelector(".row"), o.it.id);
       var drop = el("button", { type: "button", className: "fav-drop", "aria-label": o.it.t + " 관심에서 빼기", title: "관심에서 빼기" }, icon("x"));
       drop.addEventListener("click", function () { toggleFav(o.it); });
       li.classList.add("fav-li");
@@ -821,6 +854,38 @@
     return el("section", null, el("h3", { text: title }), el("p", { className: "pre", text: text }));
   }
 
+  /* 문의: 전화번호는 누르면 바로 걸리게(tel:), 메일 주소는 메일 쓰기(mailto:). 보조금24는 '기관/번호||기관/번호' 꼴이라
+   * 한 줄에 한 곳씩 나눈다. 1350·129 같은 짧은 대표번호는 '/' 바로 뒤에 혼자 있을 때만 번호로 본다(다른 숫자와 헷갈리지 않게) */
+  var PHONE_RE = /(?:0\d{1,2}[-.) ]?\d{3,4}[-. ]?\d{4}|1[5-9]\d{2}-?\d{4})|[\w.+-]+@[\w-]+(?:\.[\w-]+)+/g;
+  function contactLine(text) {
+    var p = el("p", { className: "contact-line" }), last = 0, m;
+    // 보조금24의 '기관/번호' 빗금은 사이 점으로(주소의 // 는 그대로)
+    text = text.replace(/([^:\/])\s*\/\s*(?!\/)/g, "$1 · ").replace(/\s+·\s*$/, "");
+    var short = /^(.*· )\s*(1\d{2,3})\s*$/.exec(text);
+    if (short) {
+      p.append(short[1], el("a", { className: "tel", href: "tel:" + short[2] }, icon("phone"), short[2]));
+      return p;
+    }
+    PHONE_RE.lastIndex = 0;
+    while ((m = PHONE_RE.exec(text))) {
+      var before = text.charAt(m.index - 1), after = text.charAt(m.index + m[0].length);
+      if (/\d/.test(before) || /\d/.test(after)) continue; // 더 긴 숫자의 일부(날짜·금액 등)는 건너뛴다
+      p.append(text.slice(last, m.index));
+      if (m[0].indexOf("@") > 0) p.append(el("a", { className: "tel", href: "mailto:" + m[0] }, icon("envelope-simple"), m[0]));
+      else p.append(el("a", { className: "tel", href: "tel:" + m[0].replace(/[^\d]/g, "") }, icon("phone"), m[0]));
+      last = m.index + m[0].length;
+    }
+    p.append(text.slice(last));
+    return p;
+  }
+  function contactSection(text) {
+    if (!text) return null;
+    var box = el("section", { className: "contact" }, el("h3", { text: "문의" }));
+    String(text).split(/\|\||\n/).map(function (t) { return t.trim(); }).filter(Boolean)
+      .forEach(function (t) { box.append(contactLine(t)); });
+    return box;
+  }
+
   // 기업마당 공고문·첨부 파일 [이름, 주소, 공고문이면 1]. 파일은 출처 서버에서 바로 내려받는다
   var FILE_ICON = { pdf: "file-pdf", zip: "file-zip", hwp: "file-text", hwpx: "file-text", doc: "file-doc", docx: "file-doc",
     odt: "file-doc", xls: "file-xls", xlsx: "file-xls", png: "file-image", jpg: "file-image", jpeg: "file-image" };
@@ -945,7 +1010,19 @@
     }
     var shareBtn = el("button", { type: "button", className: "btn gray tool" }, icon("share-network"), "공유");
     shareBtn.addEventListener("click", function () { shareItem(item); });
-    var tools = el("div", { className: "actions tools" }, favBtn, calBtn, shareBtn);
+    var printBtn = el("button", { type: "button", className: "btn gray tool wide-only-print" }, icon("printer"), "인쇄");
+    printBtn.addEventListener("click", function () { window.print(); });
+    var tools = el("div", { className: "actions tools" }, favBtn, calBtn, shareBtn, printBtn);
+    var ch = changeOf(item.id), changeNote = null;
+    if (ch) {
+      var ok = el("button", { type: "button", className: "btn gray" }, "확인했어요");
+      changeNote = el("div", { className: "change-note", role: "status" }, icon("bell-ringing"), el("span", { text: ch.note }), ok);
+      ok.addEventListener("click", function () {
+        ackChange(item.id);
+        changeNote.remove();
+        if (state.tab === "home") renderHome();
+      });
+    }
 
     var head = el("div", { className: "row-tags" }, statusBadge(item));
     head.append.apply(head, Array.prototype.slice.call(tagsOf(item).childNodes));
@@ -954,6 +1031,7 @@
     var inner = el("div", { className: "detail-inner" },
       head,
       el("h2", { id: "detailTitle", tabindex: "-1", text: item.t }),
+      changeNote,
       facts,
       actions,
       tools,
@@ -964,12 +1042,64 @@
       section("신청 방법", item.how));
     // 출처가 따로 준 글(선정 기준·구비 서류·신청 제외 대상 등). [제목, 글]
     (item.dt || []).forEach(function (d) { inner.append(section(d[0], d[1]) || ""); });
-    inner.append(fileSection(item.fl) || "", section("문의", item.cn) || "",
-      el("p", { className: "caution", text: lastRun(item.src) + " 수집, 원문 일부 발췌. 신청 전에 원문을 확인하세요." }));
+    inner.append(fileSection(item.fl) || "", contactSection(item.cn) || "",
+      el("p", { className: "caution", text: lastRun(item.src) + " 수집, 원문 일부 발췌. 신청 전에 원문을 확인하세요." }),
+      similarSection(item) || "",
+      // 인쇄할 때만 보이는 꼬리: 어디서 뽑았는지와 다시 볼 주소
+      el("p", { className: "print-only print-foot", text: "지원모아 " + shareUrl(item) + " · " + fmtDate(today, true) + " 인쇄" }));
     pane.replaceChildren(detailBar(), inner);
     pane.scrollTop = 0;
     document.title = item.t + " | " + SITE_TITLE;
     openOverlay();
+  }
+
+  /* 비슷한 지원사업 3건: 같은 종류(공고/제도)에서 분야 같음 +3, 겹치는 대상마다 +2, 같은 지방 지역 +3(전국은 +1),
+   * 제도는 지원 방식 겹치면 +1, 공고는 날짜 있는 접수 중·예정이면 +1(기간 확인 필요는 -1).
+   * 지금 신청할 수 있는 것만, 제목이 같은 것(다른 지역 재게시 등)은 하나만. 같은 점수면 조회수 */
+  function similarItems(item, n) {
+    var pool = item.k === "s" ? (services || []) : NOTICES;
+    var pp = item.pp || [], rg = item.rg || [], sp = item.sp || [];
+    var local = rg.filter(function (r) { return r !== "전국"; });
+    var seen = {};
+    seen[item.t] = 1;
+    var scored = [];
+    pool.forEach(function (o) {
+      if (o.id === item.id || statusOf(o) === "마감") return;
+      var sc = 0;
+      if (fieldOf(o) && fieldOf(o) === fieldOf(item)) sc += 3;
+      (o.pp || []).forEach(function (p) { if (pp.indexOf(p) >= 0) sc += 2; });
+      var org = o.rg || [];
+      if (local.length && org.some(function (r) { return local.indexOf(r) >= 0; })) sc += 3;
+      else if (org[0] === "전국") sc += 1;
+      if (item.k === "s") (o.sp || []).forEach(function (x) { if (sp.indexOf(x) >= 0) sc += 1; });
+      else {
+        var st = statusOf(o);
+        if ((st === "접수 중" || st === "접수 예정") && o.e) sc += 1;
+        else if (st === "확인 필요") sc -= 1;
+      }
+      if (sc >= 5) scored.push({ o: o, sc: sc });
+    });
+    scored.sort(function (a, b) { return b.sc - a.sc || (b.o.vw || 0) - (a.o.vw || 0) || a.o.t.localeCompare(b.o.t, "ko"); });
+    var out = [];
+    for (var i = 0; i < scored.length && out.length < (n || 3); i++) {
+      var key = scored[i].o.t.replace(/\s+/g, "");
+      if (seen[key] || seen[scored[i].o.t]) continue;
+      seen[key] = 1;
+      out.push(scored[i].o);
+    }
+    return out;
+  }
+  function similarSection(item) {
+    var items = similarItems(item, 3);
+    if (!items.length) return null;
+    var ul = el("ul", { className: "results similar" });
+    items.forEach(function (o) { ul.append(row(o, null, true)); });
+    ul.addEventListener("click", function (e) {
+      var b = e.target.closest(".row[data-id]");
+      if (b) { lastRowFocus = null; state.id = b.dataset.id; writeHash(true); renderDetail(); }
+    });
+    return el("section", { className: "similar-box" },
+      el("h3", { text: item.k === "s" ? "비슷한 상시 제도" : "비슷한 모집 공고" }), ul);
   }
 
   function narrow() { return window.matchMedia("(max-width: 1099px)").matches; }
@@ -1406,7 +1536,8 @@
       var box = el("div", { className: "peek-items" + (cls ? " " + cls : "") }, el("p", { className: "peek-label", text: label }));
       var ul = el("ul");
       items.forEach(function (it) {
-        var side = it.k === "s" ? null : statusBadge(it);
+        var ch = changeOf(it.id);
+        var side = it.k === "s" ? null : ch ? badge(ch.text, ch.tone) : statusBadge(it);
         var b = el("button", { type: "button", className: "peek-item" },
           el("span", { className: "peek-item-main" },
             el("span", { className: "peek-item-title", text: it.t }),

@@ -710,11 +710,42 @@ select { appearance: none; background-image: linear-gradient(45deg, transparent 
   .narrow-only { display: none !important; }
 }
 
+/* 인쇄: 상세 한 건을 A4에. 머리·탭·목록·단추·요약 창은 빼고, 꼬리에 사이트 주소와 인쇄한 날 */
+.print-only { display: none; }
 @media print {
-  .top, .tabs, .filters, .list-pane, .foot, .actions, .detail-bar { display: none !important; }
-  .layout { display: block; padding: 0; }
-  .detail { display: block !important; position: static !important; max-height: none; overflow: visible; border: 0; }
-  .facts { background: none; padding: 0; }
+  @page { size: A4; margin: 12mm 13mm 12mm; }
+  /* 등장 움직임(투명에서 시작)이 인쇄에 그대로 찍히면 빈 종이가 나온다 */
+  *, *::before, *::after { animation: none !important; transition: none !important; opacity: 1 !important; filter: none !important; translate: none !important; }
+  html, body { background: #fff !important; overflow: visible !important; }
+  .top, .tabs, .filters, .list-pane, .foot, .actions, .detail-bar, .change-note, .similar-box, .toast, .peek, .peek-shade,
+  .viz-tip, #homePane, .tabs-dock, .skip { display: none !important; }
+  .layout { display: block; padding: 0; max-width: none; }
+  .detail { display: block !important; position: static !important; inset: auto !important; width: auto !important; max-height: none; overflow: visible !important;
+    border: 0 !important; box-shadow: none !important; }
+  .detail-inner { padding: 0; }
+  .detail h2 { font-size: 18pt; margin-bottom: 10pt; }
+  .detail h3 { margin-top: 14pt; font-size: 11pt; break-after: avoid; }
+  .pre, .contact-line { font-size: 9.5pt; line-height: 1.55; max-width: none; }
+  .facts { gap: 4pt 12pt !important; }
+  .files { gap: 0 !important; }
+  .file { min-height: 0 !important; padding: 3pt 0 !important; font-size: 9.5pt; }
+  .facts { background: none; padding: 0; border: 1px solid #ccc; padding: 8pt 10pt; border-radius: 6pt; font-size: 10pt; break-inside: avoid; }
+  .badge { border: 1px solid #999; background: none !important; color: #000 !important; }
+  .tel { color: #000 !important; text-decoration: none; }
+  .tel .ph { display: none; }
+  .files a { color: #000; }
+  .caution { margin-top: 14pt; }
+  .print-only { display: block; }
+  .print-foot { margin-top: 6pt; font-size: 8.5pt; color: #555; break-before: avoid; }
+  .caution { break-after: avoid; }
+  .detail-inner > section, .facts { break-inside: avoid-page; }
+  .detail-inner { padding-bottom: 0 !important; }
+  /* 종이에서는 옅은 회색 글자가 흐리게 나오므로 진하게, 회색 면은 빼고 선만 */
+  .detail, .detail .pre, .detail .contact-line, .facts dd { color: #000 !important; }
+  .facts dt, .caution { color: #444 !important; }
+  .tel, .file { background: none !important; padding: 0 !important; min-height: 0 !important; }
+  .file { border-bottom: 1px solid #ddd; border-radius: 0 !important; }
+  .detail h2 { overflow-wrap: anywhere; }
 }
 
 /* ---------- 다듬기(better-ui·emil-design-eng 기준) ----------
@@ -936,3 +967,24 @@ svg.has-pick .mark.picked .cell, svg.has-pick .mark.picked .bar { stroke: var(--
 /* 담은 별은 색 규칙의 '고른 것' = 검정(노랑은 화면마다 주요 행동 하나뿐이라 쓰지 않는다) */
 .row-fav { color: var(--fg-strong); }
 .fav-block .block-head h3 .star-fill { font-size: 1.25rem; color: var(--fg-strong); }
+
+/* ---------- 문의 전화·비슷한 지원사업·기간 바뀜(app.js) ---------- */
+.contact-line { margin: 0 0 4px; max-width: 65ch; line-height: 1.7; }
+.tel { display: inline-flex; align-items: center; gap: 3px; margin: 0 2px; padding: 0 8px; min-height: 30px; border-radius: 999px;
+  background: var(--surface-hover); color: var(--fg-strong); font-weight: 700; text-decoration: none; font-variant-numeric: tabular-nums; }
+.tel:hover { background: var(--surface); }
+.tel .ph { font-size: .9375rem; }
+.similar-box { margin-top: 32px; }
+.similar-box h3 { margin-bottom: 8px; }
+.results.similar { border-top-width: 1px; }
+.results.similar .row-title { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow: hidden; font-size: .9375rem; }
+.results.similar .row-meta { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.results.similar .row-arrow { display: none; }
+.change-note { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin: 0 0 16px; padding: 12px 14px; border-radius: 16px;
+  background: var(--kind-open-weak); color: var(--fg-strong); font-size: .875rem; font-weight: 600; }
+.change-note .ph { font-size: 1.125rem; color: var(--kind-open-text); }
+.change-note span { flex: 1 1 200px; }
+.change-note .btn { min-height: 36px; padding: 0 14px; font-size: .8125rem; background: var(--canvas); }
+.badge.change { white-space: nowrap; }
+/* 휴대폰은 인쇄 단추를 숨긴다(휴대폰 인쇄는 드묾, 단추 줄이 두 줄이 되지 않게) */
+@media (max-width: 639px) { .wide-only-print { display: none; } }
