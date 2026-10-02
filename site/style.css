@@ -673,13 +673,16 @@ select { appearance: none; background-image: linear-gradient(45deg, transparent 
   .tab-count { display: none; }
 }
 @media (max-width: 639px) {
+  /* 휴대폰: 이름 줄을 접고 탭 줄 하나만 둔다(소리·글자 크게는 탭 줄 오른쪽에 아이콘으로, app.js dockTopActions) */
+  /* 화면에서는 접고, 사이트 이름(h1)은 화면 읽기 프로그램에 남긴다 */
+  header.top { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
   .tabs-dock { right: 16px; }
   .tabs.docked .tabs-inner { padding-right: calc(var(--dock-w, 0px) + 24px); }
 }
-/* 아주 좁은 화면에서 탭 줄에 옮겨 오면 '글자 크게'는 아이콘만(이름은 aria-label로 읽힌다) */
-@media (max-width: 480px) {
-  .tabs-dock #fontToggle { padding: 0; min-width: 44px; justify-content: center; }
-  .tabs-dock #fontToggle span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+/* 휴대폰 탭 줄의 '글자 크게'는 아이콘만(글자는 화면 읽기 프로그램에만 남긴다) */
+@media (max-width: 639px) {
+  .tabs-dock :is(#fontToggle, #soundToggle) { padding: 0; min-width: 44px; justify-content: center; }
+  .tabs-dock :is(#fontToggle, #soundToggle) span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 }
 /* 360px급 화면: 단추가 탭 줄에 왔을 때 탭 셋과 단추 둘이 한 줄에 들어가게 탭 안쪽 여백만 줄인다 */
 @media (max-width: 380px) {

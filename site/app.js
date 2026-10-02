@@ -1894,12 +1894,18 @@
       docked = on;
       if (focused) focused.focus({ preventScroll: true });
     }
-    // 머리 단추 줄 아래쪽이 탭 줄 밑으로 들어가면(= 가려지면) 옮긴다
+    // 휴대폰(639px 이하)은 이름 줄을 접어(style.css) 단추가 늘 탭 줄에 있다.
+    // 넓은 화면은 머리 단추 줄이 화면 위로 나가면(= 가려지면) 옮기고, 다시 보이면 돌려놓는다
+    var phone = window.matchMedia("(max-width: 639px)"), scrolledPast = false;
+    function update() { setDocked(phone.matches || scrolledPast); }
     var probe = header.querySelector(".top-inner");
     new IntersectionObserver(function (entries) {
       var e = entries[entries.length - 1];
-      setDocked(!e.isIntersecting && e.boundingClientRect.top < 0);
+      scrolledPast = !e.isIntersecting && e.boundingClientRect.top < 0;
+      update();
     }, { threshold: 0 }).observe(probe);
+    if (phone.addEventListener) phone.addEventListener("change", update); else if (phone.addListener) phone.addListener(update);
+    update();
   }
 
   function bind() {
