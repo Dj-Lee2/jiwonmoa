@@ -295,6 +295,54 @@ def dedupe_notices(notices):
     return [item for item in notices if id(item) in keep]
 
 
+def open_in_year(r, year):
+    """올해(year, 'YYYY') 신청할 수 있었던 공고인가: 접수 기간이 올해와 겹친다.
+    시작은 접수 시작일 → 게시일 → 처음 본 날, 끝은 마감일. 날짜가 없는 쪽은 열려 있다고 본다(상시·소진 시까지)."""
+    start = r["apply_start"] or r["posted"] or r["first_seen"] or ""
+    end = r["apply_end"] or ""
+    return (not start or start[:4] <= year) and (not end or end[:4] >= year)
+
+
+def persona_history(all_rows, last_run, today):
+    """대상별 '올해 공고' 수를 열린 것과 끝난 것으로 나눠 센다(나중에 '누구를 위한 지원' 그래프에 끝난 공고를
+    옅은 막대로 더하려고 쌓아 두는 집계. 지금 화면은 이 파일을 읽지 않는다).
+
+    - 대상: 모집 공고(kind '공고')만. 올해 = 접수 기간이 올해와 겹치는 공고(open_in_year).
+    - 끝난 것 = 마감일이 지났거나(status '마감'), 출처 목록에서 사라진 것(last_seen이 그 출처의 마지막 성공 수집일보다 앞).
+      기업마당·K-Startup은 모집 중인 공고만 주므로 끝난 공고는 우리가 수집을 시작한 뒤(firstDay~)에 본 것만 남는다.
+    - 같은 공고 재게시는 dedupe_notices와 같은 기준으로 하나만 센다.
+    반환: {"year", "total": {"open", "closed"}, "bySource": {출처: {"open", "closed"}}, "region", "national"}.
+    각 칸은 {"all", 대상 이름: 건수}. region·national은 지역 고르기(state.r, 전국 포함)를 그대로 쓰려고 둔다.
+    """
+    year = today[:4]
+    picked = []
+    for r in all_rows:
+        if r["kind"] != "공고" or not open_in_year(r, year):
+            continue
+        gone = r["last_seen"] != last_run.get(r["source"])
+        item = compact(r)
+        item["_closed"] = gone or status_of(r, today) == "마감"
+        picked.append(item)
+    picked = dedupe_notices(picked)
+
+    def empty():
+        return {k: 0 for k in ["all"] + PERSONAS}
+
+    def pair():
+        return {"open": empty(), "closed": empty()}
+    out = {"year": int(year), "total": pair(), "bySource": {s: pair() for s in SOURCE_NAMES if s != "gov24"},
+           "region": {g: pair() for g in REGIONS}, "national": pair()}
+    for item in picked:
+        side = "closed" if item["_closed"] else "open"
+        rg = item.get("rg") or []
+        targets = [out["total"], out["bySource"][item["src"]]] + \
+            ([out["national"]] if rg == ["전국"] else [out["region"][g] for g in rg if g in out["region"]])
+        for t in targets:
+            for k in ["all"] + item.get("pp", []):
+                t[side][k] = t[side].get(k, 0) + 1
+    return out
+
+
 def main():
     sys.stdout.reconfigure(errors="replace")
     today = datetime.date.today().isoformat()
@@ -302,6 +350,15 @@ def main():
     conn.row_factory = sqlite3.Row
     rows, runs = load(conn)
     first_day = conn.execute("SELECT MIN(first_seen) FROM notices").fetchone()[0]
+    # 대상별 올해 공고 집계(끝난 공고 포함)는 출처 목록에서 사라진 공고까지 봐야 해서 DB 전체를 읽는다
+    last_run = {r["source"]: r["run_at"][:10] for r in conn.execute(
+        "SELECT source, MAX(run_at) AS run_at FROM runs WHERE ok = 1 GROUP BY source")}
+    all_rows = []
+    for r in conn.execute("SELECT * FROM notices WHERE kind = '공고'"):
+        r = dict(r)
+        r["regions"] = json.loads(r["regions"] or "[]")
+        r["agri"] = int(r["agri"] or 0)
+        all_rows.append(r)
     conn.close()
 
     live = [r for r in rows if status_of(r, today) != "마감"]
@@ -325,8 +382,10 @@ def main():
         "counts": {"services": len(services)},
     }
     buckets = split_details(services, notices)
+    history = persona_history(all_rows, last_run, today)
+    history["firstDay"] = first_day
     paths = [write_js("meta", "HUB_META", meta), write_js("notices", "HUB_NOTICES", notices),
-             write_js("services", "HUB_SERVICES", services)]
+             write_js("services", "HUB_SERVICES", services), write_js("history", "HUB_HISTORY", history)]
     detail_dir = SITE_DATA / "sd"
     detail_dir.mkdir(parents=True, exist_ok=True)
     for i, chunk in enumerate(buckets):
@@ -338,6 +397,10 @@ def main():
     sizes = [f.stat().st_size for f in detail_dir.glob("*.js")]
     print(f"site/data/sd/*.js  {len(sizes)}개, 평균 {sum(sizes) / len(sizes) / 1024:,.0f} KB")
     print(f"공고 {len(notices):,}건, 제도 {len(services):,}건 (마감 제외)")
+    # 출처별 균형 확인용 한 줄(update.log에 남는다): 올해 공고 중 끝난 것 / 전체
+    print(f"{history['year']}년 공고(끝난 것 포함, 대상별 집계 history.js): " + ", ".join(
+        f"{SOURCE_NAMES[s]} 끝남 {v['closed']['all']:,}/{v['open']['all'] + v['closed']['all']:,}"
+        for s, v in history["bySource"].items()))
 
 
 if __name__ == "__main__":

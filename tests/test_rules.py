@@ -138,5 +138,39 @@ class DedupeTest(unittest.TestCase):
         self.assertEqual(build_site.dedupe_notices(items), items)
 
 
+class PersonaHistoryTest(unittest.TestCase):
+    """대상별 올해 공고 집계: 끝난 공고(마감·목록에서 사라짐)를 따로 세고, 다른 해·제도·재게시는 빼거나 하나로."""
+
+    def row(self, uid, **over):
+        base = {"uid": uid, "source": "bizinfo", "kind": "공고", "title": "공고 " + uid, "agency": "중소벤처기업부",
+                "operator": "", "category": "", "target": "", "summary": "", "content": "", "how": "",
+                "audience": "[]", "personas": '["중소기업"]', "posted": "2026-09-01", "views": "0", "support": "[]",
+                "period_text": "", "period_type": "기간", "apply_start": "2026-09-01", "apply_end": "2026-12-31",
+                "regions": ["전국"], "region_basis": "", "agri": 0, "is_private": "0", "url": "", "apply_url": "",
+                "contact": "", "source_updated": "", "first_seen": "2026-09-30", "last_seen": "2026-10-02"}
+        base.update(over)
+        return base
+
+    def test_open_closed_gone_and_skips(self):
+        rows = [
+            self.row("bizinfo:1"),                                            # 열린 공고
+            self.row("bizinfo:2", apply_end="2026-09-15"),                    # 마감일 지남
+            self.row("bizinfo:3", last_seen="2026-10-01"),                    # 출처 목록에서 사라짐
+            self.row("bizinfo:4", apply_start="2025-03-01", apply_end="2025-04-01"),  # 작년 공고
+            self.row("bizinfo:6", apply_start="2025-11-01", apply_end="2026-01-31", title="해 넘긴 공고"),  # 올해 1월까지: 끝남
+            self.row("bizinfo:7", apply_start=None, apply_end=None, period_type="상시", posted="2024-05-01",
+                     title="상시 공고"),  # 날짜 없는 열린 공고: 열림
+            self.row("gov24:1", source="gov24", kind="제도"),                 # 제도는 세지 않음
+            self.row("bizinfo:5", title="공고 bizinfo:1", posted="2026-08-01"),  # bizinfo:1 재게시
+        ]
+        h = build_site.persona_history(rows, {"bizinfo": "2026-10-02", "gov24": "2026-10-02"}, "2026-10-02")
+        self.assertEqual(h["year"], 2026)
+        self.assertEqual(h["total"]["open"]["중소기업"], 2)
+        self.assertEqual(h["total"]["closed"]["중소기업"], 3)
+        self.assertEqual(h["bySource"]["bizinfo"]["closed"]["all"], 3)
+        self.assertEqual(h["national"]["open"]["all"], 2)
+        self.assertNotIn("gov24", h["bySource"])
+
+
 if __name__ == "__main__":
     unittest.main()
