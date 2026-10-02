@@ -156,6 +156,18 @@ class NoticeFieldTest(unittest.TestCase):
                 self.assertIn(v, build_site.NOTICE_FIELDS)
 
 
+class NoticeTextSplitTest(unittest.TestCase):
+    """첫 화면을 가볍게: 공고 목록에서 긴 글만 떼고 검색·목록에 쓰는 칸은 남긴다"""
+
+    def test_split(self):
+        items = [{"id": "bizinfo:1", "t": "제목", "ag": "기관", "op": "수행", "sm": "개요", "how": "방법", "u": "https://x", "e": "2026-10-09"},
+                 {"id": "bojo:2", "t": "제목2", "ag": "부처"}]
+        text = build_site.split_notice_text(items)
+        self.assertEqual(text, {"bizinfo:1": {"sm": "개요", "how": "방법", "u": "https://x"}})
+        self.assertEqual(items[0], {"id": "bizinfo:1", "t": "제목", "ag": "기관", "op": "수행", "e": "2026-10-09"})
+        self.assertEqual(items[1], {"id": "bojo:2", "t": "제목2", "ag": "부처"})
+
+
 class ServicePeekTest(unittest.TestCase):
     """홈 요약 창의 상시 제도 대상 요약: 전체·지역·전국 칸, 분야·방식 건수, 조회수 상위 3개"""
 

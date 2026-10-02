@@ -4,13 +4,30 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>지원모아</title>
-<meta name="description" content="정부·지자체·공공기관의 지원사업(모집 공고와 상시 제도)을 한곳에서 찾아보는 비공식 개인 프로젝트">
+<meta name="description" content="정부·지자체·공공기관의 지원사업(모집 공고와 상시 제도)을 지역·대상별로 한곳에서 찾아보는 비공식 개인 프로젝트. 청년·시니어·농업인·소상공인·중소기업 지원사업을 매일 아침 새로 모읍니다.">
+<link rel="canonical" href="https://jiwonmoa.orfa.shop/">
+<meta name="robots" content="index, follow">
 <meta name="color-scheme" content="only light">
 <meta name="theme-color" content="#ffffff">
+<!-- 링크 미리보기(카톡·텔레그램·페이스북 등). 이미지는 img/og.png 1200×630 -->
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="지원모아">
+<meta property="og:title" content="지원모아 | 정부·지자체 지원사업을 한곳에서">
+<meta property="og:description" content="모집 공고와 상시 제도를 지역·대상별로 찾아보세요. 매일 아침 새로 모읍니다.">
+<meta property="og:url" content="https://jiwonmoa.orfa.shop/">
+<meta property="og:image" content="https://jiwonmoa.orfa.shop/img/og.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:locale" content="ko_KR">
+<meta name="twitter:card" content="summary_large_image">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"WebSite","name":"지원모아","url":"https://jiwonmoa.orfa.shop/","inLanguage":"ko","description":"정부·지자체·공공기관의 지원사업(모집 공고와 상시 제도)을 지역·대상별로 한곳에서 찾아보는 비공식 개인 프로젝트"}</script>
 <link rel="icon" type="image/png" href="img/favicon.png">
 <link rel="apple-touch-icon" href="img/apple-touch-icon.png">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@phosphor-icons/web@2.1.1/src/regular/style.css">
+<!-- 첫 화면 자료를 먼저 받는다(움직이는 마스코트 그림 139KB보다 앞서게) -->
+<link rel="preload" href="data/meta.js" as="script">
+<link rel="preload" href="data/notices.js" as="script">
 <link rel="stylesheet" href="style.css">
 <link rel="stylesheet" href="sound.css?v=1">
 </head>
@@ -20,7 +37,7 @@
 <header class="top">
   <div class="wrap top-inner">
     <div class="brand">
-      <h1><a id="homeLink" href="#" aria-label="지원모아, 홈으로"><picture class="brand-mark"><source srcset="img/mascot-still.webp" media="(prefers-reduced-motion: reduce)"><img src="img/mascot.webp" alt="" width="44" height="44"></picture>지원모아</a></h1>
+      <h1><a id="homeLink" href="#" aria-label="지원모아, 홈으로"><picture class="brand-mark"><source srcset="img/mascot-still.webp" media="(prefers-reduced-motion: reduce)"><img src="img/mascot.webp" alt="" width="44" height="44" fetchpriority="low"></picture>지원모아</a></h1>
     </div>
     <div class="top-actions">
       <button id="soundToggle" class="iconbtn" type="button" aria-label="버튼 소리" aria-pressed="true" title="버튼 소리 끄기" hidden>
@@ -60,6 +77,7 @@
   <section class="home-hero">
     <h2 id="homeTitle" class="hero-title"></h2>
     <p id="homeSub" class="hero-sub"></p>
+    <button type="button" class="today-new" id="homeTodayNew" hidden></button>
     <form id="homeSearch" class="hero-search" role="search">
       <div class="field grow">
         <label class="label" for="homeQ">무엇을 찾으세요?</label>
@@ -78,6 +96,16 @@
       <button class="btn yellow hero-go" type="submit">찾기</button>
       <label class="check national"><input type="checkbox" id="homeNat" checked> 전국 대상 지원사업 포함</label>
     </form>
+  </section>
+
+  <!-- 관심 담은 지원사업(이 기기에만 저장). 담은 게 있을 때만 보인다(app.js renderFavs) -->
+  <section class="home-block fav-block" id="homeFavBlock" aria-labelledby="homeFavTitle" hidden>
+    <div class="block-head">
+      <h3 id="homeFavTitle"><i class="ph ph-star" aria-hidden="true"></i>관심 담은 지원사업 <span class="head-count" id="homeFavCount"></span></h3>
+      <span class="badge soon" id="homeFavFlag" hidden></span>
+    </div>
+    <ul id="homeFav" class="results"></ul>
+    <p class="fav-note">이 기기 브라우저에만 저장됩니다. 상세 화면의 ‘관심 담기’로 담고 빼요.</p>
   </section>
 
   <section class="home-stats" id="homeStats" aria-label="한눈에 보기"></section>

@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://jiwonmoa.orfa.shop/sitemap.xml

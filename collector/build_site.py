@@ -20,6 +20,9 @@ SITE_DATA = ROOT / "site" / "data"
 GOV24_URL = "https://www.gov.kr/portal/rcvfvrSvc/dtlEx/"  # 화면에서 서비스ID로 주소를 만든다
 DETAIL_BUCKETS = 64  # 상세 화면에서만 쓰는 것(제도 상세 글, 공고 첨부 파일)은 목록과 떼어 64개 파일로 나눠 둔다 (열 때만 읽음)
 DETAIL_KEYS = ("tg", "ct", "how", "cn", "op", "ap", "cd", "dt", "pu")
+# 공고 목록(notices.js)에서 떼어 notices-text.js로 보내는 글. 홈 첫 화면은 이 글 없이 그리고, 글은 뒤이어 받는다
+# (상세·검색이 쓴다). 검색에 쓰는 제목·기관·수행기관·분류는 목록에 남긴다
+NOTICE_TEXT_KEYS = ("sm", "tg", "ct", "how", "cn", "u", "ap", "cd", "dt", "rb")
 
 # 목록 파일 크기를 줄이려고 긴 글은 자른다. 전체 내용은 원문 링크로 안내한다.
 # 제도의 신청 방법·서비스 목적은 상세 파일(sd)에만 들어가 목록 크기와 상관없다
@@ -113,8 +116,8 @@ def compact(r):
     }
     if r["kind"] == "공고":
         out["nf"] = notice_field(r["source"], r["category"])
-    if r["kind"] == "제도":
-        out["fs"] = r["first_seen"]  # 상시 제도 '신규' 배지(공고는 게시일 pd로 판단)
+    # 처음 수집한 날: 상시 제도 '신규' 배지, 모집 공고 '오늘 새 공고'(게시일 pd는 출처마다 늦게 올라오기도 해서 따로 둔다)
+    out["fs"] = (r["first_seen"] or "")[:10]
     if out["a"]:
         out["tp"] = agri_topics(r)
     return {k: v for k, v in out.items() if v not in (None, "", [], 0)}
@@ -332,6 +335,16 @@ def service_peek(services):
     out["items"] = pool
     return out
 
+def split_notice_text(notices):
+    """공고 목록에서 긴 글(NOTICE_TEXT_KEYS)을 떼어 {id: {키: 글}}로 돌려준다. notices는 제자리에서 줄어든다."""
+    text = {}
+    for item in notices:
+        t = {k: item.pop(k) for k in NOTICE_TEXT_KEYS if k in item}
+        if t:
+            text[item["id"]] = t
+    return text
+
+
 def write_js(name, var, data):
     SITE_DATA.mkdir(parents=True, exist_ok=True)
     body = json.dumps(data, ensure_ascii=False, separators=(",", ":"))
@@ -447,9 +460,11 @@ def main():
         "counts": {"services": len(services)},
     }
     buckets = split_details(services, notices)
+    notice_text = split_notice_text(notices)
     history = persona_history(all_rows, last_run, today)
     history["firstDay"] = first_day
     paths = [write_js("meta", "HUB_META", meta), write_js("notices", "HUB_NOTICES", notices),
+             write_js("notices-text", "HUB_NOTICE_TEXT", notice_text),
              write_js("services", "HUB_SERVICES", services), write_js("history", "HUB_HISTORY", history),
              write_js("peek", "HUB_PEEK", service_peek(services))]
     detail_dir = SITE_DATA / "sd"

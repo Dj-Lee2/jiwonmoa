@@ -1,6 +1,7 @@
 /* 지원모아: 화면 동작
- * 데이터: data/meta.js, data/notices.js(공고), data/services.js(상시 제도, 필요할 때 읽음),
- *         data/sd/NN.js(상시 제도 상세 글·공고 첨부 파일, 열 때 읽음). collector/build_site.py가 만든다.
+ * 데이터: data/meta.js, data/notices.js(공고 목록, 긴 글 제외), data/notices-text.js(공고 개요·신청 방법 등 긴 글,
+ *         첫 화면 뒤에 읽음), data/services.js(상시 제도, 필요할 때 읽음), data/sd/NN.js(상시 제도 상세 글·공고 첨부 파일,
+ *         열 때 읽음), data/peek.js(그래프 요약 창의 상시 제도 요약). collector/build_site.py가 만든다.
  */
 (function () {
   "use strict";
@@ -32,7 +33,7 @@
   NOTICES.forEach(function (n) { byId.set(n.id, n); });
 
   var DEFAULT = { tab: "open", q: "", r: "", nat: true, au: [], st: [], src: [], pv: true,
-    tp: [], sp: [], cg: [], soon: false, nw: false, due: "", om: "", sort: "", id: "" };
+    tp: [], sp: [], cg: [], soon: false, nw: false, td: false, due: "", om: "", sort: "", id: "" };
 
   /* 빈 조건. 배열은 매번 새로 만든다(DEFAULT의 배열을 같이 쓰면 칩을 누를 때 DEFAULT가 바뀐다) */
   function blankState(extra) {
@@ -128,6 +129,18 @@
     return daysBetween(item.pd, today) <= days;
   }
 
+  /* '오늘 새 공고': 가장 최근 수집(매일 06:30)에서 처음 들어온 모집 공고(fs = 처음 수집한 날).
+   * 첫 수집 날(META.firstDay)은 모두가 처음이라 세지 않는다. 오늘 수집 전(자정~6:30)에는 어제 수집분을 '어제 새 공고'로 */
+  var NEW_DAY = (META.builtAt || "").slice(0, 10);
+  function isTodayNew(item) {
+    return item.k === "n" && item.fs === NEW_DAY && NEW_DAY !== META.firstDay;
+  }
+  function newDayLabel() {
+    if (NEW_DAY === today) return "오늘";
+    if (NEW_DAY === addDays(today, -1)) return "어제";
+    return fmtDate(NEW_DAY);
+  }
+
   function isNew(item) {
     if (item.k === "n") return postedWithin(item, NEW_DAYS);
     return item.fs && META.firstDay && item.fs > META.firstDay && daysBetween(item.fs, today) <= NEW_DAYS;
@@ -154,10 +167,154 @@
   }
 
   function toast(msg) {
+    document.querySelectorAll(".toast").forEach(function (o) { o.remove(); });
     var t = el("div", { className: "toast", role: "status", text: msg });
     document.body.append(t);
-    setTimeout(function () { t.remove(); }, 1800);
+    setTimeout(function () { t.remove(); }, 2200);
   }
+
+  /* ---------- 관심 담기(이 기기 브라우저에만 저장, 서버로 보내지 않음) ----------
+   * localStorage "hub-fav" = [{ id, k, src, t, ag, rg, py, s, e, pt, at(담은 날) }].
+   * 마감되어 목록에서 내려가도 보이게 짧은 사본을 같이 둔다. 홈 맨 위 '관심 담은 지원사업' 칸과 상세의 단추가 쓴다 */
+  var FAV_KEY = "hub-fav", FAV_KEYS = ["id", "k", "src", "t", "ag", "rg", "py", "s", "e", "pt"];
+  var favs = loadFavs();
+  function loadFavs() {
+    try { var v = JSON.parse(localStorage.getItem(FAV_KEY) || "[]"); return Array.isArray(v) ? v : []; }
+    catch (e) { return []; }
+  }
+  function saveFavs() {
+    try { localStorage.setItem(FAV_KEY, JSON.stringify(favs)); return true; } catch (e) { return false; }
+  }
+  function isFav(id) { return favs.some(function (f) { return f.id === id; }); }
+  /* 담은 표시는 꽉 찬 별(아이콘 글꼴은 빈 별만 있어 SVG로 그린다), 담기 전은 빈 별 */
+  function starIcon(filled) {
+    if (!filled) return icon("star");
+    var svg = svgEl("svg", { viewBox: "0 0 256 256", width: "1em", height: "1em", "class": "star-fill", "aria-hidden": "true" });
+    svg.append(svgEl("path", { fill: "currentColor", d: "M234.29 114.85l-45 38.83L203 211.75a16.4 16.4 0 0 1-24.5 17.82L128 198.49 77.47 229.57A16.4 16.4 0 0 1 53 211.75l13.76-58.07-45-38.83A16.46 16.46 0 0 1 31.08 86l59-4.76 22.76-55.08a16.36 16.36 0 0 1 30.27 0l22.75 55.08 59 4.76a16.46 16.46 0 0 1 9.37 28.86Z" }));
+    return svg;
+  }
+  function toggleFav(item) {
+    var on = !isFav(item.id);
+    if (on) {
+      var snap = { at: today };
+      FAV_KEYS.forEach(function (k) { if (item[k] !== undefined) snap[k] = item[k]; });
+      favs.unshift(snap);
+    } else {
+      favs = favs.filter(function (f) { return f.id !== item.id; });
+    }
+    if (!saveFavs()) toast("이 브라우저에서는 저장할 수 없습니다");
+    else toast(on ? "관심에 담았어요 · 홈 맨 위에서 볼 수 있어요" : "관심에서 뺐어요");
+    favChanged();
+    return on;
+  }
+  /* 담은 것: 지금 자료에 있으면 그것(최신 기간), 없으면 담을 때 사본 */
+  function favItems() {
+    return favs.map(function (f) { return byId.get(f.id) || f; });
+  }
+  function favChanged() {
+    if (state.tab === "home") renderFavs();
+    document.querySelectorAll(".row[data-id]").forEach(function (b) { markFavRow(b, isFav(b.dataset.id)); });
+  }
+  function markFavRow(btn, on) {
+    var old = btn.querySelector(".row-fav");
+    if (on && !old) {
+      var side = btn.querySelector(".row-side");
+      if (side) side.prepend(el("span", { className: "row-fav", title: "관심 담음" }, starIcon(true), el("span", { className: "sr-only", text: "관심 담음" })));
+    } else if (!on && old) old.remove();
+  }
+  window.addEventListener("storage", function (e) {
+    if (e.key === FAV_KEY) { favs = loadFavs(); favChanged(); }
+  });
+
+  /* 홈 맨 위 칸: 마감 있는 것은 가까운 순, 나머지는 담은 순. 마감이 7일 안이면 머리에 배지 */
+  function renderFavs() {
+    var block = $("#homeFavBlock");
+    if (!block) return;
+    var items = favItems();
+    block.hidden = !items.length;
+    if (!items.length) return;
+    var order = items.map(function (it, i) { return { it: it, i: i }; }).sort(function (a, b) {
+      var ea = statusOf(a.it) === "접수 중" && a.it.e ? a.it.e : "9999", eb = statusOf(b.it) === "접수 중" && b.it.e ? b.it.e : "9999";
+      return ea.localeCompare(eb) || a.i - b.i;
+    });
+    var soonN = items.filter(isSoon).length;
+    var urgent = items.some(function (it) { return isSoon(it) && daysBetween(today, it.e) <= 3; });
+    $("#homeFavCount").textContent = fmtN(items.length);
+    var headStar = $("#homeFavTitle .ph-star");
+    if (headStar) headStar.replaceWith(starIcon(true));
+    var flag = $("#homeFavFlag");
+    flag.hidden = !soonN;
+    flag.className = "badge " + (urgent ? "urgent" : "soon");
+    flag.textContent = "7일 안 마감 " + soonN + "건";
+    var ul = $("#homeFav");
+    ul.replaceChildren.apply(ul, order.map(function (o) {
+      var li = row(o.it, byId.has(o.it.id) || o.it.k === "s" ? null : "목록에서 내려감", true);
+      var drop = el("button", { type: "button", className: "fav-drop", "aria-label": o.it.t + " 관심에서 빼기", title: "관심에서 빼기" }, icon("x"));
+      drop.addEventListener("click", function () { toggleFav(o.it); });
+      li.classList.add("fav-li");
+      li.append(drop);
+      return li;
+    }));
+  }
+
+  /* ---------- 내 마감 달력(이 기기에만 저장) ----------
+   * 상세의 '마감일 달력에 추가'로 넣은 공고를 홈 '언제 마감되나요?' 달력에 검은 점으로 표시한다.
+   * localStorage "hub-cal" = 관심과 같은 짧은 사본 목록. 마감이 지난 것은 저절로 달력에서 사라진다 */
+  var CAL_KEY = "hub-cal";
+  var cals = loadList(CAL_KEY);
+  function loadList(key) {
+    try { var v = JSON.parse(localStorage.getItem(key) || "[]"); return Array.isArray(v) ? v : []; }
+    catch (e) { return []; }
+  }
+  function inCal(id) { return cals.some(function (f) { return f.id === id; }); }
+  function toggleCal(item) {
+    var on = !inCal(item.id);
+    if (on) {
+      var snap = { at: today };
+      FAV_KEYS.forEach(function (k) { if (item[k] !== undefined) snap[k] = item[k]; });
+      cals.unshift(snap);
+    } else cals = cals.filter(function (f) { return f.id !== item.id; });
+    var ok = true;
+    try { localStorage.setItem(CAL_KEY, JSON.stringify(cals)); } catch (e) { ok = false; }
+    toast(!ok ? "이 브라우저에서는 저장할 수 없습니다" : on ? "홈 ‘언제 마감되나요?’ 달력에 넣었어요" : "달력에서 뺐어요");
+    if (state.tab === "home") renderHome();
+    return on;
+  }
+  /* 달력에 넣은 공고: 지금 자료에 있으면 그것(최신 마감일), 마감이 오늘 이후인 것만 */
+  function calItems() {
+    return cals.map(function (f) { return byId.get(f.id) || f; }).filter(function (it) { return it.e && it.e >= today; });
+  }
+  window.addEventListener("storage", function (e) {
+    if (e.key === CAL_KEY) { cals = loadList(CAL_KEY); if (state.tab === "home") renderHome(); }
+  });
+
+  /* 공유 주소: 그 공고 상세로 바로 열리는 주소(지역 등 다른 조건은 넣지 않는다) */
+  function shareUrl(item) {
+    return location.origin + location.pathname + "#tab=" + (item.k === "s" ? "services" : "open") + "&id=" + encodeURIComponent(item.id);
+  }
+
+  /* ---------- 공유: 휴대폰은 공유 창(카톡 등), 안 되면 링크 복사 ---------- */
+  function shareItem(item) {
+    var url = shareUrl(item), data = { title: item.t, text: item.t + " | 지원모아", url: url };
+    if (navigator.share) {
+      navigator.share(data).catch(function (e) { if (e && e.name !== "AbortError") copyLink(url); });
+    } else copyLink(url);
+  }
+  function copyLink(url) {
+    function done() { toast("링크를 복사했어요"); }
+    if (navigator.clipboard && window.isSecureContext) {
+      navigator.clipboard.writeText(url).then(done, function () { fallback(); });
+    } else fallback();
+    function fallback() {
+      var t = el("textarea", { readonly: true, style: "position:fixed;opacity:0;top:0" });
+      t.value = url;
+      document.body.append(t);
+      t.select();
+      try { document.execCommand("copy"); done(); } catch (e) { toast("복사하지 못했습니다"); }
+      t.remove();
+    }
+  }
+
 
   var scripts = {};
   function loadScript(src) {
@@ -187,7 +344,28 @@
     return sum % DETAIL_BUCKETS;
   }
 
+  /* 공고 긴 글(개요·지원 대상·신청 방법·문의·원문 주소 등): 첫 화면을 빨리 그리려고 목록과 떼어 두고 뒤이어 읽는다.
+   * 다 읽으면 공고에 붙이고 검색용 글(_h)을 다시 만든다. 파일이 없으면(예전 자료) 그냥 지나간다 */
+  var noticeText = null, noticeTextReady = false;
+  function ensureNoticeText() {
+    if (!noticeText) {
+      noticeText = loadScript("data/notices-text.js").then(function () {
+        noticeTextReady = true;
+        var T = window.HUB_NOTICE_TEXT || {};
+        NOTICES.forEach(function (n) { if (T[n.id]) { Object.assign(n, T[n.id]); delete n._h; } });
+        window.HUB_NOTICE_TEXT = null;
+      }, function () { noticeTextReady = true; /* 없거나 못 읽음: 목록 자료만으로 보인다 */ });
+    }
+    return noticeText;
+  }
+
   function ensureDetail(item) {
+    if (item.k !== "s") {
+      return ensureNoticeText().then(function () { return ensureFiles(item); });
+    }
+    return ensureFiles(item);
+  }
+  function ensureFiles(item) {
     // 상세 버킷에 든 것: 보조금24 제도의 상세 글, 공고문·첨부 파일이 있는 공고(fc)의 파일 목록
     if ((item.k !== "s" && !item.fc) || item._d) return Promise.resolve();
     var b = bucketOf(item.id);
@@ -222,6 +400,7 @@
     s.due = /^\d{4}-\d{2}-\d{2}~\d{4}-\d{2}-\d{2}$/.test(p.get("due") || "") ? p.get("due") : "";
     s.om = /^\d{4}-\d{2}$/.test(p.get("om") || "") ? p.get("om") : ""; // 접수를 시작한 달(홈 '공고는 언제 올라오나요?' 막대)
     s.nw = p.get("new") === "1";
+    s.td = p.get("today") === "1"; // 마지막 수집에서 처음 들어온 공고(홈 '오늘 새 공고')
     s.sp = list(p.get("sp"));
     s.cg = list(p.get("cat"));
     s.sort = ["deadline", "posted", "recent", "name"].indexOf(p.get("sort")) >= 0 ? p.get("sort") : defaultSort(s);
@@ -242,6 +421,7 @@
       if (state.due) p.set("due", state.due);
       if (state.om) p.set("om", state.om);
       if (state.nw) p.set("new", "1");
+      if (state.td) p.set("today", "1");
       if (state.sp.length && state.tab === "services") p.set("sp", state.sp.join(","));
       if (state.cg.length && state.tab !== "home") p.set("cat", state.cg.join(","));
       if (state.sort !== defaultSort(state)) p.set("sort", state.sort);
@@ -297,6 +477,7 @@
         !(item.tp || []).some(function (t) { return state.tp.indexOf(t) >= 0; })) return false;
     if (!skipSoon && state.soon && isNoticeView() && !isSoon(item)) return false;
     if (state.nw && isNoticeView() && !postedWithin(item, RECENT_DAYS)) return false;
+    if (state.td && isNoticeView() && !isTodayNew(item)) return false;
     if (state.sp.length && state.tab === "services" &&
         !(item.sp || []).some(function (x) { return state.sp.indexOf(x) >= 0; })) return false;
     if (state.cg.length && state.cg.indexOf(fieldOf(item)) < 0) return false;
@@ -397,6 +578,7 @@
         statusBadge(item),
         sideDate ? el("span", { className: "row-date", text: sideDate }) : null,
         el("span", { className: "row-src", text: SRC_NAME[item.src] })));
+    if (isFav(item.id)) markFavRow(hit, true);
     return el("li", null, hit);
   }
 
@@ -454,6 +636,15 @@
       return;
     }
     var terms = state.q.toLowerCase().split(/\s+/).filter(Boolean);
+    if (terms.length && state.tab !== "services" && !noticeTextReady) {
+      // 검색어는 개요 글까지 찾으므로 긴 글이 온 뒤에 센다
+      results.setAttribute("aria-busy", "true");
+      results.replaceChildren.apply(results, skeleton());
+      $("#resultCount").textContent = "불러오는 중";
+      more.hidden = true;
+      ensureNoticeText().then(function () { results.removeAttribute("aria-busy"); renderList(); });
+      return;
+    }
     var hits = sortItems(data.filter(function (it) { return matches(it, terms); }));
     renderSoon(terms);
     $("#resultCount").textContent = fmtN(hits.length) + "건";
@@ -487,6 +678,7 @@
     if (state.due && isNoticeView()) add(dueLabel(state.due), function () { state.due = ""; });
     if (state.om && isNoticeView()) add((+state.om.slice(5)) + "월 접수 시작", function () { state.om = ""; });
     if (state.nw && isNoticeView()) add("최근 " + RECENT_DAYS + "일 새 공고", function () { state.nw = false; });
+    if (state.td && isNoticeView()) add(newDayLabel() + " 새 공고", function () { state.td = false; });
     state.cg.forEach(function (x) { add(x + " 분야", function () { remove("cg", x); }); });
     if (state.tab === "services") state.sp.forEach(function (x) { add(x + " 지원", function () { remove("sp", x); }); });
     state.au.forEach(function (a) {
@@ -595,7 +787,7 @@
 
   function activeFilterCount() {
     return (state.q ? 1 : 0) + (state.r ? 1 : 0) + state.au.length + state.st.length + state.src.length +
-      (state.pv ? 0 : 1) + (agriSelected() ? state.tp.length : 0) + (state.soon ? 1 : 0) + (state.due ? 1 : 0) + (state.om ? 1 : 0) + (state.nw ? 1 : 0) +
+      (state.pv ? 0 : 1) + (agriSelected() ? state.tp.length : 0) + (state.soon ? 1 : 0) + (state.due ? 1 : 0) + (state.om ? 1 : 0) + (state.nw ? 1 : 0) + (state.td ? 1 : 0) +
       state.cg.length + (state.tab === "services" ? state.sp.length : 0);
   }
 
@@ -729,6 +921,32 @@
       apply && apply !== url ? el("a", { className: "btn dark", href: apply, target: "_blank", rel: "noopener" },
         "신청 페이지", icon("arrow-square-out")) : null);
 
+    // 관심 담기(검정 = 고른 상태) · 마감일 달력에 넣기(접수 중·예정이고 마감일이 있을 때) · 공유
+    var favBtn = el("button", { type: "button", className: "btn gray tool fav-btn", "aria-pressed": String(isFav(item.id)) });
+    function paintFav() {
+      var on = isFav(item.id);
+      favBtn.setAttribute("aria-pressed", String(on));
+      favBtn.replaceChildren(starIcon(on), on ? "관심 담음" : "관심 담기");
+    }
+    paintFav();
+    favBtn.addEventListener("click", function () { toggleFav(item); paintFav(); });
+    // 마감일이 오늘 이후인 접수 중·예정 공고는 홈 '언제 마감되나요?' 달력에 넣을 수 있다
+    var canCal = item.e && item.e >= today && (st === "접수 중" || st === "접수 예정");
+    var calBtn = null;
+    if (canCal) {
+      calBtn = el("button", { type: "button", className: "btn gray tool cal-btn" });
+      var paintCal = function () {
+        var on = inCal(item.id);
+        calBtn.setAttribute("aria-pressed", String(on));
+        calBtn.replaceChildren(icon(on ? "calendar-check" : "calendar-plus"), on ? "달력에 넣음 · " + fmtDate(item.e) : "마감일 달력에 추가");
+      };
+      paintCal();
+      calBtn.addEventListener("click", function () { toggleCal(item); paintCal(); });
+    }
+    var shareBtn = el("button", { type: "button", className: "btn gray tool" }, icon("share-network"), "공유");
+    shareBtn.addEventListener("click", function () { shareItem(item); });
+    var tools = el("div", { className: "actions tools" }, favBtn, calBtn, shareBtn);
+
     var head = el("div", { className: "row-tags" }, statusBadge(item));
     head.append.apply(head, Array.prototype.slice.call(tagsOf(item).childNodes));
     head.append(badge(SRC_NAME[item.src], "line"));
@@ -738,6 +956,7 @@
       el("h2", { id: "detailTitle", tabindex: "-1", text: item.t }),
       facts,
       actions,
+      tools,
       section("지원 대상", item.tg),
       // 보조금24는 상세의 서비스 목적 전문(pu)이 있으면 그것, 없으면 목록의 요약(sm)
       section(item.k === "s" ? "서비스 목적" : "사업 개요", item.pu || item.sm),
@@ -807,7 +1026,7 @@
 
   function switchTab(tab) {
     if (tab === state.tab) return;
-    state = Object.assign({}, state, { tab: tab, st: [], src: [], sp: [], cg: [], soon: false, nw: false, due: "", om: "", id: "" });
+    state = Object.assign({}, state, { tab: tab, st: [], src: [], sp: [], cg: [], soon: false, nw: false, td: false, due: "", om: "", id: "" });
     state.sort = defaultSort(state);
     applyView();
     if (tab === "home") {
@@ -899,6 +1118,11 @@
     $("#homeTitle").replaceChildren((state.r ? state.r + "에서 " : "") + "지금 신청할 수 있는 모집 공고 ",
       el("strong", { text: fmtN(live.length) }), "건");
     $("#homeSub").textContent = fmtStamp(at) + " 수집 · 상시 제도는 따로 셈";
+    var todayN = live.filter(isTodayNew).length;
+    var tn = $("#homeTodayNew");
+    tn.hidden = !todayN;
+    tn.replaceChildren(el("span", { className: "badge new", text: "NEW" }),
+      newDayLabel() + " 새로 올라온 공고 ", el("strong", { text: fmtN(todayN) + "건" }), icon("arrow-right"));
 
     var svcN = svcCount("all");
     $("#homeStats").replaceChildren(
@@ -913,6 +1137,7 @@
     if (!statsGrown) { $("#homeStats").classList.add("grow"); statsGrown = true; }
     else $("#homeStats").classList.remove("grow");
 
+    renderFavs();
     renderHomeLists(live);
 
     renderCharts(live);
@@ -1177,11 +1402,10 @@
       });
       groups.append(el("div", null, el("dt", { text: g.label }), dd));
     });
-    var list = null;
-    if (spec.items && spec.items.length) {
-      list = el("div", { className: "peek-items" }, el("p", { className: "peek-label", text: spec.itemsLabel || "많이 본 공고" }));
+    function itemList(label, items, cls) {
+      var box = el("div", { className: "peek-items" + (cls ? " " + cls : "") }, el("p", { className: "peek-label", text: label }));
       var ul = el("ul");
-      spec.items.forEach(function (it) {
+      items.forEach(function (it) {
         var side = it.k === "s" ? null : statusBadge(it);
         var b = el("button", { type: "button", className: "peek-item" },
           el("span", { className: "peek-item-main" },
@@ -1194,8 +1418,11 @@
         });
         ul.append(el("li", null, b));
       });
-      list.append(ul);
+      box.append(ul);
+      return box;
     }
+    var pinned = spec.pinned && spec.pinned.length ? itemList("내 달력에 넣은 공고", spec.pinned, "mine") : null;
+    var list = spec.items && spec.items.length ? itemList(spec.itemsLabel || "많이 본 공고", spec.items) : null;
     var more = el("button", { type: "button", className: "btn dark peek-more" }, spec.more.label, icon("arrow-right"));
     more.addEventListener("click", function () { closePeek(false, true); spec.more.go(); });
     var more2 = null;
@@ -1203,7 +1430,7 @@
       more2 = el("button", { type: "button", className: "btn gray peek-more" }, spec.more2.label);
       more2.addEventListener("click", function () { closePeek(false, true); spec.more2.go(); });
     }
-    return [head, num, note, groups, list, more, more2];
+    return [head, num, note, pinned, groups, list, more, more2];
   }
 
   /* marks: 누른 것과 짝인 표시(도넛 조각 ↔ 목록 줄, 지도 지역 ↔ 순위 줄)도 같이 '고름'으로 칠한다 */
@@ -1623,6 +1850,12 @@
       if (it.e > last) later++;
       else perDay[it.e] = (perDay[it.e] || 0) + 1;
     });
+    // 내 달력: 지역 조건과 상관없이 넣은 것은 다 보인다(접수 예정 공고도)
+    var mineByDay = {}, mineLater = 0;
+    calItems().forEach(function (it) {
+      if (it.e > last) mineLater++;
+      else (mineByDay[it.e] = mineByDay[it.e] || []).push(it);
+    });
     var values = Object.keys(perDay).map(function (k) { return perDay[k]; }).sort(function (a, b) { return a - b; });
     var breaks = values.length >= 8 ?
       [0.33, 0.66, 0.9].map(function (q) { return values[Math.floor(q * (values.length - 1))]; }) : [1, 2, 3];
@@ -1668,9 +1901,10 @@
       }
       var past = iso < today;
       var n = past ? 0 : (perDay[iso] || 0);
+      var mine = past ? [] : (mineByDay[iso] || []);
       var lvl = level(n);
-      var g = svgEl("g", { "class": "day" + (n ? " mark" : "") + (past ? " past" : "") + (iso === today ? " today" : "") +
-        (lvl === 4 ? " deep" : ""), style: "--i:" + i });
+      var g = svgEl("g", { "class": "day" + (n || mine.length ? " mark" : "") + (past ? " past" : "") + (iso === today ? " today" : "") +
+        (lvl === 4 ? " deep" : "") + (mine.length ? " mine" : ""), style: "--i:" + i });
       g.append(svgEl("rect", { x: x, y: y, width: cw, height: ch, rx: rx,
         "class": "cell", style: lvl ? "fill:" + DUE_SHADES[lvl - 1] : "" }));
       g.append(svgText(x + (big ? 6 : 4), y + (big ? 15 : 12), String(+iso.slice(8)), "dnum", "start"));
@@ -1686,21 +1920,28 @@
         g.append(svgEl("rect", { x: px, y: py, width: pw, height: ph, rx: ph / 2, "class": "dpill" }));
         g.append(svgText(px + pw / 2, py + ph / 2 + 4.5, txt, "dcnt pill"));
       }
-      if (n) {
-        (function (day, cnt) {
-          activate(g, fmtDate(day, true) + " 마감 " + cnt + "건. 누르면 요약을 봅니다", function (node) {
+      if (mine.length) {
+        // 내 달력에 넣은 날: 칸 오른쪽 위에 검은 점(진한 칸은 흰 테두리)
+        g.append(svgEl("circle", { cx: x + cw - (big ? 9 : 7), cy: y + (big ? 9 : 7), r: big ? 4.5 : 4, "class": "dmine" }));
+      }
+      if (n || mine.length) {
+        (function (day, cnt, mineItems) {
+          activate(g, fmtDate(day, true) + " 마감 " + cnt + "건" + (mineItems.length ? ", 내 달력 " + mineItems.length + "건" : "") +
+            ". 누르면 요약을 봅니다", function (node) {
             openPeek("due:" + day, node, function () {
               var items = live.filter(function (it) { return statusOf(it) === "접수 중" && it.e === day; });
               var d = daysBetween(today, day);
-              return noticePeek(items, regionPrefix() + fmtDate(day) + " 마감 모집 공고", "이날까지 신청해야 하는 공고",
+              var spec = noticePeek(items, regionPrefix() + fmtDate(day) + " 마감 모집 공고", "이날까지 신청해야 하는 공고",
                 { label: fmtN(items.length) + "건 모두 보기", go: function () { goTo({ tab: "open", due: day + "~" + day }); } },
                 d === 0 ? "오늘 마감" : "D-" + d, d <= 3 ? "urgent" : d <= SOON_DAYS ? "soon" : "line");
+              spec.pinned = mineItems;
+              return spec;
             });
           });
           g.setAttribute("aria-haspopup", "dialog");
           g.setAttribute("aria-expanded", "false");
-          tipFor(g, fmtN(cnt) + "건", fmtDate(day, true) + " 마감");
-        })(iso, n);
+          tipFor(g, fmtN(cnt) + "건", fmtDate(day, true) + " 마감" + (mineItems.length ? " · 내 달력 " + mineItems.length + "건" : ""));
+        })(iso, n, mine);
       } else {
         g.setAttribute("aria-hidden", "true");
       }
@@ -1715,11 +1956,17 @@
     var scale = el("div", { className: "scale duecal-scale", "aria-hidden": "true" }, "적음");
     DUE_SHADES.forEach(function (color) { scale.append(el("i", { style: "background:" + color })); });
     scale.append("많음");
+    var myShown = Object.keys(mineByDay).filter(function (k) { return k.slice(0, 7) === ym; })
+      .reduce(function (t, k) { return t + mineByDay[k].length; }, 0);
+    if (Object.keys(mineByDay).length || mineLater) {
+      scale.append(el("span", { className: "mine-key" }, el("b", { className: "dot" }), "내 달력" + (myShown ? " " + myShown : "")));
+    }
     var laterBtn = null;
     if (later) {
       var after = addDays(last, 1);
       laterBtn = el("button", { type: "button", className: "more-link duecal-later" },
-        fmtDate(after) + " 이후 마감 " + fmtN(later) + "건", el("i", { className: "ph ph-arrow-right", "aria-hidden": "true" }));
+        fmtDate(after) + " 이후 마감 " + fmtN(later) + "건" + (mineLater ? " (내 달력 " + mineLater + ")" : ""),
+        el("i", { className: "ph ph-arrow-right", "aria-hidden": "true" }));
       laterBtn.addEventListener("click", function () { goTo({ tab: "open", due: after + "~9999-12-31" }); });
     }
     return vizCard("언제 마감되나요?", sub,
@@ -2261,13 +2508,14 @@
       state.nat = e.target.checked; animScope = "all"; renderHome(); writeHash(false);
     });
     $("#homeSoonAll").addEventListener("click", function () { goTo({ tab: "open" }); });
-    ["#homeSoon", "#homeNew", "#homePop"].forEach(function (sel) {
+    ["#homeFav", "#homeSoon", "#homeNew", "#homePop"].forEach(function (sel) {
       $(sel).addEventListener("click", function (e) {
         var b = e.target.closest(".row[data-id]");
         if (b) goTo({ tab: /^gov24:/.test(b.dataset.id) ? "services" : "open", id: b.dataset.id });
       });
     });
     $("#homeNewAll").addEventListener("click", function () { goTo({ tab: "open", nw: true, sort: "posted" }); });
+    $("#homeTodayNew").addEventListener("click", function () { goTo({ tab: "open", td: true, sort: "posted" }); });
     [["#homeSoonMore", "soon", "#homeSoon"], ["#homeNewMore", "fresh", "#homeNew"], ["#homePopMore", "pop", "#homePop"]]
       .forEach(function (m) {
         $(m[0]).addEventListener("click", function () {
@@ -2412,11 +2660,13 @@
     if (state.tab === "home") {
       renderHome();
       renderDetail();
-      return;
+    } else {
+      setupFilters();
+      renderList();
+      renderDetail();
     }
-    setupFilters();
-    renderList();
-    renderDetail();
+    // 첫 화면을 그린 뒤 공고 긴 글을 받아 둔다(검색·상세가 쓴다)
+    setTimeout(ensureNoticeText, 0);
   }
 
   init();
