@@ -364,13 +364,19 @@ select { appearance: none; background-image: linear-gradient(45deg, transparent 
 .hero-title { margin: 0; font-size: 3.36rem; line-height: 1.23; font-weight: 700; letter-spacing: -1px; color: var(--fg-strong); }
 .hero-title strong { font-weight: 800; font-variant-numeric: tabular-nums; }
 .hero-sub { margin: 12px 0 28px; color: var(--muted); font-size: 1rem; }
-/* 오늘 새 공고 단추(파랑 = 모집 공고). 머리 글과 검색 사이 */
-.today-new { display: inline-flex; align-items: center; gap: 8px; margin: -12px 0 24px; min-height: 44px; padding: 0 16px 0 8px; border: 0; border-radius: 999px;
+/* 오늘 새 공고(파랑 = 모집 공고)·오늘 마감(빨강 = 마감 임박) 단추 줄. 머리 글과 검색 사이 */
+.today-row { display: flex; flex-wrap: wrap; gap: 8px; margin: -12px 0 24px; }
+.today-row[hidden] { display: none; }
+.today-new { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 16px 0 8px; border: 0; border-radius: 999px;
   background: var(--kind-open-weak); color: var(--fg-strong); font: inherit; font-size: .9375rem; cursor: pointer; }
 .today-new:hover { background: var(--blue-100); }
 .today-new strong { color: var(--kind-open-text); font-weight: 800; font-variant-numeric: tabular-nums; }
 .today-new .badge { height: 26px; background: var(--kind-open); color: #fff; letter-spacing: .5px; }
 .today-new[hidden] { display: none; }
+.today-new.due { background: var(--red-50); }
+.today-new.due:hover { background: color-mix(in srgb, var(--red-50), var(--red-500) 10%); }
+.today-new.due strong { color: var(--red-600); }
+.today-new.due .badge { background: var(--urgent); }
 .hero-search { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px 16px; align-items: end; }
 .hero-search .field { margin: 0; min-width: 0; }
 .hero-go { min-height: 48px; padding: 0 36px; font-size: 1rem; }

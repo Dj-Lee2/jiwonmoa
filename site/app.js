@@ -1302,6 +1302,13 @@
     tn.hidden = !todayN;
     tn.replaceChildren(el("span", { className: "badge new", text: "NEW" }),
       newDayLabel() + " 새로 올라온 공고 ", el("strong", { text: fmtN(todayN) + "건" }), icon("arrow-right"));
+    // 오늘 마감: 접수 중이고 마감일이 오늘인 공고(고른 지역 기준). 목록 조건은 마감 달력과 같은 due=오늘~오늘
+    var dueN = live.filter(function (n) { return statusOf(n) === "접수 중" && n.e === today; }).length;
+    var td = $("#homeTodayDue");
+    td.hidden = !dueN;
+    td.replaceChildren(el("span", { className: "badge urgent", text: "D-DAY" }),
+      "오늘 마감인 공고 ", el("strong", { text: fmtN(dueN) + "건" }), icon("arrow-right"));
+    $("#homeTodayRow").hidden = !todayN && !dueN;
 
     var svcN = svcCount("all");
     $("#homeStats").replaceChildren(
@@ -2737,6 +2744,7 @@
     });
     $("#homeNewAll").addEventListener("click", function () { goTo({ tab: "open", nw: true, sort: "posted" }); });
     $("#homeTodayNew").addEventListener("click", function () { goTo({ tab: "open", td: true, sort: "posted" }); });
+    $("#homeTodayDue").addEventListener("click", function () { goTo({ tab: "open", due: today + "~" + today }); });
     [["#homeSoonMore", "soon", "#homeSoon"], ["#homeNewMore", "fresh", "#homeNew"], ["#homePopMore", "pop", "#homePop"]]
       .forEach(function (m) {
         $(m[0]).addEventListener("click", function () {

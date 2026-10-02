@@ -77,7 +77,11 @@
   <section class="home-hero">
     <h2 id="homeTitle" class="hero-title"></h2>
     <p id="homeSub" class="hero-sub"></p>
-    <button type="button" class="today-new" id="homeTodayNew" hidden></button>
+    <!-- 오늘 새 공고(파랑) · 오늘 마감(빨강). 해당 건이 없는 단추는 숨는다 -->
+    <div class="today-row" id="homeTodayRow">
+      <button type="button" class="today-new" id="homeTodayNew" hidden></button>
+      <button type="button" class="today-new due" id="homeTodayDue" hidden></button>
+    </div>
     <form id="homeSearch" class="hero-search" role="search">
       <div class="field grow">
         <label class="label" for="homeQ">무엇을 찾으세요?</label>
