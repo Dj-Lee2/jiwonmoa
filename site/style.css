@@ -450,18 +450,24 @@ select { appearance: none; background-image: linear-gradient(45deg, transparent 
 }
 @keyframes tip-in { from { opacity: 0; translate: 0 3px; } to { opacity: 1; translate: 0 0; } }
 
-/* 마감 달력(app.js dueCard): 한 열 = 한 주, 한 칸 = 하루. 빈 날은 옅은 회색, 지난날은 더 옅게, 오늘은 테두리.
- * 칸 색은 지도와 같은 파랑 4단계(인라인 fill). 가장 진한 칸의 숫자만 흰 글자 */
+/* 마감 달력(app.js dueCard): 보통 달력처럼 가로 = 요일, 세로 = 주(늘 6주). 그 달에 없는 날은 회색 선만,
+ * 마감 없는 날은 옅은 회색, 지난날은 빗금, 오늘은 테두리. 칸 색은 지도와 같은 파랑 4단계(인라인 fill) */
 .duecal-fig { display: grid; gap: 12px; justify-items: center; }
 .viz-body svg.duecal { width: 100%; height: auto; max-height: none; }
 .duecal .cell { fill: var(--surface-hover); }
+.duecal .blank { fill: none; stroke: var(--divider); stroke-width: 1; }
 /* 지난날은 빗금으로 '고를 수 없음'을 보인다 — Pattern adapted from Uiverse.io by AspenBranch (slippery-sheep-50) — MIT License, © 2023 Uiverse.io */
 .duecal .past .cell { fill: url(#duecal-past); stroke: var(--divider); stroke-width: 1; }
 .duecal .today .cell { stroke: var(--fg-strong); stroke-width: 2; }
+.duecal .dnum { fill: var(--muted); font-size: 11px; font-weight: 600; pointer-events: none; font-variant-numeric: tabular-nums; }
+.duecal .past .dnum { opacity: .6; }
+.duecal .mark .dnum { fill: var(--fg-strong); }
+.duecal .deep .dnum { fill: rgba(255, 255, 255, .85); }
 .duecal .mark { cursor: pointer; outline: none; }
 .duecal .mark:focus-visible .cell { stroke: var(--fg-strong); stroke-width: 2.5; }
-.duecal .dcnt { fill: var(--fg-strong); font-size: 12px; font-weight: 700; pointer-events: none; font-variant-numeric: tabular-nums; }
-.duecal .dcnt.on { fill: #fff; }
+.duecal .dcnt { fill: var(--fg-strong); font-size: 13px; font-weight: 700; pointer-events: none; font-variant-numeric: tabular-nums; }
+.duecal .deep .dcnt { fill: #fff; }
+@media (max-width: 639px) { .duecal .dnum { font-size: 10px; } }
 .duecal-foot { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 16px; width: 100%; }
 .duecal-scale { gap: 4px; }
 .duecal-scale i { width: 14px; height: 14px; }

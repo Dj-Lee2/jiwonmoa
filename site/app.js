@@ -1298,21 +1298,27 @@
     return card;
   }
 
-  /* 언제 마감되나요?: 앞으로 12주 마감 달력. 한 열 = 한 주(위에서 아래로 일~토), 한 칸 = 하루.
+  /* 언제 마감되나요?: 이번 달부터 석 달 마감 달력. 보통 달력처럼 가로 = 요일(일~토), 세로 = 주.
+   * 달마다 6주 칸을 늘 그리고, 그 달에 없는 날은 회색 선만 있는 빈칸으로 둔다(달이 바뀌어도 모양이 같다).
    * 진할수록 그날 마감하는 접수 중 공고가 많다. 칸을 누르면 그날 마감 공고 목록으로 간다(due = 그날~그날).
-   * 12주 뒤에 마감하는 공고는 아래 '이후 마감' 단추로 모아 본다.
-   * 색 4단계 경계는 지금 자료에서 마감이 있는 날들의 분포(33·66·90%)로 정한다 */
-  var DUE_WEEKS = 12;
+   * 석 달 뒤에 마감하는 공고는 아래 '이후 마감' 단추로 모아 본다.
+   * 색 4단계 경계는 석 달 동안 마감이 있는 날들의 분포(33·66·90%)로 정한다(달을 바꿔도 같은 색 = 같은 양) */
+  var DUE_MONTHS = 3, dueMonth = 0;
   var DUE_SHADES = ["#cde2fb", "#86b6ef", "#3987e5", "#1c5cab"]; // 지도 파랑 단계와 같은 색
+
+  function monthStart(iso, add) {
+    var p = iso.split("-");
+    return new Date(Date.UTC(+p[0], +p[1] - 1 + add, 1)).toISOString().slice(0, 10);
+  }
 
   function dueCard(live) {
     var W = chartWidth();
-    var dow = new Date(Date.parse(today + "T00:00:00Z")).getUTCDay();
-    var start = addDays(today, -dow); // 이번 주 일요일
-    var last = addDays(start, DUE_WEEKS * 7 - 1);
+    var months = [];
+    for (var m = 0; m < DUE_MONTHS; m++) months.push(monthStart(today, m));
+    var last = addDays(monthStart(today, DUE_MONTHS), -1);
     var perDay = {}, later = 0;
     live.forEach(function (it) {
-      if (statusOf(it) !== "접수 중" || !it.e) return;
+      if (statusOf(it) !== "접수 중" || !it.e || it.e < today) return;
       if (it.e > last) later++;
       else perDay[it.e] = (perDay[it.e] || 0) + 1;
     });
@@ -1321,14 +1327,19 @@
       [0.33, 0.66, 0.9].map(function (q) { return values[Math.floor(q * (values.length - 1))]; }) : [1, 2, 3];
     function level(n) { return n ? 1 + breaks.filter(function (b) { return n > b; }).length : 0; }
 
-    // 칸 간격은 폭에 맞춘다: 휴대폰 24px(누르기 최소) ~ 넓은 화면 45px(글자 크기 유지, 높이 340px 안)
-    var left = 20, top = 22, gap = 3;
-    var pitch = Math.max(24, Math.min(45, Math.floor((W - left) / DUE_WEEKS)));
-    var cell = pitch - gap;
-    var gridW = left + DUE_WEEKS * pitch - gap;
-    var H = top + 7 * pitch - gap;
-    var root = svgEl("svg", { viewBox: "0 0 " + gridW + " " + H, role: "group", "class": "duecal",
-      "aria-label": "앞으로 " + DUE_WEEKS + "주 날짜별 마감 공고 수 달력", style: "max-width:" + gridW + "px" });
+    if (dueMonth >= DUE_MONTHS) dueMonth = 0;
+    var first = months[dueMonth], ym = first.slice(0, 7);
+    var lead = new Date(Date.parse(first + "T00:00:00Z")).getUTCDay(); // 1일 앞 빈칸 수
+    var gridStart = addDays(first, -lead);
+
+    // 칸 폭은 카드 폭을 7로 나눈 값, 높이는 폭에 맞춰 36~52px(휴대폰에서도 누를 수 있게)
+    var top = 24, gap = 4;
+    var cw = Math.floor((W - 6 * gap) / 7);
+    var ch = Math.max(36, Math.min(52, Math.round(cw * 0.72)));
+    var gridW = 7 * cw + 6 * gap;
+    var H = top + 6 * ch + 5 * gap + 1;
+    var root = svgEl("svg", { viewBox: "-0.5 -0.5 " + (gridW + 1) + " " + H, role: "group", "class": "duecal",
+      "aria-label": (+ym.slice(5)) + "월 날짜별 마감 공고 수 달력", style: "max-width:" + (gridW + 1) + "px" });
     // 지난날 칸의 빗금 무늬(style.css .duecal .past .cell)
     var defs = svgEl("defs", {});
     var hatch = svgEl("pattern", { id: "duecal-past", width: 6, height: 6, patternUnits: "userSpaceOnUse",
@@ -1338,51 +1349,47 @@
     root.append(defs);
 
     WEEKDAY.forEach(function (w, d) {
-      root.append(svgText(0, top + d * pitch + cell / 2 + 5, w, "tick", "start"));
-    });
-    // 달이 바뀌는 주의 열 위에 'N월'. 첫 열은 이번 달. 다음 표시와 두 열 안으로 붙으면 앞의 것을 뺀다
-    var marks = [];
-    for (var c = 0; c < DUE_WEEKS; c++) {
-      for (var r = 0; r < 7; r++) {
-        var iso0 = addDays(start, c * 7 + r);
-        if ((c === 0 && iso0 === today) || (iso0 > today && iso0.slice(8) === "01")) {
-          marks.push({ c: c, text: (+iso0.slice(5, 7)) + "월" });
-          break;
-        }
-      }
-    }
-    marks.filter(function (m, i) { return !marks[i + 1] || marks[i + 1].c - m.c >= 2; }).forEach(function (m) {
-      root.append(svgText(left + m.c * pitch, 14, m.text, "tick", "start"));
+      root.append(svgText(d * (cw + gap) + cw / 2, 15, w, "tick", "middle"));
     });
 
-    for (var wk = 0; wk < DUE_WEEKS; wk++) {
-      for (var d = 0; d < 7; d++) {
-        var iso = addDays(start, wk * 7 + d);
-        var past = iso < today;
-        var n = past ? 0 : (perDay[iso] || 0);
-        var lvl = level(n);
-        var x = left + wk * pitch, y = top + d * pitch;
-        var g = svgEl("g", { "class": "day" + (n ? " mark" : "") + (past ? " past" : "") + (iso === today ? " today" : ""),
-          style: "--i:" + (wk * 7 + d) });
-        g.append(svgEl("rect", { x: x, y: y, width: cell, height: cell, rx: Math.min(6, cell / 4),
-          "class": "cell", style: lvl ? "fill:" + DUE_SHADES[lvl - 1] : "" }));
-        if (n && cell >= 30) g.append(svgText(x + cell / 2, y + cell / 2 + 5, fmtN(n), "dcnt" + (lvl === 4 ? " on" : "")));
-        if (n) {
-          (function (day, cnt) {
-            activate(g, fmtDate(day, true) + " 마감 " + cnt + "건. 누르면 목록으로 갑니다",
-              function () { goTo({ tab: "open", due: day + "~" + day }); });
-            tipFor(g, fmtN(cnt) + "건", fmtDate(day, true) + " 마감");
-          })(iso, n);
-        } else {
-          g.setAttribute("aria-hidden", "true");
-        }
-        root.append(g);
+    var big = cw >= 44; // 날짜는 늘 왼쪽 위. 마감 수는 넓은 칸이면 오른쪽 아래, 좁으면 가운데 아래
+    for (var i = 0; i < 42; i++) {
+      var iso = addDays(gridStart, i);
+      var x = (i % 7) * (cw + gap), y = top + Math.floor(i / 7) * (ch + gap);
+      var inMonth = iso.slice(0, 7) === ym;
+      var rx = Math.min(8, cw / 5);
+      if (!inMonth) {
+        // 그 달에 없는 날: 회색 선만
+        root.append(svgEl("rect", { x: x, y: y, width: cw, height: ch, rx: rx, "class": "blank", "aria-hidden": "true" }));
+        continue;
       }
+      var past = iso < today;
+      var n = past ? 0 : (perDay[iso] || 0);
+      var lvl = level(n);
+      var g = svgEl("g", { "class": "day" + (n ? " mark" : "") + (past ? " past" : "") + (iso === today ? " today" : "") +
+        (lvl === 4 ? " deep" : ""), style: "--i:" + i });
+      g.append(svgEl("rect", { x: x, y: y, width: cw, height: ch, rx: rx,
+        "class": "cell", style: lvl ? "fill:" + DUE_SHADES[lvl - 1] : "" }));
+      g.append(svgText(x + (big ? 6 : 4), y + (big ? 15 : 12), String(+iso.slice(8)), "dnum", "start"));
+      if (n) g.append(big ? svgText(x + cw - 7, y + ch - 8, fmtN(n), "dcnt", "end")
+        : svgText(x + cw / 2, y + ch - 6, fmtN(n), "dcnt"));
+      if (n) {
+        (function (day, cnt) {
+          activate(g, fmtDate(day, true) + " 마감 " + cnt + "건. 누르면 목록으로 갑니다",
+            function () { goTo({ tab: "open", due: day + "~" + day }); });
+          tipFor(g, fmtN(cnt) + "건", fmtDate(day, true) + " 마감");
+        })(iso, n);
+      } else {
+        g.setAttribute("aria-hidden", "true");
+      }
+      root.append(g);
     }
 
-    var busiest = Object.keys(perDay).sort(function (a, b) { return perDay[b] - perDay[a] || a.localeCompare(b); }).slice(0, 3);
-    var sub = busiest.length ?
-      "마감이 몰린 날: " + busiest.map(function (k) { return fmtDate(k) + " " + fmtN(perDay[k]) + "건"; }).join(" · ") : null;
+    var inShown = Object.keys(perDay).filter(function (k) { return k.slice(0, 7) === ym; });
+    var total = inShown.reduce(function (a, k) { return a + perDay[k]; }, 0);
+    var busiest = inShown.sort(function (a, b) { return perDay[b] - perDay[a] || a.localeCompare(b); }).slice(0, 3);
+    var sub = (+ym.slice(5)) + "월 마감 " + fmtN(total) + "건" + (busiest.length ?
+      " · 몰린 날 " + busiest.map(function (k) { return fmtDate(k) + " " + fmtN(perDay[k]) + "건"; }).join(", ") : "");
     var scale = el("div", { className: "scale duecal-scale", "aria-hidden": "true" }, "적음");
     DUE_SHADES.forEach(function (color) { scale.append(el("i", { style: "background:" + color })); });
     scale.append("많음");
@@ -1394,7 +1401,10 @@
       laterBtn.addEventListener("click", function () { goTo({ tab: "open", due: after + "~9999-12-31" }); });
     }
     return vizCard("언제 마감되나요?", sub,
-      el("div", { className: "viz-fig duecal-fig" }, root, el("div", { className: "duecal-foot" }, scale, laterBtn)), null);
+      el("div", { className: "viz-fig duecal-fig" }, root, el("div", { className: "duecal-foot" }, scale, laterBtn)), null,
+      segToggle("due", "달력에 보일 달", months.map(function (iso, k) {
+        return { value: k, label: (+iso.slice(5, 7)) + "월" };
+      }), dueMonth, function (v) { dueMonth = v; }));
   }
 
   /* 실제 지도(vendor/korea-map.js, svg-maps CC BY 4.0). 작은 광역시는 지도 위 숫자가 가려지므로
