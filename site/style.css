@@ -633,11 +633,26 @@ select { appearance: none; background-image: linear-gradient(45deg, transparent 
 .scale i { display: inline-block; width: 14px; height: 14px; border-radius: 4px; }
 
 /* ---------- 바닥글: 원문 사이트 알약 ---------- */
-.foot { border-top: 1px solid var(--divider); background: var(--canvas); color: var(--muted); font-size: .75rem; line-height: 1.6; }
-.foot-inner { padding-top: 24px; padding-bottom: 40px; }
+/* 하단: 위(이름·수집 안내 | 이용 안내·개인정보 안내) → 원문 사이트 알약 → 선 아래 출처·원문 확인·© */
+.foot { border-top: 1px solid var(--divider); background: var(--surface-hover); color: var(--muted); font-size: .75rem; line-height: 1.6; }
+.foot-inner { padding-top: 32px; padding-bottom: 88px; } /* 아래 여백: 오른쪽 아래 '맨 위로' 단추가 마지막 줄을 가리지 않게 */
 .foot p { margin: 0 0 8px; }
+.foot-top { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 16px 32px; margin-bottom: 20px; }
+.foot-name { display: flex; align-items: center; gap: 8px; margin: 0 0 6px !important; font-size: 1.125rem; font-weight: 800; color: var(--fg-strong); letter-spacing: -0.3px; }
+.foot-name img { border-radius: 8px; }
+.foot-run { font-size: .8125rem; color: var(--muted); }
+.foot-menu { display: flex; gap: 4px 20px; flex-wrap: wrap; list-style: none; margin: 0; padding: 0; }
+.foot-menu-btn { display: inline-flex; align-items: center; gap: 2px; min-height: 40px; padding: 0; border: 0; background: none; font: inherit;
+  font-size: .875rem; font-weight: 700; color: var(--fg-strong); cursor: pointer; }
+.foot-menu-btn:hover { text-decoration: underline; text-underline-offset: 3px; }
+.foot-menu-btn .ph { font-size: .875rem; color: var(--muted); }
+.foot-bottom { border-top: 1px solid var(--line); padding-top: 16px; }
+.foot-bottom a { color: inherit; }
+.foot-last { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 4px 16px; margin-top: 8px; }
+.foot-check { display: inline-flex; align-items: center; gap: 4px; color: var(--fg); font-weight: 600; }
+.foot-copy { color: var(--muted); }
 .foot-links { display: flex; flex-wrap: wrap; gap: 8px; list-style: none; margin: 0 0 20px; padding: 0; }
-.foot-links a { display: inline-flex; align-items: center; height: 40px; padding: 0 20px; border-radius: 24px; background: var(--surface); color: var(--fg-strong); text-decoration: none; font-size: .75rem; }
+.foot-links a { display: inline-flex; align-items: center; height: 40px; padding: 0 20px; border-radius: 24px; background: var(--canvas); box-shadow: inset 0 0 0 1px var(--line); color: var(--fg-strong); text-decoration: none; font-size: .75rem; }
 
 /* ---------- 좁은 화면(1099px 이하): 조건과 상세를 겹쳐 띄운다 ---------- */
 @media (max-width: 1099px) {
@@ -726,7 +741,7 @@ select { appearance: none; background-image: linear-gradient(45deg, transparent 
   /* 등장 움직임(투명에서 시작)이 인쇄에 그대로 찍히면 빈 종이가 나온다 */
   *, *::before, *::after { animation: none !important; transition: none !important; opacity: 1 !important; filter: none !important; translate: none !important; }
   html, body { background: #fff !important; overflow: visible !important; }
-  .top, .tabs, .filters, .list-pane, .foot, .actions, .detail-bar, .change-note, .similar-box, .toast, .peek, .peek-shade,
+  .top, .tabs, .filters, .list-pane, .foot, .actions, .detail-bar, .to-top, .info-dialog, .change-note, .similar-box, .toast, .peek, .peek-shade,
   .viz-tip, #homePane, .tabs-dock, .skip { display: none !important; }
   .layout { display: block; padding: 0; max-width: none; }
   .detail { display: block !important; position: static !important; inset: auto !important; width: auto !important; max-height: none; overflow: visible !important;
@@ -1020,3 +1035,40 @@ svg.has-pick .mark.picked .cell, svg.has-pick .mark.picked .bar { stroke: var(--
 #meClear { margin-left: auto; }
 .me-note { margin: 10px 0 0; font-size: .75rem; line-height: 1.5; color: var(--muted); }
 .me-note a { color: inherit; }
+
+/* ---------- 이용 안내·개인정보 안내 창(app.js openInfo) ---------- */
+.info-dialog { width: min(560px, calc(100vw - 32px)); max-height: min(80vh, 720px); padding: 0; border: 0; border-radius: 24px;
+  box-shadow: var(--shadow-panel); color: var(--fg); background: var(--canvas); overflow: hidden; }
+.info-dialog[open] { display: flex; flex-direction: column; }
+.info-dialog::backdrop { background: rgba(0, 0, 0, .32); }
+.info-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 18px 16px 10px 24px; border-bottom: 1px solid var(--divider); }
+.info-head h2:focus { outline: none; }
+.info-head h2 { margin: 0; font-size: 1.25rem; font-weight: 800; color: var(--fg-strong); letter-spacing: -0.3px; }
+.info-close { width: 44px; justify-content: center; }
+.info-body { padding: 8px 24px 24px; overflow-y: auto; overscroll-behavior: contain; }
+.info-body section { padding: 14px 0; border-bottom: 1px solid var(--divider); }
+.info-body section:last-child { border-bottom: 0; }
+.info-body h3 { margin: 0 0 4px; font-size: .9375rem; color: var(--fg-strong); }
+.info-body p { margin: 0; font-size: .875rem; line-height: 1.65; }
+body.info-lock { overflow: hidden; }
+@media (max-width: 639px) {
+  /* 휴대폰은 아래에서 올라오는 시트(요약 창과 같은 모양) */
+  .info-dialog { width: 100%; max-width: none; max-height: 85vh; margin: auto 0 0; border-radius: 24px 24px 0 0; }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .info-dialog[open] { animation: peek-in .16s var(--ease-out); }
+}
+@media (prefers-reduced-motion: no-preference) and (max-width: 639px) {
+  .info-dialog[open] { animation: sheet-in .24s var(--ease-drawer); }
+}
+
+/* ---------- 맨 위로 ---------- */
+.to-top { position: fixed; right: max(16px, env(safe-area-inset-right)); bottom: max(20px, env(safe-area-inset-bottom)); z-index: 30;
+  width: 48px; height: 48px; border: 0; border-radius: 50%; display: grid; place-items: center; cursor: pointer;
+  background: var(--canvas); color: var(--fg-strong); box-shadow: var(--shadow-panel); font-size: 1.25rem; }
+.to-top:hover { background: var(--surface-hover); }
+.to-top[hidden] { display: none; }
+body.peek-lock .to-top, body.detail-open .to-top, body.filters-open .to-top, body.info-lock .to-top { display: none; }
+@media (prefers-reduced-motion: no-preference) {
+  .to-top:not([hidden]) { animation: fade-in .2s ease-out; }
+}

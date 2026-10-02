@@ -278,6 +278,16 @@
 
 <footer class="foot">
   <div class="wrap foot-inner">
+    <div class="foot-top">
+      <div class="foot-brand">
+        <p class="foot-name"><img src="img/mascot-still.webp" alt="" width="28" height="28">지원모아</p>
+        <p class="foot-run" id="footRun">매일 오전 6시 30분 공공 API에서 새로 모읍니다.</p>
+      </div>
+      <ul class="foot-menu">
+        <li><button type="button" class="foot-menu-btn" data-info="guide">이용 안내<i class="ph ph-caret-right" aria-hidden="true"></i></button></li>
+        <li><button type="button" class="foot-menu-btn" data-info="privacy">개인정보 안내<i class="ph ph-caret-right" aria-hidden="true"></i></button></li>
+      </ul>
+    </div>
     <ul class="foot-links" aria-label="원문을 볼 수 있는 곳">
       <li><a href="https://www.bizinfo.go.kr" target="_blank" rel="noopener">기업마당</a></li>
       <li><a href="https://www.k-startup.go.kr" target="_blank" rel="noopener">K-Startup</a></li>
@@ -286,13 +296,30 @@
       <li><a href="https://www.losims.go.kr/sp" target="_blank" rel="noopener">보탬e</a></li>
       <li><a href="https://www.nongupez.go.kr" target="_blank" rel="noopener">농업e지</a></li>
     </ul>
-    <p>신청 전에 원문 공고를 확인하세요.</p>
-    <p>자료: 공공데이터포털 — 중소벤처기업부 「중소기업 지원사업 공고 조회 서비스」(기업마당, 공공누리 제3유형), 창업진흥원 「K-Startup 조회서비스」, 행정안전부 「대한민국 공공서비스(혜택) 정보」, 기획예산처 「국고보조금 공모사업 상세」</p>
-    <p>지도: <a href="https://github.com/VictorCazanave/svg-maps/tree/master/packages/south-korea" target="_blank" rel="noopener">svg-maps South Korea</a>
-      (Victor Cazanave, 원본 <a href="https://mapsvg.com/maps/south-korea" target="_blank" rel="noopener">MapSVG</a>),
-      <a href="https://creativecommons.org/licenses/by/4.0/deed.ko" target="_blank" rel="noopener">CC BY 4.0</a>, 광주·전남 합쳐 표시</p>
+    <div class="foot-bottom">
+      <p>자료 출처: 공공데이터포털 — 중소벤처기업부 「중소기업 지원사업 공고 조회 서비스」(기업마당, 공공누리 제3유형), 창업진흥원 「K-Startup 조회서비스」, 행정안전부 「대한민국 공공서비스(혜택) 정보」, 기획예산처 「국고보조금 공모사업 상세」</p>
+      <p>지도: <a href="https://github.com/VictorCazanave/svg-maps/tree/master/packages/south-korea" target="_blank" rel="noopener">svg-maps South Korea</a>
+        (Victor Cazanave, 원본 <a href="https://mapsvg.com/maps/south-korea" target="_blank" rel="noopener">MapSVG</a>),
+        <a href="https://creativecommons.org/licenses/by/4.0/deed.ko" target="_blank" rel="noopener">CC BY 4.0</a>, 광주·전남 합쳐 표시</p>
+      <div class="foot-last">
+        <p class="foot-check"><i class="ph ph-info" aria-hidden="true"></i>신청 전에 원문 공고를 확인하세요.</p>
+        <p class="foot-copy">© 2026 지원모아</p>
+      </div>
+    </div>
   </div>
 </footer>
+
+<!-- 하단 '이용 안내'·'개인정보 안내' 창(app.js openInfo) -->
+<dialog class="info-dialog" id="infoDialog" aria-labelledby="infoTitle">
+  <div class="info-head">
+    <h2 id="infoTitle" tabindex="-1"></h2>
+    <button type="button" class="iconbtn info-close" id="infoClose" aria-label="닫기"><i class="ph ph-x" aria-hidden="true"></i></button>
+  </div>
+  <div class="info-body" id="infoBody"></div>
+</dialog>
+
+<!-- 맨 위로: 화면 한 장 반쯤 내려가면 오른쪽 아래에 나타난다 -->
+<button type="button" class="to-top" id="toTop" aria-label="맨 위로" hidden><i class="ph ph-arrow-up" aria-hidden="true"></i></button>
 
 <div id="vizTip" class="viz-tip" role="status" hidden></div>
 

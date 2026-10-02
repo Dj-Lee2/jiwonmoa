@@ -1186,11 +1186,75 @@
     var at = runs.map(function (r) { return r.at; }).sort().pop() || META.builtAt;
     var basis = $("#basisShort");
     basis.replaceChildren(fmtStamp(at) + " 수집");
+    $("#footRun").textContent = "매일 오전 6시 30분 공공 API에서 새로 모읍니다 · 마지막 수집 " + fmtStamp(at);
     var failed = runs.filter(function (r) { return !r.ok; });
     if (failed.length) {
       basis.append(" ", el("span", { className: "warn", text: failed.map(function (r) { return SRC_NAME[r.src]; })
         .join(", ") + " 수집 실패, 이전 자료 표시" }));
     }
+  }
+
+  /* ---------- 하단: 이용 안내·개인정보 안내 창, 맨 위로 ---------- */
+  var INFO = {
+    guide: { title: "이용 안내", body: function () {
+      var counts = META.counts || {};
+      var open = NOTICES.filter(function (n) { return statusOf(n) !== "마감"; }).length;
+      return [
+        ["무엇을 모으나요", "기업마당·K-Startup·국고보조금(보조금 통합포털)의 모집 공고와 보조금24의 상시 제도를 매일 오전 6시 30분에 공공데이터포털 API로 모읍니다. 지금 모집 공고 " +
+          fmtN(open) + "건, 상시 제도 " + fmtN(counts.services || 0) + "건이 있습니다."],
+        ["모집 공고와 상시 제도", "모집 공고는 신청 기간이 정해진 공고, 상시 제도는 언제든 신청할 수 있는 보조금24의 제도입니다. 둘을 합쳐 '지원사업'이라고 부릅니다."],
+        ["찾는 방법", "홈에서 지역·대상을 고르거나 검색하세요. 목록의 '조건'에서 대상·분야·신청 상태·내 조건(나이·소득·성별)으로 좁힐 수 있습니다. 홈 그래프의 막대·칸·지역을 누르면 요약이 먼저 뜹니다."],
+        ["챙겨 두기", "상세 화면의 '관심 담기'는 홈 맨 위에, '마감일 달력에 추가'는 홈 마감 달력에 표시됩니다. 담은 뒤 마감일이 바뀌면 알려 드립니다."],
+        ["꼭 확인하세요", "화면의 글은 원문 일부를 옮긴 것입니다. 신청 자격·기간·서류는 반드시 각 기관의 원문 공고에서 확인하세요."]
+      ];
+    } },
+    privacy: { title: "개인정보 안내", body: function () {
+      return [
+        ["받는 정보", "지원모아는 가입·로그인이 없고, 이름·연락처 같은 개인정보를 받거나 서버에 보관하지 않습니다."],
+        ["이 기기에만 저장하는 것", "관심 담기, 마감일 달력, 내 조건(나이·소득 구간·성별), 글자 크기·버튼 소리 설정은 지금 쓰는 브라우저 안(localStorage)에만 저장되고 서버로 보내지 않습니다. 다른 기기나 브라우저와는 이어지지 않습니다."],
+        ["지우는 방법", "관심·달력은 각 단추로 빼고, 내 조건은 목록 '조건'의 '지우기'나 '조건 지우기'로 지웁니다. 브라우저의 방문 기록·사이트 데이터를 지워도 모두 사라집니다."],
+        ["주소에 담기는 것", "고른 조건은 공유할 수 있게 주소의 # 뒤에 담깁니다. 이 부분은 서버로 보내지지 않지만, 나이·소득 조건이 든 주소를 다른 사람에게 보내면 그 조건도 함께 보입니다."],
+        ["접속 기록·외부 연결", "이 사이트 서버는 방문 기록을 따로 저장하지 않고, 쿠키나 방문 분석 도구도 쓰지 않습니다. 다만 글꼴과 아이콘을 외부 배포 서버(jsDelivr)에서 받아 오므로, 그 과정에서 해당 업체가 일반적인 접속 정보(IP 주소 등)를 볼 수 있습니다. 원문 보기·파일 받기를 누르면 각 기관 사이트로 이동합니다."]
+      ];
+    } }
+  };
+  var infoOpener = null;
+  function openInfo(kind, opener) {
+    var d = $("#infoDialog"), spec = INFO[kind];
+    if (!d || !spec) return;
+    infoOpener = opener || null;
+    $("#infoTitle").textContent = spec.title;
+    var body = $("#infoBody");
+    body.replaceChildren.apply(body, spec.body().map(function (p) {
+      return el("section", null, el("h3", { text: p[0] }), el("p", { text: p[1] }));
+    }));
+    body.scrollTop = 0;
+    if (d.showModal) d.showModal(); else d.setAttribute("open", "");
+    $("#infoTitle").focus({ preventScroll: true }); // 닫기 단추에 초점 테두리가 먼저 뜨지 않게 제목에서 시작
+    document.body.classList.add("info-lock");
+  }
+  function bindFooter() {
+    var d = $("#infoDialog");
+    document.querySelectorAll(".foot-menu-btn").forEach(function (b) {
+      b.addEventListener("click", function () { openInfo(b.dataset.info, b); });
+    });
+    $("#infoClose").addEventListener("click", function () { d.close ? d.close() : d.removeAttribute("open"); });
+    d.addEventListener("click", function (e) { if (e.target === d) d.close(); }); // 창 밖(뒤판) 누르면 닫기
+    d.addEventListener("close", function () {
+      document.body.classList.remove("info-lock");
+      if (infoOpener) infoOpener.focus({ preventScroll: true });
+    });
+    // 맨 위로: 화면 높이의 1.5배 넘게 내려가면 보인다(요약 시트·상세 겹침 화면이 열려 있으면 숨김은 CSS)
+    var top = $("#toTop"), ticking = false;
+    function check() { ticking = false; top.hidden = window.scrollY < window.innerHeight * 1.5; }
+    window.addEventListener("scroll", function () { if (!ticking) { ticking = true; requestAnimationFrame(check); } }, { passive: true });
+    top.addEventListener("click", function () {
+      var smooth = !window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      window.scrollTo({ top: 0, behavior: smooth ? "smooth" : "auto" });
+      var t = document.querySelector("[role=tab][aria-selected=true]");
+      if (t) t.focus({ preventScroll: true });
+    });
+    check();
   }
 
   function renderTabCounts() {
@@ -2901,6 +2965,7 @@
     renderBasis();
     renderTabCounts();
     bind();
+    bindFooter();
     applyView();
     // 웹 글꼴이 오면 가로 막대 이름 칸 폭을 다시 재도록 한 번 더 그린다(움직임은 이 뒤에 시작)
     fontsReady.then(function () { if (state.tab === "home") renderCharts(homeLive()); });
