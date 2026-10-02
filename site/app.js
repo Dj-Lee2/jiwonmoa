@@ -1224,8 +1224,10 @@
   /* 1~12월 선 그래프(두 계열). 선 2px, 점 8px, 옅은 눈금 3줄, 선 끝에 이름.
    * 달마다 세로 띠를 가리키면(또는 초점) 그 달 두 계열 값을 한 번에 보여 준다.
    * partial: 마지막 점이 아직 끝나지 않은 달이면 점선·빈 점으로 그린다 */
-  function lineChart(series, label, W, tipAt) {
-    var H = chartHeight(W) - 4, top = 18, bottom = 30, left = 46, right = 40;
+  function lineChart(series, label, W, tipAt, fitH) {
+    // fitH를 주면 카드 남는 높이를 채운다(옆 카드가 길 때 제목과 그래프 사이가 비지 않게, 최대 440px)
+    var H = fitH ? Math.max(chartHeight(W) - 4, Math.min(440, Math.floor(fitH))) : chartHeight(W) - 4;
+    var top = 18, bottom = 30, left = 46, right = 40;
     var base = H - bottom, plotH = base - top, plotW = W - left - right;
     var n = 12, step = plotW / (n - 1);
     var max = 1;
@@ -1547,13 +1549,17 @@
     var series = [
       { name: cur + "년(올해)", short: "올해", color: SERIES_BLUE, values: B, marks: true, partial: true },
       { name: prev + "년(작년)", short: "작년", color: SERIES_GRAY, values: A }];
-    var chart = lineChart(series, "달별 국고보조금 공모 수, 올해와 작년 비교 선 그래프", chartWidth(), function (i) {
-      var parts = [];
-      if (i < B.length) parts.push("올해 " + fmtN(B[i]) + "건" + (i === B.length - 1 ? "(모은 날까지)" : ""));
-      parts.push("작년 " + fmtN(A[i]) + "건");
-      return { value: (i + 1) + "월", label: parts.join(" · ") };
-    });
-    return vizCard(title, sub, el("div", { className: "viz-fig" }, legend(series), chart), foot);
+    function draw(fitH) {
+      return lineChart(series, "달별 국고보조금 공모 수, 올해와 작년 비교 선 그래프", chartWidth(), function (i) {
+        var parts = [];
+        if (i < B.length) parts.push("올해 " + fmtN(B[i]) + "건" + (i === B.length - 1 ? "(모은 날까지)" : ""));
+        parts.push("작년 " + fmtN(A[i]) + "건");
+        return { value: (i + 1) + "월", label: parts.join(" · ") };
+      }, fitH);
+    }
+    var card = vizCard(title, sub, el("div", { className: "viz-fig" }, legend(series), draw()), foot);
+    card._redraw = draw;
+    return card;
   }
 
   var chartsDrawnAt = 0;
@@ -1641,7 +1647,7 @@
     support.querySelector(".viz-body").classList.add("top"); // 옆 목록 카드가 길어도 막대는 제목 바로 아래에
     var due = dueCard(live), months = openMonthsCard();
     due.querySelector(".viz-body").classList.add("bottom");
-    months.querySelector(".viz-body").classList.add("bottom");
+    months.querySelector(".viz-body").classList.add("top"); // 범례를 제목 바로 아래에, 남는 높이는 그래프가 채운다
     var persona = personaCard(live);
     persona.querySelector(".viz-body").classList.add("top"); // 범례를 제목 바로 아래에
     var upcoming = upcomingCard(), region = regionCard();
@@ -1649,7 +1655,7 @@
     ["persona", "map", "due", "months", "svc", "upcoming"].forEach(function (k, i) { cards[i].dataset.key = k; });
     $("#homeCharts").replaceChildren.apply($("#homeCharts"), cards);
     fitListHeight(upcoming.querySelector(".results"), upcoming._expandable, WIDE_CHARTS); // 막대 채우기보다 먼저
-    [persona, support].forEach(fillCard);
+    [persona, support, months].forEach(fillCard);
     setupMotion(cards);
     placeSegGliders(); // 글꼴이 온 뒤 그래프만 다시 그릴 때도 전환 단추 알약을 맞춘다
   }
@@ -1692,7 +1698,7 @@
   }
 
   function fillCard(card) {
-    var body = card.querySelector(".viz-body"), svg = body.querySelector("svg.hb");
+    var body = card.querySelector(".viz-body"), svg = body.querySelector("svg.hb, svg.line-chart");
     if (!svg || !card._redraw) return;
     var used = (svg.closest(".viz-fig") || svg).getBoundingClientRect().height;
     var free = body.clientHeight - (parseFloat(getComputedStyle(body).paddingTop) || 0) - used;
