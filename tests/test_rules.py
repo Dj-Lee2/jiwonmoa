@@ -175,6 +175,11 @@ class ServicePeekTest(unittest.TestCase):
         self.assertEqual(p["region"]["경기"]["청년"]["cat"], {"고용·창업": 1, "주거·자립": 1})
         self.assertEqual(p["national"]["청년"]["top"], ["gov24:1", "gov24:5"])
         self.assertNotIn("청년", p["region"]["부산"])  # 없는 대상은 칸을 만들지 않는다
+        # 도넛용 분야·방식 칸과 전체 칸
+        self.assertEqual(p["total"]["cat:생활안정"]["pp"], {"청년": 2})
+        self.assertEqual(p["total"]["sp:융자"]["cat"], {"고용·창업": 1, "주거·자립": 1})
+        self.assertEqual(p["region"]["서울"]["all"]["top"], ["gov24:4"])
+        self.assertEqual(p["total"]["all"]["pp"], {"청년": 5, "구직자": 1})
         self.assertNotIn("sm", p["items"]["gov24:1"])  # 짧은 항목만
         self.assertEqual(set(p["items"]), {"gov24:1", "gov24:2", "gov24:4", "gov24:5"})
 

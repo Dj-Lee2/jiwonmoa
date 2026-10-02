@@ -888,6 +888,11 @@ body.peek-lock .viz-tip { display: none; }
 /* 고른 표시만 진하게 */
 svg.has-pick .mark:not(.picked) { opacity: .35; }
 svg.has-pick .mark.picked .cell, svg.has-pick .mark.picked .bar { stroke: var(--fg-strong); stroke-width: 2; }
+.donut.has-pick .slice:not(.picked) path, .kmap.has-pick .kmap-region:not(.picked) path { opacity: .3; }
+.kmap.has-pick .kmap-region.picked path { stroke: var(--fg-strong); stroke-width: 2; }
+.donut-list button.picked, .kmap-list button.picked { background: var(--surface); box-shadow: inset 0 0 0 2px var(--fg-strong); }
+.peek-note { margin: -4px 0 0; font-size: .8125rem; color: var(--muted); }
+.peek-more + .peek-more { margin-top: -4px; }
 @media (prefers-reduced-motion: no-preference) {
   .peek:not(.sheet):not(.swap) { animation: peek-in .14s var(--ease-out); }
   .peek.sheet:not(.swap) { animation: sheet-in .24s var(--ease-drawer); }

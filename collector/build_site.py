@@ -291,30 +291,38 @@ PEEK_TOP = 3
 
 
 def service_peek(services):
-    """홈 그래프 요약 창(app.js openPeek)용 상시 제도 대상별 요약. 홈에서 큰 목록(services.js)을 읽지 않으려고 미리 센다.
+    """홈 그래프 요약 창(app.js openPeek)용 상시 제도 요약. 홈에서 큰 목록(services.js)을 읽지 않으려고 미리 센다.
 
     반환: {"total"|"national": 칸, "region": {지역: 칸}, "items": {id: 짧은 항목}}.
-    칸 = {대상: {"cat": {분야: 건수}, "sp": {지원 방식: 건수}, "top": [조회수 상위 id 3개]}}.
-    지역 + 전국 대상은 화면에서 두 칸을 더한다(분야·방식 건수를 다 들고 있어 더해도 정확하다).
+    칸 = {열쇠: {"cat": {분야: 건수}, "sp": {지원 방식: 건수}, "pp": {대상: 건수}, "top": [조회수 상위 id 3개]}}.
+    열쇠는 "all"(전체), 대상 이름(나비 막대), "cat:"분야·"sp:"지원 방식(도넛). 건수가 0인 열쇠는 칸을 만들지 않는다.
+    지역 + 전국 대상은 화면에서 두 칸을 더한다(분야·방식·대상 건수를 다 들고 있어 더해도 정확하다).
     """
     pool = {}
 
+    def keys_of(i):
+        return ["all"] + list(i.get("pp") or []) + (["cat:" + i["cat"]] if i.get("cat") else []) + \
+            ["sp:" + s for s in i.get("sp") or []]
+
     def cell(items):
+        groups = {}
+        for i in items:
+            for k in keys_of(i):
+                groups.setdefault(k, []).append(i)
         out = {}
-        for p in PERSONAS:
-            sub = [i for i in items if p in (i.get("pp") or [])]
-            if not sub:
-                continue
-            cat, sp = {}, {}
+        for k, sub in groups.items():
+            cat, sp, pp = {}, {}, {}
             for i in sub:
                 if i.get("cat"):
                     cat[i["cat"]] = cat.get(i["cat"], 0) + 1
                 for s in i.get("sp") or []:
                     sp[s] = sp.get(s, 0) + 1
+                for p in i.get("pp") or []:
+                    pp[p] = pp.get(p, 0) + 1
             top = sorted((i for i in sub if i.get("vw")), key=lambda i: -i["vw"])[:PEEK_TOP]
             for i in top:
-                pool[i["id"]] = {k: i[k] for k in TOP_KEYS if k in i}
-            out[p] = {"cat": cat, "sp": sp, "top": [i["id"] for i in top]}
+                pool[i["id"]] = {k2: i[k2] for k2 in TOP_KEYS if k2 in i}
+            out[k] = {"cat": cat, "sp": sp, "pp": pp, "top": [i["id"] for i in top]}
         return out
     out = {
         "total": cell(services),
@@ -323,7 +331,6 @@ def service_peek(services):
     }
     out["items"] = pool
     return out
-
 
 def write_js(name, var, data):
     SITE_DATA.mkdir(parents=True, exist_ok=True)
