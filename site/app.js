@@ -2483,6 +2483,212 @@
     return el("div", { className: "donut-wrap" }, el("div", { className: "donut-box", style: "width:" + S + "px;height:" + S + "px" }, svg), list);
   }
 
+
+  /* ---------- 선버스트(Bklit UI Sunburst Chart 모양) ----------
+   * 두 겹 고리: 안쪽 = 큰 묶음, 바깥 = 그 안의 나눔. 위에 경로(전체 › 묶음), 가운데 이름·건수·몫, 큰 조각엔 이름 글자.
+   *  - 가리키면 그 조각과 부모만 진하게, 가운데 글자가 그 조각으로 바뀐다(손가락 터치는 가리키기로 치지 않음)
+   *  - 안쪽 조각을 누르면 그 묶음만 한 바퀴로 펼친다(0.5초). 가운데나 경로의 '전체'를 누르면 돌아온다
+   *  - 바깥 조각을 누르면 요약 창(openPeek)
+   * tree = { name, total, children: [{ key, name, n, color, children: [{ key, name, n, color, peek(node) }] }] } */
+  function sunburstFigure(tree, opts) {
+    var W = chartWidth(), S = Math.min(460, W), c = S / 2;
+    var R = c - 4, r0 = Math.round(S * 0.19), r1 = Math.round(r0 + (R - r0) * 0.46);
+    var svg = svgEl("svg", { viewBox: "0 0 " + S + " " + S, width: S, height: S, "class": "sunburst", role: "group", "aria-label": opts.label });
+    var segLayer = svgEl("g", {}), labelLayer = svgEl("g", { "class": "sb-labels", "aria-hidden": "true" });
+    var centerHit = svgEl("circle", { cx: c, cy: c, r: r0 - 2, "class": "sb-center-hit" });
+    var tName = svgText(c, c - 14, "", "sb-name"), tVal = svgText(c, c + 12, "", "sb-val"), tSub = svgText(c, c + 30, "", "sb-sub");
+    svg.append(segLayer, labelLayer, centerHit, tName, tVal, tSub);
+    var crumb = el("div", { className: "sb-crumb", "aria-live": "polite" });
+    var hint = el("p", { className: "sb-hint" }, icon("hand-tap"), opts.hint || "안쪽 조각을 누르면 펼쳐 봐요");
+
+    // 마디 목록과 각 마디의 지금 각도(a0, a1)·고리(ring 1|2)
+    var nodes = [];
+    tree.children.forEach(function (p, i) {
+      p.depth = 1; p.idx = i; nodes.push(p);
+      (p.children || []).forEach(function (ch) { ch.depth = 2; ch.parent = p; nodes.push(ch); });
+    });
+    var focus = null, hoverNode = null;
+    function layout(f) {
+      var out = new Map(), TAU = Math.PI * 2;
+      var sum = tree.children.reduce(function (t, p) { return t + p.n; }, 0) || 1;
+      var a = 0;
+      tree.children.forEach(function (p) {
+        var span = p.n / sum * TAU, pa0 = a, pa1 = a + span;
+        a += span;
+        if (f) { // 펼친 묶음만 한 바퀴, 앞의 묶음은 0에, 뒤의 묶음은 한 바퀴 끝으로 접힌다
+          if (p === f) { pa0 = 0; pa1 = TAU; }
+          else if (p.idx < f.idx) { pa0 = pa1 = 0; } else { pa0 = pa1 = TAU; }
+        }
+        out.set(p, [pa0, pa1]);
+        var csum = (p.children || []).reduce(function (t, ch) { return t + ch.n; }, 0) || 1, b = pa0;
+        (p.children || []).forEach(function (ch) {
+          var cs = ch.n / csum * (pa1 - pa0);
+          out.set(ch, [b, b + cs]);
+          b += cs;
+        });
+      });
+      return out;
+    }
+    var cur = layout(null);
+    var paths = new Map();
+    function ringOf(n) { return n.depth === 1 ? [r0, r1] : [r1, R]; }
+    function pathFor(n, ang) {
+      var rr = ringOf(n), gap = 0.004;
+      if (ang[1] - ang[0] <= gap * 2) return "";
+      var full = ang[1] - ang[0] >= Math.PI * 2 - 0.001;
+      return donutArc(c, c, rr[1], rr[0], ang[0] + (full ? 0 : gap), ang[1] - (full ? 0.0001 : gap));
+    }
+    nodes.forEach(function (n) {
+      var g = svgEl("g", { "class": "sb-seg d" + n.depth + (n.other ? " other" : ""), style: "--i:" + (n.depth === 1 ? n.idx : n.parent.idx) });
+      var p = svgEl("path", { d: pathFor(n, cur.get(n)), style: "fill:" + n.color });
+      g.append(p);
+      var pct = tree.total ? Math.round(n.n / tree.total * 100) : 0;
+      var label = (n.depth === 2 ? n.parent.name + " › " : "") + n.name + " " + fmtN(n.n) + "건";
+      activate(g, label + (n.depth === 1 ? ". 누르면 펼쳐 봅니다" : ". 누르면 요약을 봅니다"), function (node) { pick(n, node); });
+      if (n.depth === 2) { g.setAttribute("aria-haspopup", "dialog"); g.setAttribute("aria-expanded", "false"); }
+      g.addEventListener("pointerenter", function (e) { if (!e.pointerType || e.pointerType === "mouse" || e.pointerType === "pen") { hoverNode = n; paint(); } });
+      g.addEventListener("pointerleave", function (e) { if (!e.pointerType || e.pointerType === "mouse" || e.pointerType === "pen") { hoverNode = null; paint(); } });
+      g.addEventListener("focus", function () { if (g.matches(":focus-visible")) { hoverNode = n; paint(); } });
+      g.addEventListener("blur", function () { if (hoverNode === n) { hoverNode = null; paint(); } });
+      n.g = g; n.path = p; n.pct = pct;
+      segLayer.append(g);
+    });
+    centerHit.addEventListener("click", function () { if (focus) zoom(null); });
+
+    function pick(n, node) {
+      if (n.depth === 1) { zoom(focus === n ? null : n); return; }
+      if (n.peek) n.peek(node);
+    }
+    // 가운데 글자: 가리킨 것 > 펼친 묶음 > 전체
+    function paint() {
+      var n = hoverNode || focus;
+      var picked = nodes.filter(function (x) { return x.g.classList.contains("picked"); })[0];
+      if (!hoverNode && picked) n = picked;
+      nodes.forEach(function (x) {
+        var on = n && (x === n || x === n.parent || x.parent === n && n.depth === 1 && !focus);
+        x.g.classList.toggle("on", !!on);
+      });
+      svg.classList.toggle("has-on", !!(hoverNode || picked));
+      if (n) {
+        tName.textContent = shortName(n.full || n.name);
+        tVal.textContent = fmtN(n.n) + "건";
+        tSub.textContent = n.depth === 2 ? shortName(n.parent.name) + "의 " + Math.round(n.n / (n.parent.childSum || n.parent.n) * 100) + "%" :
+          (opts.overlap ? "겹쳐 셈 " : "전체의 ") + Math.round(n.n / (tree.sum || tree.total) * 100) + "%";
+      } else {
+        tName.textContent = tree.name; tVal.textContent = fmtN(tree.total) + "건"; tSub.textContent = opts.centerSub || "";
+      }
+      svg.classList.toggle("zoomed", !!focus);
+    }
+    new MutationObserver(function () { paint(); }).observe(segLayer, { subtree: true, attributes: true, attributeFilter: ["class"] });
+
+    // 조각 이름: 가로로 쓰고, 조각 안에 다 들어갈 때만(가운데 반지름에서 잰 폭·고리 두께). 안 들어가면 가리키거나 눌러서 본다
+    function drawLabels() {
+      labelLayer.replaceChildren();
+      nodes.forEach(function (n) {
+        if (n.depth === 2 && opts.noOuterLabels) return;
+        var ang = cur.get(n), rr = ringOf(n), span = ang[1] - ang[0];
+        if (span <= 0.01) return;
+        var rm = (rr[0] + rr[1]) / 2, thick = rr[1] - rr[0];
+        var txt = n.name, w = txt.length * 11.5 + 6, h = 14;
+        var mid = (ang[0] + ang[1]) / 2, x = c + rm * Math.sin(mid), y = c - rm * Math.cos(mid);
+        // 글자 상자 네 귀가 모두 그 조각(반지름 rr, 각도 ang) 안에 드는지
+        var ok = [[-w / 2, -h / 2], [w / 2, -h / 2], [-w / 2, h / 2], [w / 2, h / 2]].every(function (d) {
+          var px = x + d[0] - c, py = y + d[1] - c, rad = Math.hypot(px, py);
+          var a = Math.atan2(px, -py); if (a < 0) a += Math.PI * 2;
+          return rad >= rr[0] + 2 && rad <= rr[1] - 2 && (span >= Math.PI * 2 - 0.01 || (a >= ang[0] + 0.01 && a <= ang[1] - 0.01));
+        });
+        if (thick < h + 4) return;
+        var t = svgText(x, y + 4, txt, "sb-label" + (n.dark ? " on-dark" : ""), "middle");
+        if (!ok) {
+          // 가로로 안 들어가면 고리를 따라 돌려 쓴다(거꾸로 서지 않게 아래쪽 절반은 뒤집음). 그래도 모자라면 쓰지 않는다
+          if (span * rm < w + 8 || span < 0.2) return;
+          var deg = mid * 180 / Math.PI, rot = deg > 90 && deg < 270 ? deg - 180 : deg;
+          t.setAttribute("transform", "rotate(" + rot.toFixed(1) + " " + x.toFixed(1) + " " + y.toFixed(1) + ")");
+        }
+        labelLayer.append(t);
+      });
+    }
+    function drawCrumb() {
+      var all = el("button", { type: "button", className: "sb-crumb-btn", "aria-current": focus ? null : "true" }, tree.name);
+      all.addEventListener("click", function () { if (focus) zoom(null); });
+      crumb.replaceChildren(all);
+      if (focus) crumb.append(el("span", { className: "sb-sep", "aria-hidden": "true", text: "›" }),
+        el("span", { className: "sb-crumb-now", "aria-current": "true", text: focus.name }));
+    }
+    var animId = 0;
+    function zoom(f) {
+      closePeek(false, true);
+      var from = cur, to = layout(f), id = ++animId, t0 = performance.now(), dur = 520;
+      focus = f; hoverNode = null;
+      labelLayer.replaceChildren();
+      drawCrumb(); paint();
+      var reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      (function step(now) {
+        if (id !== animId) return;
+        var k = reduce ? 1 : Math.min(1, (now - t0) / dur), e = k < .5 ? 4 * k * k * k : 1 - Math.pow(-2 * k + 2, 3) / 2;
+        var mid = new Map();
+        nodes.forEach(function (n) {
+          var a = from.get(n), b = to.get(n);
+          var v = [a[0] + (b[0] - a[0]) * e, a[1] + (b[1] - a[1]) * e];
+          mid.set(n, v);
+          n.path.setAttribute("d", pathFor(n, v));
+          n.g.classList.toggle("gone", v[1] - v[0] < 0.002);
+        });
+        cur = mid;
+        if (k < 1) requestAnimationFrame(step); else { cur = to; drawLabels(); }
+      })(t0);
+    }
+    drawCrumb(); paint(); drawLabels();
+    var fig = el("div", { className: "sb-fig" }, crumb, el("div", { className: "sb-box", style: "width:" + S + "px;height:" + S + "px" }, svg), hint);
+    fig._reset = function () { if (focus) zoom(null); };
+    return fig;
+  }
+
+  /* 선버스트 색: 바깥 조각은 부모 색을 옅게(많은 순으로 .9 → .45), '기타'는 회색 */
+  function childShade(color, k, n) { return "color-mix(in srgb, " + color + " " + Math.round(88 - (k / Math.max(1, n - 1)) * 48) + "%, white)"; }
+
+  // 기관 이름 줄임: '경상북도' → '경북', '전남광주통합특별시' → '전남광주', '중소벤처기업부' 그대로
+  var AGENCY_SHORT = { "경상북도": "경북", "경상남도": "경남", "전라남도": "전남", "전라북도": "전북", "충청북도": "충북", "충청남도": "충남",
+    "경기도": "경기", "강원특별자치도": "강원", "전북특별자치도": "전북", "제주특별자치도": "제주", "전남광주통합특별시": "전남광주",
+    "서울특별시": "서울", "부산광역시": "부산", "대구광역시": "대구", "인천광역시": "인천", "대전광역시": "대전", "울산광역시": "울산",
+    "세종특별자치시": "세종", "광주광역시": "광주" };
+  function shortAgency(a) { return AGENCY_SHORT[a] || a; }
+
+  /* 공고는 누가 무엇을 지원하나요?: 지금 신청할 수 있는 모집 공고(홈에서 고른 지역 적용) 선버스트, 파랑.
+   * 안쪽 = 분야(nf, 기업마당 지원분야·K-Startup 분류를 맞춘 것, 국고보조금은 '기타'),
+   * 바깥 = 그 분야를 낸 기관 상위 5곳(2건 이상) + '그 밖의 N곳'. 안쪽을 누르면 펼치고, 바깥을 누르면 요약 창 */
+  function noticeSunburstCard(live) {
+    var byNf = {};
+    live.forEach(function (i) { (byNf[i.nf] = byNf[i.nf] || []).push(i); });
+    var cats = (META.noticeFields || []).filter(function (k) { return byNf[k]; })
+      .sort(function (a, b) { return (a === "기타") - (b === "기타") || byNf[b].length - byNf[a].length; });
+    var shade = 0;
+    var tree = { name: "모집 공고", total: live.length, children: cats.map(function (k) {
+      var items = byNf[k], color = k === "기타" ? DONUT_OTHER : DONUT_BLUES[Math.min(DONUT_BLUES.length - 1, shade++)];
+      var ag = topN(countBy(items, function (i) { return i.ag; }), 99);
+      // 상위 5곳(2건 이상만 — 1건짜리끼리는 순서가 뜻이 없다), 나머지는 '그 밖의 N곳'으로
+      var top = ag.slice(0, 5).filter(function (x) { return x[1] >= 2; }), restN = items.length - top.reduce(function (t, x) { return t + x[1]; }, 0);
+      var kids = top.map(function (x) { return { key: x[0], name: shortAgency(x[0]), full: x[0], n: x[1] }; });
+      if (restN > 0) kids.push({ key: "", name: "그 밖의 " + (ag.length - top.length) + "곳", n: restN, other: true });
+      kids.forEach(function (ch, j) {
+        ch.color = ch.other ? "var(--gray-200)" : childShade(color, j, kids.length);
+        ch.peek = function (node) {
+          openPeek("sbn:" + k + ":" + ch.name, node, function () {
+            var topNames = top.map(function (x) { return x[0]; });
+            var sel = items.filter(function (i) { return ch.other ? topNames.indexOf(i.ag) < 0 : i.ag === ch.key; });
+            return noticePeek(sel, regionPrefix() + k + " · " + ch.name, "지금 신청할 수 있는 모집 공고",
+              { label: fmtN(sel.length) + "건 모두 보기", go: function () { goTo(ch.other ? { tab: "open", cg: [k] } : { tab: "open", cg: [k], q: ch.key }); } },
+              undefined, undefined, "nf");
+          });
+        };
+      });
+      return { key: k, name: k, n: items.length, color: color, dark: shade <= 4 && k !== "기타", childSum: items.length, children: kids };
+    }) };
+    var fig = sunburstFigure(tree, { label: "분야별·기관별 모집 공고 선버스트", centerSub: "분야 " + cats.length + "개" });
+    return vizCard("공고는 누가 무엇을 지원하나요?", "모집 공고 기준 · 안쪽 분야, 바깥 낸 기관(상위 5곳)", fig, null);
+  }
+
+
   /* 조각 색: 많은 순으로 진한 색부터, '기타'는 회색. 비율은 전체(total) 대비 */
   function donutData(rows, palette, total, what) {
     var shade = 0;
@@ -2519,27 +2725,6 @@
         function (v) { svcKind = v; }));
     return card;
   }
-
-  /* 공고는 무엇을 지원하나요?: 지금 신청할 수 있는 모집 공고(홈에서 고른 지역 적용)의 분야(nf) 도넛, 파랑.
-   * 분야는 기업마당 지원분야·K-Startup 분류를 맞춘 것(build_site.py NOTICE_FIELDS), 국고보조금은 '기타'.
-   * 조각이나 목록을 누르면 그 분야의 모집 공고 목록으로 간다 */
-  function noticeFieldCard(live) {
-    var n = countBy(live, function (i) { return i.nf; });
-    var data = donutData((META.noticeFields || []).map(function (x) { return { key: x, n: n[x] || 0 }; }),
-      DONUT_BLUES, live.length, function (k) { return k + " 분야 모집 공고"; });
-    function go(d) { goTo({ tab: "open", cg: [d.key] }); }
-    function peek(d, node, pair) {
-      openPeek("nf:" + d.key, node, function () {
-        var items = live.filter(function (i) { return i.nf === d.key; });
-        return noticePeek(items, regionPrefix() + d.what, "지금 신청할 수 있는 것",
-          { label: fmtN(items.length) + "건 모두 보기", go: function () { go(d); } }, undefined, undefined, "nf");
-      }, [pair]);
-    }
-    var card = vizCard("공고는 무엇을 지원하나요?", "모집 공고 기준",
-      donutFigure(data, live.length, "모집 공고", "분야별 모집 공고 수", go, peek), null);
-    return card;
-  }
-
 
   /* 곧 올라올 수 있는 공고: 작년 이맘때 접수를 시작한 국고보조금 공고(META.upcoming, build_site.py가 사업별로 묶음) */
   var upcomingShown = HOME_FIRST;
@@ -2599,7 +2784,7 @@
     months.querySelector(".viz-body").classList.add("top"); // 범례를 제목 바로 아래에, 남는 높이는 그래프가 채운다
     var persona = personaCard(live);
     persona.querySelector(".viz-body").classList.add("top"); // 범례를 제목 바로 아래에
-    var fields = noticeFieldCard(live);
+    var fields = noticeSunburstCard(live);
     fields.querySelector(".viz-body").classList.add("top");
     var upcoming = upcomingCard(), region = regionCard();
     var cards = [persona, region, due, months, fields, support, upcoming];

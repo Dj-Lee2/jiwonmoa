@@ -1020,3 +1020,31 @@ svg.has-pick .mark.picked .cell, svg.has-pick .mark.picked .bar { stroke: var(--
 #meClear { margin-left: auto; }
 .me-note { margin: 10px 0 0; font-size: .75rem; line-height: 1.5; color: var(--muted); }
 .me-note a { color: inherit; }
+
+/* ---------- 선버스트(app.js sunburstFigure, Bklit UI Sunburst 모양) ---------- */
+.sb-fig { display: grid; justify-items: center; gap: 10px; width: 100%; }
+.sb-crumb { justify-self: start; display: flex; align-items: center; gap: 6px; min-height: 32px; font-size: .875rem; }
+.sb-crumb-btn { border: 0; background: var(--surface); color: var(--fg-strong); font: inherit; font-weight: 700; border-radius: 999px; padding: 4px 12px; cursor: pointer; }
+.sb-crumb-btn[aria-current="true"] { background: none; padding-left: 0; cursor: default; }
+.sb-sep { color: var(--muted); }
+.sb-crumb-now { font-weight: 700; color: var(--fg-strong); }
+.sb-box { flex: none; }
+.viz-body svg.sunburst { width: 100%; height: 100%; max-height: none; overflow: visible; }
+.sunburst .sb-seg { cursor: pointer; outline: none; }
+.sunburst .sb-seg path { stroke: var(--canvas); stroke-width: 1.5; stroke-linejoin: round; transition: opacity .18s ease; }
+.sunburst .sb-seg.gone { pointer-events: none; }
+.sunburst.has-on .sb-seg:not(.on) path { opacity: .35; }
+.sunburst .sb-seg:focus-visible path { stroke: var(--fg-strong); stroke-width: 2.5; }
+.sunburst .sb-center-hit { fill: transparent; }
+.sunburst.zoomed .sb-center-hit { cursor: zoom-out; }
+.sunburst .sb-name { fill: var(--fg); font-size: 13px; font-weight: 700; }
+.sunburst .sb-val { fill: var(--fg-strong); font-size: 22px; font-weight: 800; letter-spacing: -0.5px; font-variant-numeric: tabular-nums; }
+.sunburst .sb-sub { fill: var(--muted); font-size: 11px; font-weight: 600; }
+.sunburst text { pointer-events: none; }
+.sunburst .sb-label { fill: var(--fg-strong); font-size: 11.5px; font-weight: 700; }
+.sunburst .sb-label.on-dark { fill: #fff; }
+.sb-hint { margin: 0; display: flex; align-items: center; gap: 4px; font-size: .75rem; color: var(--muted); }
+@media (prefers-reduced-motion: no-preference) {
+  .viz-card:is(.play, .replay) .sunburst .sb-seg { animation: fade-in .45s ease-out both; animation-delay: calc(var(--d0, 0ms) + var(--i, 0) * 45ms); }
+  .viz-card:is(.play, .replay) svg.sunburst { animation: donut-spin .75s cubic-bezier(.2, .7, .2, 1) both; animation-delay: var(--d0, 0ms); }
+}
