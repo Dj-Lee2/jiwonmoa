@@ -1,36 +1,91 @@
 /* 지원모아: 화면 스타일
  *
- *  - 흰 바탕에 그림자 없는 평평한 면. 글자 #333, 제목 #111, 보조 면 #eee, 선 #dbdbdb
- *  - 조건은 회색 알약, 고른 것은 검정(#111 + 흰 글자). 노랑 #fae100은 화면마다 한 곳(원문 보기)만
+ *  - 흰 바탕에 그림자 없는 평평한 면. 색은 아래 '색 체계' 변수로만 쓴다(값을 규칙에 직접 쓰지 않는다)
+ *  - 조건은 회색 알약, 고른 것은 검정(흰 글자). 노랑은 화면마다 한 곳(찾기·원문 보기)만
  *  - 누르기·가리키기 반응은 즉시. 그래프만 화면에 들어올 때 움직인다(화면 밖으로 나갔다 돌아오면 다시)(움직임 줄이기 설정이면 없음)
- *  - 뜻이 정해진 색만 조금: 빨강 = 오늘~D-3 마감, 주황 = 7일 안 마감, 파랑 = 정보(신규 등)
- *  - 그래프 색은 자료 종류에 붙는다: 파랑 = 모집 공고, 초록 = 상시 제도, 회색 = 비교 대상(app.js SERIES_*)
  *  - 보조 글자 #666(흰 바탕 대비 4.5:1 이상), 누르는 칸은 44px 이상
  * 흰 화면으로 고정한다(index.html의 data-theme="light", color-scheme).
  * 층(z-index): 탭 10 / 상세 겹침 50 / 조건 겹침 60 / 알림 90.
  */
+/* ---------- 색 체계 ----------
+ * 색은 '뜻'에 붙인다. 같은 뜻 = 같은 색, 한 색 = 한 뜻.
+ *  회색   뼈대(글자·면·선). 화면의 대부분
+ *  검정   고른 것(탭·조건 칩·전환 단추)과 두 번째 행동 단추
+ *  노랑   화면마다 하나뿐인 주요 행동(찾기·원문 보기)
+ *  파랑   모집 공고 — 그래프·지도·달력·숫자 타일·탭 표시·신규 배지
+ *  초록   상시 제도 — 그래프·지도·도넛·숫자 타일·탭 표시
+ *  빨강   마감 임박(오늘~D-3)과 오류
+ *  주황   7일 안 마감(빨강 다음 단계)
+ * 색마다 단계: 50(옅은 면) · 100~400(그래프 단계) · 500(그래프 대표) · 600(글자·배지, 흰 바탕 4.5:1 이상) · 700~900(진한 단계)
+ */
 :root {
-  --canvas: #ffffff;
-  --fg: #333333;
-  --fg-strong: #111111;
-  --muted: #666666;
-  --surface: #eeeeee;
-  --surface-hover: #f3f3f3;
-  --pressed: #dfdfdf;
-  --line: #dbdbdb;
-  --divider: #eeeeee;
-  --dark: #111111;
+  /* 회색 */
+  --gray-0: #ffffff;
+  --gray-50: #f8f8f8;
+  --gray-100: #f3f3f3;
+  --gray-150: #eeeeee;
+  --gray-200: #dcdcdc;
+  --gray-300: #c4c4c4;
+  --gray-400: #a3a3a3;
+  --gray-500: #8a8a8a;
+  --gray-600: #666666;
+  --gray-800: #333333;
+  --gray-900: #111111;
+  /* 파랑 = 모집 공고 */
+  --blue-50: #eef5fd;
+  --blue-100: #cde2fb;
+  --blue-300: #86b6ef;
+  --blue-400: #3987e5;
+  --blue-500: #2a78d6;
+  --blue-600: #256abf;
+  --blue-700: #1c5cab;
+  --blue-900: #0d366b;
+  /* 초록 = 상시 제도 */
+  --green-50: #eef8ee;
+  --green-100: #d3efd3;
+  --green-300: #8fd08f;
+  --green-400: #3fa33f;
+  --green-500: #008300;
+  --green-600: #007500;
+  --green-700: #1d721d;
+  --green-900: #0c440c;
+  /* 빨강 = 마감 임박·오류, 주황 = 7일 안 마감 */
+  --red-50: #fdeeee;
+  --red-500: #d03b3b;
+  --red-600: #b3261e;
+  --orange-50: #fff0e6;
+  --orange-500: #c2410c;
+  --orange-600: #b5410e;
+  /* 노랑 = 주요 행동 */
+  --yellow-500: #fae100;
+
+  /* 역할 이름(화면 규칙은 이 이름으로 쓴다) */
+  --canvas: var(--gray-0);
+  --fg: var(--gray-800);
+  --fg-strong: var(--gray-900);
+  --muted: var(--gray-600);
+  --surface: var(--gray-150);
+  --surface-hover: var(--gray-100);
+  --pressed: var(--gray-200);
+  --line: var(--gray-200);
+  --divider: var(--gray-150);
+  --dark: var(--gray-900);
   --dark-hover: rgba(17, 17, 17, .75);
   --on-dark: #ffffff;
   --dark-edge: #ffffff;
-  --yellow: #fae100;
+  --yellow: var(--yellow-500);
   --on-yellow: #000000;
-  --warn-text: #b3261e;
-  --red: #d03b3b;          /* 마감 임박 (흰 글자 4.8:1) */
-  --orange: #b5410e;       /* 7일 안 마감 글자 (연주황 면 위 5.1:1) */
-  --orange-weak: #fff0e6;
-  --orange-icon: #c2410c;
-  --blue: #256abf;         /* 정보: 신규 배지·아이콘 (흰 글자 5.4:1) */
+  --kind-open: var(--blue-500);      /* 모집 공고 */
+  --kind-open-text: var(--blue-600);
+  --kind-open-weak: var(--blue-50);
+  --kind-svc: var(--green-500);      /* 상시 제도 */
+  --kind-svc-text: var(--green-600);
+  --kind-svc-weak: var(--green-50);
+  --urgent: var(--red-500);          /* 오늘~D-3 마감 (흰 글자 4.8:1) */
+  --warn-text: var(--red-600);       /* 오류 글자 */
+  --soon: var(--orange-600);         /* 7일 안 마감 글자 (연주황 면 위 5.1:1) */
+  --soon-icon: var(--orange-500);
+  --soon-weak: var(--orange-50);
   color-scheme: light;
 }
 
@@ -84,6 +139,9 @@ button, input, select { font: inherit; color: inherit; letter-spacing: inherit; 
 .tabs [role="tab"]:hover, .tabs [role="tab"]:active { background: var(--surface-hover); }
 .tabs [role="tab"][aria-selected="true"] { background: var(--dark); color: var(--on-dark); font-weight: 700; box-shadow: inset 0 0 0 2px var(--dark-edge); }
 .tab-count { font-size: .8125rem; font-weight: 400; opacity: .7; }
+/* 탭 앞 종류 점: 파랑 = 모집 공고, 초록 = 상시 제도(그래프·지도 색과 같다) */
+.tabs [data-tab="open"]::before, .tabs [data-tab="services"]::before { content: ""; width: 8px; height: 8px; border-radius: 50%; flex: none; margin-right: 6px; background: var(--kind-open); }
+.tabs [data-tab="services"]::before { background: var(--kind-svc); }
 
 /* ---------- 배치 ---------- */
 .layout { display: grid; gap: 20px; grid-template-columns: minmax(0, 1fr); padding-top: 20px; padding-bottom: 40px; }
@@ -102,7 +160,7 @@ button, input, select { font: inherit; color: inherit; letter-spacing: inherit; 
 .btn.dark { background: var(--dark); color: var(--on-dark); box-shadow: inset 0 0 0 2px var(--dark-edge); border-radius: 16px; }
 .btn.dark:hover, .btn.dark:active { background: var(--dark-hover); }
 /* 노랑 단추: 화면마다 한 곳(원문 보기·찾기)만. 2px 검정 테두리 */
-.btn.yellow { background: var(--yellow); color: var(--on-yellow); box-shadow: inset 0 0 0 2px #000000; border-radius: 16px; letter-spacing: -0.5px; }
+.btn.yellow { background: var(--yellow); color: var(--on-yellow); box-shadow: inset 0 0 0 2px var(--on-yellow); border-radius: 16px; letter-spacing: -0.5px; }
 .btn.more { width: 100%; margin-top: 16px; }
 .pill { display: inline-block; min-width: 1.6em; padding: 0 6px; border-radius: 999px; background: var(--dark); color: var(--on-dark); font-size: .75rem; line-height: 1.6; text-align: center; }
 
@@ -136,9 +194,9 @@ button, input, select { font: inherit; color: inherit; letter-spacing: inherit; 
 
 /* 상태 배지: 오늘~D-3 빨강, D-7까지 주황, 신규 파랑, 그 밖은 선·회색 */
 .badge { display: inline-flex; align-items: center; gap: 4px; height: 24px; border-radius: 999px; padding: 0 10px; font-size: .75rem; font-weight: 700; background: var(--surface); color: var(--fg); white-space: nowrap; letter-spacing: 0; }
-.badge.urgent { background: var(--red); color: #ffffff; }
-.badge.soon { background: var(--orange-weak); color: var(--orange); }
-.badge.new { background: var(--blue); color: #ffffff; }
+.badge.urgent { background: var(--urgent); color: #ffffff; }
+.badge.soon { background: var(--soon-weak); color: var(--soon); }
+.badge.new { background: var(--kind-open-weak); color: var(--kind-open-text); }
 .badge.line { background: transparent; box-shadow: inset 0 0 0 1px var(--line); color: var(--fg); }
 .badge.soft { background: var(--surface); color: var(--muted); font-weight: 600; }
 
@@ -162,7 +220,7 @@ button, input, select { font: inherit; color: inherit; letter-spacing: inherit; 
 /* ---------- 목록 윗부분 ---------- */
 /* 농업인을 골랐을 때만 나오는 짧은 안내 */
 .note-box { display: flex; gap: 8px; align-items: flex-start; margin: 0 0 16px; padding: 12px 16px; border-radius: 16px; background: var(--surface-hover); }
-.note-box .ph { color: var(--blue); margin-top: .3em; }
+.note-box .ph { color: var(--muted); margin-top: .3em; }
 .note-box a { font-weight: 700; color: var(--fg-strong); }
 
 .searchbar { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px 16px; margin-bottom: 16px; }
@@ -188,8 +246,8 @@ select { appearance: none; background-image: linear-gradient(45deg, transparent 
 .toggle:active { background: var(--pressed); }
 .toggle .n { font-weight: 700; }
 .toggle[aria-pressed="true"] { background: var(--dark); color: var(--on-dark); box-shadow: inset 0 0 0 2px var(--dark-edge); }
-#soonToggle .ph { color: var(--red); }
-#soonToggle[aria-pressed="true"] { background: var(--red); color: #ffffff; box-shadow: none; }
+#soonToggle .ph { color: var(--urgent); }
+#soonToggle[aria-pressed="true"] { background: var(--urgent); color: #ffffff; box-shadow: none; }
 #soonToggle[aria-pressed="true"] .ph { color: #ffffff; }
 .toolbar-end { display: flex; align-items: center; gap: 12px; margin-left: auto; }
 .result-count { margin: 0; color: var(--fg-strong); font-weight: 700; }
@@ -241,7 +299,7 @@ select { appearance: none; background-image: linear-gradient(45deg, transparent 
 
 .state { background: var(--surface-hover); border-radius: 24px; padding: 40px 20px; text-align: center; }
 /* 결과 없음 상자 바탕의 옅은 빗금 — Pattern adapted from Uiverse.io by AspenBranch (slippery-sheep-50) — MIT License, © 2023 Uiverse.io */
-.state:not(.error) { background: repeating-linear-gradient(45deg, var(--surface-hover), var(--surface-hover) 14px, #f8f8f8 14px, #f8f8f8 28px); }
+.state:not(.error) { background: repeating-linear-gradient(45deg, var(--surface-hover), var(--surface-hover) 14px, var(--gray-50) 14px, var(--gray-50) 28px); }
 .state .ph { font-size: 2rem; color: var(--fg-strong); }
 .state-title { margin: 8px 0 4px; font-weight: 700; font-size: 1rem; color: var(--fg-strong); }
 .state p { margin: 0 0 16px; color: var(--muted); }
@@ -287,7 +345,7 @@ select { appearance: none; background-image: linear-gradient(45deg, transparent 
  * Pattern adapted from Uiverse.io by BadlyWrittenStylesheet (fluffy-bear-71) — MIT License, © 2023 Uiverse.io */
 .home-hero::before {
   content: ""; position: absolute; inset: -28px -44px 0 30%; z-index: -1; pointer-events: none;
-  background-image: radial-gradient(#d4d4d4 1.4px, transparent 1.6px);
+  background-image: radial-gradient(var(--gray-300) 1.4px, transparent 1.6px);
   background-size: 22px 22px;
   -webkit-mask-image: radial-gradient(ellipse 75% 85% at 85% 20%, #000 15%, transparent 72%);
   mask-image: radial-gradient(ellipse 75% 85% at 85% 20%, #000 15%, transparent 72%);
@@ -310,9 +368,9 @@ select { appearance: none; background-image: linear-gradient(45deg, transparent 
 .stat-num { font-size: 1.875rem; line-height: 1.33; font-weight: 700; letter-spacing: -1px; font-variant-numeric: tabular-nums; }
 .stat-label { display: flex; align-items: center; gap: 4px; font-weight: 700; }
 .stat-label .ph-arrow-right { margin-left: 2px; }
-.stat-label .tone-red { color: var(--red); }
-.stat-label .tone-blue { color: var(--blue); }
-.stat-label .tone-orange { color: var(--orange-icon); }
+.stat-label .tone-red { color: var(--urgent); }
+.stat-label .tone-blue { color: var(--kind-open); }
+.stat-label .tone-orange { color: var(--soon-icon); }
 
 .home-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 44px; }
 .block-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 16px; }
@@ -330,7 +388,7 @@ select { appearance: none; background-image: linear-gradient(45deg, transparent 
   background: repeating-linear-gradient(45deg, var(--canvas), var(--canvas) 12px, var(--surface-hover) 12px, var(--surface-hover) 24px);
 }
 /* 넓은 화면에서 '더 보기'로 늘어난 목록은 칸 안에서 스크롤(높이는 app.js fitListHeight가 정함) */
-.scroll-list { overflow-y: auto; scrollbar-width: thin; scrollbar-color: #c4c4c4 transparent; }
+.scroll-list { overflow-y: auto; scrollbar-width: thin; scrollbar-color: var(--gray-300) transparent; }
 /* 홈 목록 줄 높이를 고르게: 제목 2줄, 보조 정보 1줄까지 */
 .home-grid .row-title, .list-card .row-title { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow: hidden; }
 .home-grid .row-meta, .list-card .row-meta { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -349,7 +407,7 @@ select { appearance: none; background-image: linear-gradient(45deg, transparent 
 @media (prefers-reduced-motion: reduce) { .seg-glider { transition: none; } }
 .seg-mini.glide button[aria-pressed="true"] { background: none; }
 .who-card { background: var(--surface-hover); border-radius: 24px; padding: 24px; margin-bottom: 44px; }
-.who-card h3 .ph { color: var(--blue); }
+.who-card h3 .ph { color: var(--fg-strong); }
 .who-card .chip { background: var(--canvas); }
 .who-card .chip:active { background: var(--pressed); }
 
@@ -369,7 +427,7 @@ select { appearance: none; background-image: linear-gradient(45deg, transparent 
 .viz .val { fill: var(--fg-strong); font-size: 14px; font-weight: 700; }
 .viz .cat { fill: var(--fg-strong); font-size: 14px; font-weight: 600; }
 .viz .axis { stroke: var(--line); stroke-width: 1; }
-.viz .bar { fill: var(--bar, #a3a3a3); }
+.viz .bar { fill: var(--bar, var(--gray-400)); }
 .viz .hit { fill: transparent; }
 .viz .mark { cursor: pointer; outline: none; }
 .viz .mark.static { cursor: default; }
@@ -385,7 +443,7 @@ select { appearance: none; background-image: linear-gradient(45deg, transparent 
 .viz-legend i { display: inline-block; width: 12px; height: 12px; border-radius: 3px; }
 .viz-body svg.hb, .viz-body svg.month-chart { max-height: none; }
 .viz .val.sm { font-size: 13px; }
-.viz .bar.muted { fill: #8a8a8a; }
+.viz .bar.muted { fill: var(--gray-500); }
 /* 선 그래프 */
 .viz .grid { stroke: var(--surface); stroke-width: 1; }
 .viz .line { fill: none; stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
@@ -403,8 +461,8 @@ select { appearance: none; background-image: linear-gradient(45deg, transparent 
 .viz .bar.partial { fill-opacity: .4; stroke-width: 1.5; stroke-dasharray: 3 2; }
 .viz .line.thick { stroke-width: 2.5; }
 .viz .area { stroke: none; }
-.viz .area.last { fill: #8a8a8a; opacity: .12; }
-.viz .area.cur { fill: #2a78d6; opacity: .14; }
+.viz .area.last { fill: var(--gray-500); opacity: .12; }
+.viz .area.cur { fill: var(--kind-open); opacity: .14; }
 .viz .cat.muted { fill: var(--muted); }
 /* 목록형 카드(곧 열릴 수 있는 공모): 가운데 정렬 대신 위에서부터 */
 .viz-card.list-card .viz-body { display: block; }
@@ -742,15 +800,15 @@ html[data-boot="home"] #homePane[hidden] { display: block !important; }
 html[data-boot="list"] #homePane { display: none !important; }
 
 /* 숫자 타일 눈금 막대(app.js statTile): 40칸 중 칠한 칸 = 전체 가운데 몫. 색은 아이콘과 같게, 상시 제도는 그래프와 같은 초록 */
-.stat-label .tone-green { color: #008300; }
+.stat-label .tone-green { color: var(--kind-svc); }
 .stat { width: 100%; }
 .stat-of { display: flex; justify-content: space-between; gap: 8px; width: 100%; margin-top: 10px; font-size: .75rem; line-height: 1.4; color: var(--muted); font-variant-numeric: tabular-nums; }
 .stat-of span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .stat-of > span:last-child { flex: none; white-space: nowrap; }
 @media (max-width: 479px) { .stat-of .of-what { display: none; } }
 .stat-ticks { display: flex; gap: 2px; width: 100%; height: 26px; margin-top: 6px; --c: var(--fg-strong); }
-.stat-ticks.tone-red { --c: var(--red); } .stat-ticks.tone-blue { --c: var(--blue); } .stat-ticks.tone-orange { --c: var(--orange-icon); } .stat-ticks.tone-green { --c: #008300; }
-.stat-ticks i { flex: 1 1 0; min-width: 1px; border-radius: 1px; background: #dcdcdc; }
+.stat-ticks.tone-red { --c: var(--urgent); } .stat-ticks.tone-blue { --c: var(--kind-open); } .stat-ticks.tone-orange { --c: var(--soon-icon); } .stat-ticks.tone-green { --c: var(--kind-svc); }
+.stat-ticks i { flex: 1 1 0; min-width: 1px; border-radius: 1px; background: var(--gray-200); }
 .stat-ticks i.on { background: var(--c); }
 @media (max-width: 639px) { .stat-ticks { height: 20px; gap: 1px; } .stat-of { margin-top: 8px; } }
 @media (prefers-reduced-motion: no-preference) {

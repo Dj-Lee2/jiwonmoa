@@ -897,7 +897,7 @@
       statTile(byStatus["접수 예정"] || 0, "접수 예정", "calendar-check",
         function () { goTo({ tab: "open", st: ["접수 예정"] }); }, "blue", live.length, "모집 공고"),
       statTile(byStatus["소진 시까지"] || 0, "예산 소진 시까지", "hourglass-medium",
-        function () { goTo({ tab: "open", st: ["소진 시까지"] }); }, "orange", live.length, "모집 공고"),
+        function () { goTo({ tab: "open", st: ["소진 시까지"] }); }, "blue", live.length, "모집 공고"),
       statTile(svcN, "상시 지원제도", "hand-heart",
         function () { goTo({ tab: "services" }); }, "green", live.length + svcN, "공고·제도"));
     if (!statsGrown) { $("#homeStats").classList.add("grow"); statsGrown = true; }
@@ -1011,13 +1011,13 @@
    * 툴팁은 가리키기와 키보드 초점에서 같은 내용을 보여 준다.
    */
   var SVGNS = "http://www.w3.org/2000/svg";
-  // 색은 자료 종류에 붙인다: 파랑 = 모집 공고, 초록 = 상시 제도, 회색 = 비교 대상·나머지.
+  // 색은 자료 종류에 붙인다: 파랑 = 모집 공고, 초록 = 상시 제도, 회색 = 비교 대상·나머지(style.css 색 체계 변수).
   // 파랑·초록 짝은 dataviz validate_palette.js 통과(색각 이상 포함). 값·이름 글자는 늘 글자색으로 쓴다
-  var SERIES_BLUE = "#2a78d6", SERIES_GREEN = "#008300", SERIES_GRAY = "#8a8a8a";
-  var LAST_YEAR_BAR = "#dcdcdc"; // 겹친 막대의 작년(뒤) 막대
+  var SERIES_BLUE = "var(--kind-open)", SERIES_GREEN = "var(--kind-svc)", SERIES_GRAY = "var(--gray-500)";
+  var LAST_YEAR_BAR = "var(--gray-200)"; // 겹친 막대의 작년(뒤) 막대
   // 지역 지도 5단계(많을수록 진함): 모집 공고는 파랑, 상시 제도는 초록
-  var MAP_SHADES = ["#cde2fb", "#86b6ef", "#3987e5", "#1c5cab", "#0d366b"];
-  var MAP_SHADES_GREEN = ["#d3efd3", "#8fd08f", "#3fa33f", "#1d721d", "#0c440c"];
+  var MAP_SHADES = ["var(--blue-100)", "var(--blue-300)", "var(--blue-400)", "var(--blue-700)", "var(--blue-900)"];
+  var MAP_SHADES_GREEN = ["var(--green-100)", "var(--green-300)", "var(--green-400)", "var(--green-700)", "var(--green-900)"];
   var mapKind = "n", MAP_WHAT = { n: "모집 공고", s: "상시 제도" };
   function mapShades() { return mapKind === "s" ? MAP_SHADES_GREEN : MAP_SHADES; }
 
@@ -1348,7 +1348,7 @@
    * 석 달 뒤에 마감하는 공고는 아래 '이후 마감' 단추로 모아 본다.
    * 색 4단계 경계는 석 달 동안 마감이 있는 날들의 분포(33·66·90%)로 정한다(달을 바꿔도 같은 색 = 같은 양) */
   var DUE_MONTHS = 3, dueMonth = 0;
-  var DUE_SHADES = ["#cde2fb", "#86b6ef", "#3987e5", "#1c5cab"]; // 지도 파랑 단계와 같은 색
+  var DUE_SHADES = MAP_SHADES.slice(0, 4); // 지도 파랑 단계와 같은 색
 
   function monthStart(iso, add) {
     var p = iso.split("-");
@@ -1632,8 +1632,8 @@
    * 색은 한 계열(초록) 진하기로, 큰 조각일수록 진하다. '기타'는 회색. 오른쪽(좁으면 아래) 목록과
    * 가리키기가 서로 이어지고, 조각이나 목록을 누르면 그 조건의 상시 제도 목록으로 간다 */
   var svcKind = "cat";
-  var DONUT_GREENS = ["#0c440c", "#155c15", "#1d721d", "#2b8a2b", "#3fa33f", "#62b862", "#8fd08f", "#addfad", "#c4e9c4", "#d9f2d9"];
-  var DONUT_OTHER = "#b8b8b8";
+  var DONUT_GREENS = ["#0c440c", "#155c15", "#1d721d", "#2b8a2b", "#3fa33f", "#62b862", "#8fd08f", "#addfad", "#c4e9c4", "#d9f2d9"]; // --green-900 → --green-100 사이를 10단계로
+  var DONUT_OTHER = "var(--gray-300)";
 
   function donutArc(cx, cy, R, r, a0, a1) {
     function p(rad, a) { return (cx + rad * Math.sin(a)).toFixed(2) + " " + (cy - rad * Math.cos(a)).toFixed(2); }
