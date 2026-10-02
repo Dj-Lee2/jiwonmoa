@@ -1352,7 +1352,9 @@
       root.append(svgText(d * (cw + gap) + cw / 2, 15, w, "tick", "middle"));
     });
 
-    var big = cw >= 44; // 날짜는 늘 왼쪽 위. 마감 수는 넓은 칸이면 오른쪽 아래, 좁으면 가운데 아래
+    // 날짜는 늘 왼쪽 위. 마감 수는 넓은 칸이면 오른쪽 아래에 '12건'처럼 단위를 붙이고,
+    // 좁은 칸(휴대폰)은 단위가 너무 작아지므로 흰 알약 안에 숫자만 넣어 날짜와 모양으로 구분한다
+    var big = cw >= 44;
     for (var i = 0; i < 42; i++) {
       var iso = addDays(gridStart, i);
       var x = (i % 7) * (cw + gap), y = top + Math.floor(i / 7) * (ch + gap);
@@ -1371,8 +1373,18 @@
       g.append(svgEl("rect", { x: x, y: y, width: cw, height: ch, rx: rx,
         "class": "cell", style: lvl ? "fill:" + DUE_SHADES[lvl - 1] : "" }));
       g.append(svgText(x + (big ? 6 : 4), y + (big ? 15 : 12), String(+iso.slice(8)), "dnum", "start"));
-      if (n) g.append(big ? svgText(x + cw - 7, y + ch - 8, fmtN(n), "dcnt", "end")
-        : svgText(x + cw / 2, y + ch - 6, fmtN(n), "dcnt"));
+      if (n && big) {
+        var cnt = svgText(x + cw - 6, y + ch - 7, fmtN(n), "dcnt", "end");
+        var unit = svgEl("tspan", { "class": "dunit" });
+        unit.textContent = "건";
+        cnt.append(unit);
+        g.append(cnt);
+      } else if (n) {
+        var txt = fmtN(n), pw = Math.min(cw - 6, txt.length * 7.6 + 8), ph = 17;
+        var px = x + (cw - pw) / 2, py = y + ch - ph - 4;
+        g.append(svgEl("rect", { x: px, y: py, width: pw, height: ph, rx: ph / 2, "class": "dpill" }));
+        g.append(svgText(px + pw / 2, py + ph / 2 + 4.5, txt, "dcnt pill"));
+      }
       if (n) {
         (function (day, cnt) {
           activate(g, fmtDate(day, true) + " 마감 " + cnt + "건. 누르면 목록으로 갑니다",
