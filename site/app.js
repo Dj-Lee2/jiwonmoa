@@ -1297,6 +1297,7 @@
   function applyView() {
     var home = state.tab === "home";
     $("#homePane").hidden = !home;
+    $("#topHint").hidden = !home; // 그래프 안내는 홈에서만
     $("#listLayout").hidden = home;
     document.querySelectorAll("[role=tab]").forEach(function (t) {
       var on = t.dataset.tab === state.tab;
@@ -2799,14 +2800,16 @@
     }
     // 휴대폰(639px 이하)은 이름 줄을 접어(style.css) 단추가 늘 탭 줄에 있다.
     // 넓은 화면은 머리 단추 줄이 화면 위로 나가면(= 가려지면) 옮기고, 다시 보이면 돌려놓는다
-    var phone = window.matchMedia("(max-width: 639px)"), scrolledPast = false;
-    function update() { setDocked(phone.matches || scrolledPast); }
-    var probe = header.querySelector(".top-inner");
-    new IntersectionObserver(function (entries) {
-      var e = entries[entries.length - 1];
-      scrolledPast = !e.isIntersecting && e.boundingClientRect.top < 0;
-      update();
-    }, { threshold: 0 }).observe(probe);
+    // 옮기는 때: 머리의 단추 묶음(옮긴 뒤에는 같은 크기의 빈 칸)의 윗변이 화면 위로 나가기 시작하는 순간.
+    // 예전에는 머리 줄 전체가 나갈 때까지 기다려, 맨 위 안내 띠가 생긴 뒤로 단추가 안 보이는 구간이 60px쯤 있었다
+    var phone = window.matchMedia("(max-width: 639px)"), ticking = false;
+    function update() {
+      ticking = false;
+      var r = (docked ? hold : actions).getBoundingClientRect();
+      setDocked(phone.matches || r.top < 0);
+    }
+    window.addEventListener("scroll", function () { if (!ticking) { ticking = true; requestAnimationFrame(update); } }, { passive: true });
+    window.addEventListener("resize", update);
     if (phone.addEventListener) phone.addEventListener("change", update); else if (phone.addListener) phone.addListener(update);
     update();
   }

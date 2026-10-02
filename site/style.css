@@ -1117,3 +1117,28 @@ body.peek-lock .to-top, body.detail-open .to-top, body.filters-open .to-top, bod
   .site-note-inner { padding-left: 16px; padding-right: 16px; }
 }
 @media print { .site-note { display: none; } }
+
+/* ---------- 머리 오른쪽 그래프 안내(소리 켬 왼쪽, 탭 줄로 함께 옮겨 감) ---------- */
+.top-actions { display: flex; align-items: center; gap: 8px; }
+.top-hint { display: inline-flex; align-items: center; gap: 8px; margin: 0 8px 0 0; font-size: .9375rem; color: var(--muted); white-space: nowrap; }
+.top-hint[hidden] { display: none; }
+.top-hint .th-short { display: none; }
+.top-hint .ph { position: relative; font-size: 1.25rem; color: var(--fg-strong); transform-origin: 50% 90%; }
+.top-hint .ph::after { content: ""; position: absolute; left: 43%; top: 18%; width: 8px; height: 8px; margin: -4px 0 0 -4px;
+  border-radius: 50%; border: 1.5px solid var(--fg-strong); opacity: 0; pointer-events: none; }
+@media (prefers-reduced-motion: no-preference) {
+  .top-hint .ph { animation: hint-tap 3s ease-in-out infinite; }
+  .top-hint .ph::after { animation: hint-ripple 3s ease-out infinite; }
+}
+/* 태블릿(640~1099px)은 짧은 글, 휴대폰은 머리 안내를 숨기고 그래프 위 안내 줄을 쓴다(탭 줄에 자리가 없다) */
+@media (max-width: 1099px) {
+  .top-hint .th-long { display: none; }
+  .top-hint .th-short { display: inline; }
+}
+@media (max-width: 639px) {
+  .top-hint { display: none !important; }
+}
+@media (min-width: 640px) {
+  .charts-hint { display: none; }
+}
+@media print { .top-hint { display: none !important; } }
