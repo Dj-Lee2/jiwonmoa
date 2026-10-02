@@ -1248,12 +1248,20 @@
     var top = $("#toTop"), ticking = false;
     function check() { ticking = false; top.hidden = window.scrollY < window.innerHeight * 1.5; }
     window.addEventListener("scroll", function () { if (!ticking) { ticking = true; requestAnimationFrame(check); } }, { passive: true });
-    top.addEventListener("click", function () {
+    function goTop() {
       var smooth = !window.matchMedia("(prefers-reduced-motion: reduce)").matches;
       window.scrollTo({ top: 0, behavior: smooth ? "smooth" : "auto" });
       var t = document.querySelector("[role=tab][aria-selected=true]");
       if (t) t.focus({ preventScroll: true });
-    });
+    }
+    top.addEventListener("click", goTop);
+    $("#footUp").addEventListener("click", goTop);
+    // 하단 마지막 줄이 화면에 들어오면 떠 있는 단추를 숨긴다(마지막 줄 끝에 '맨 위로'가 있다)
+    if ("IntersectionObserver" in window) {
+      new IntersectionObserver(function (es) {
+        document.body.classList.toggle("foot-seen", es[es.length - 1].isIntersecting);
+      }).observe(document.querySelector(".foot-last"));
+    }
     check();
   }
 

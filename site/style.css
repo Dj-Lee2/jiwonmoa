@@ -635,7 +635,7 @@ select { appearance: none; background-image: linear-gradient(45deg, transparent 
 /* ---------- 바닥글: 원문 사이트 알약 ---------- */
 /* 하단: 위(이름·수집 안내 | 이용 안내·개인정보 안내) → 원문 사이트 알약 → 선 아래 출처·원문 확인·© */
 .foot { border-top: 1px solid var(--divider); background: var(--surface-hover); color: var(--muted); font-size: .75rem; line-height: 1.6; }
-.foot-inner { padding-top: 32px; padding-bottom: 88px; } /* 아래 여백: 오른쪽 아래 '맨 위로' 단추가 마지막 줄을 가리지 않게 */
+.foot-inner { padding-top: 32px; padding-bottom: 24px; }
 .foot p { margin: 0 0 8px; }
 .foot-top { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 16px 32px; margin-bottom: 20px; }
 .foot-name { display: flex; align-items: center; gap: 8px; margin: 0 0 6px !important; font-size: 1.125rem; font-weight: 800; color: var(--fg-strong); letter-spacing: -0.3px; }
@@ -650,7 +650,12 @@ select { appearance: none; background-image: linear-gradient(45deg, transparent 
 .foot-bottom a { color: inherit; }
 .foot-last { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 4px 16px; margin-top: 8px; }
 .foot-check { display: inline-flex; align-items: center; gap: 4px; color: var(--fg); font-weight: 600; }
-.foot-copy { color: var(--muted); }
+.foot-copy { color: var(--muted); display: inline-flex; align-items: center; gap: 12px; }
+.foot-last p { margin: 0; }
+/* 하단 마지막 줄이 보이면 떠 있는 '맨 위로'는 숨고, 이 줄 끝의 '맨 위로'를 쓴다(겹치지 않게, 여백 없이) */
+.foot-up { display: inline-flex; align-items: center; gap: 2px; min-height: 32px; padding: 0 2px; border: 0; background: none; font: inherit;
+  font-size: .75rem; font-weight: 700; color: var(--fg-strong); cursor: pointer; }
+.foot-up:hover { text-decoration: underline; text-underline-offset: 3px; }
 .foot-links { display: flex; flex-wrap: wrap; gap: 8px; list-style: none; margin: 0 0 20px; padding: 0; }
 .foot-links a { display: inline-flex; align-items: center; height: 40px; padding: 0 20px; border-radius: 24px; background: var(--canvas); box-shadow: inset 0 0 0 1px var(--line); color: var(--fg-strong); text-decoration: none; font-size: .75rem; }
 
@@ -1068,7 +1073,7 @@ body.info-lock { overflow: hidden; }
   background: var(--canvas); color: var(--fg-strong); box-shadow: var(--shadow-panel); font-size: 1.25rem; }
 .to-top:hover { background: var(--surface-hover); }
 .to-top[hidden] { display: none; }
-body.peek-lock .to-top, body.detail-open .to-top, body.filters-open .to-top, body.info-lock .to-top { display: none; }
+body.peek-lock .to-top, body.detail-open .to-top, body.filters-open .to-top, body.info-lock .to-top, body.foot-seen .to-top { display: none; }
 @media (prefers-reduced-motion: no-preference) {
   .to-top:not([hidden]) { animation: fade-in .2s ease-out; }
 }
