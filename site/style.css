@@ -974,8 +974,28 @@ svg.has-pick .mark.picked .cell, svg.has-pick .mark.picked .bar { stroke: var(--
 }
 @keyframes peek-in { from { opacity: 0; translate: 0 4px; } to { opacity: 1; translate: 0 0; } }
 @keyframes sheet-in { from { translate: 0 100%; } to { translate: 0 0; } }
-.charts-hint { grid-column: 1 / -1; margin: 0 0 -4px; display: flex; align-items: center; gap: 6px; font-size: .8125rem; color: var(--muted); }
-.charts-hint .ph { font-size: 1rem; }
+/* 그래프 위 안내 줄(13px → 15px). 손가락 아이콘은 3초마다 한 번 '톡' 누르는 시늉을 한다(눌렸다 올라오며 둥근 물결) */
+.charts-hint { grid-column: 1 / -1; margin: 0 0 -4px; display: flex; align-items: center; gap: 8px; font-size: .9375rem; color: var(--muted); }
+.charts-hint .ph { position: relative; font-size: 1.25rem; color: var(--fg-strong); transform-origin: 50% 90%; }
+/* 누른 자리(검지 끝)에서 퍼지는 물결 */
+.charts-hint .ph::after { content: ""; position: absolute; left: 43%; top: 18%; width: 8px; height: 8px; margin: -4px 0 0 -4px;
+  border-radius: 50%; border: 1.5px solid var(--fg-strong); opacity: 0; pointer-events: none; }
+@media (prefers-reduced-motion: no-preference) {
+  .charts-hint .ph { animation: hint-tap 3s ease-in-out infinite; }
+  .charts-hint .ph::after { animation: hint-ripple 3s ease-out infinite; }
+}
+/* 3초 한 주기: 앞 0.6초 동안 내려가 눌렀다 올라오고, 나머지는 쉰다 */
+@keyframes hint-tap {
+  0%, 22%, 100% { transform: translateY(0) scale(1); }
+  7% { transform: translateY(3px) scale(.88); }
+  12% { transform: translateY(3px) scale(.88); }
+}
+@keyframes hint-ripple {
+  0%, 8% { opacity: 0; transform: scale(.4); }
+  10% { opacity: .5; transform: scale(.6); }
+  26% { opacity: 0; transform: scale(1.9); }
+  100% { opacity: 0; transform: scale(1.9); }
+}
 
 /* ---------- 관심 담기·달력·공유(app.js) ---------- */
 .actions.tools { margin-top: 8px; }
