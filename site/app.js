@@ -935,13 +935,12 @@
     var rest = items.length - homeShown[key];
     moreBtn.hidden = rest <= 0;
     moreBtn.textContent = "더 보기 (" + fmtN(rest) + "건 더)";
-    fitListHeight(box, items.length > HOME_FIRST, key === "pop" ? WIDE_CHARTS : WIDE_LISTS);
-    return items.length > HOME_FIRST;
+    fitListHeight(box, items.length > HOME_FIRST, WIDE_LISTS);
   }
 
   /* 넓은 화면에서 '더 보기'로 목록이 길어지면 옆 칸이 함께 늘어나 빈 곳이 생긴다.
    * 그래서 목록 칸을 처음 5줄 높이로 고정하고, 더 붙은 줄은 칸 안에서 스크롤한다(좁은 화면은 그대로 늘어남) */
-  var WIDE_LISTS = "(min-width: 1100px)", WIDE_CHARTS = "(min-width: 900px)", WIDE_THIRDS = "(min-width: 1100px)";
+  var WIDE_LISTS = "(min-width: 1100px)", WIDE_CHARTS = "(min-width: 900px)";
   function fitListHeight(ul, expandable, query) {
     ul.style.maxHeight = "";
     ul.classList.remove("scroll-list");
@@ -988,7 +987,7 @@
 
   /* 많이 찾는 지원사업: 상시 제도는 미리 뽑아 둔 순위(META.topServices, id 목록 + items), 모집 공고는 기업마당 조회수.
    * 둘 다 20개까지 */
-  var popKind = "s", POP_MAX = 20, popExpandable = false;
+  var popKind = "s", POP_MAX = 20;
   function renderPopular(live) {
     var items;
     if (popKind === "s") {
@@ -999,7 +998,7 @@
       items = live.filter(function (n) { return n.vw; })
         .sort(function (a, b) { return b.vw - a.vw; }).slice(0, POP_MAX);
     }
-    popExpandable = homeList("pop", $("#homePop"), $("#homePopMore"), items, function (n) { return row(n, "누적 조회 " + fmtViews(n.vw) + "회", true); },
+    homeList("pop", $("#homePop"), $("#homePopMore"), items, function (n) { return row(n, "누적 조회 " + fmtViews(n.vw) + "회", true); },
       "조회수 자료가 없습니다.");
     document.querySelectorAll("#homePopKind button").forEach(function (b) {
       b.setAttribute("aria-pressed", String(b.dataset.pop === popKind));
@@ -1023,15 +1022,11 @@
   function mapShades() { return mapKind === "s" ? MAP_SHADES_GREEN : MAP_SHADES; }
 
   /* 카드 안쪽 실제 폭(px). 이 폭으로 좌표를 잡아야 휴대폰에서 글자가 작아지지 않는다 */
-  /* 카드 안쪽 실제 폭(px). 이 폭으로 좌표를 잡아야 휴대폰에서 글자가 작아지지 않는다.
-   * 넓은 화면(1100px~) 첫 줄은 세 칸(대상·지원 내용·지역, kind "third"), 900~1099px에서는 지역 지도만 한 줄 전체(kind "map") */
-  function chartWidth(kind) {
+  function chartWidth() {
     var w = $("#homeCharts").clientWidth || 480;
-    if (window.matchMedia(WIDE_THIRDS).matches && (kind === "third" || kind === "map")) w = (w - 32) / 3;
-    else if (window.matchMedia(WIDE_CHARTS).matches && kind !== "map") w = (w - 16) / 2;
+    if (window.matchMedia("(min-width: 900px)").matches) w = (w - 16) / 2;
     return Math.max(280, Math.min(880, Math.round(w - 50))); // 카드 안쪽 여백 24px×2와 테두리 제외
   }
-
 
   function svgEl(tag, attrs) {
     var n = document.createElementNS(SVGNS, tag);
@@ -1202,7 +1197,6 @@
     return root;
   }
 
-
   /* 눈금 최댓값: 가운데 눈금도 정수가 되게 고른다 */
   function niceMax(v) {
     if (v <= 8) return Math.max(2, Math.ceil(v / 2) * 2);
@@ -1328,7 +1322,7 @@
       .map(function (d) {
         return { label: d.label, values: [bar(d.label, d.a, "모집 공고", "open"), bar(d.label, d.b, "상시 제도", "services")] };
       });
-    function draw(fitH) { return butterflyBars(data, series, "대상별 모집 공고와 상시 제도 나비 그래프", chartWidth("third"), fitH); }
+    function draw(fitH) { return butterflyBars(data, series, "대상별 모집 공고와 상시 제도 나비 그래프", chartWidth(), fitH); }
     var card = vizCard("누구를 위한 지원이 많나요?", "많은 순 · 양쪽 막대는 각자 가장 많은 대상 기준", draw(), null);
     card._redraw = draw;
     return card;
@@ -1508,7 +1502,7 @@
         list.append(el("li", null, b));
       });
 
-    return el("div", { className: "kmap-wrap" + (chartWidth("map") >= 520 ? " wide" : "") },
+    return el("div", { className: "kmap-wrap" + (chartWidth() >= 520 ? " wide" : "") },
       el("div", { className: "kmap-figure" }, svg, scale), list);
   }
 
@@ -1652,11 +1646,10 @@
 
     // fitH를 주면(옆 카드가 길 때) 도넛과 목록 줄 간격을 키워 그 높이를 채운다(fillCard)
     function draw(fitH) {
-      var W = chartWidth("third"), wide = W >= 460;
+      var W = chartWidth(), wide = W >= 460;
       var S = wide ? Math.min(fitH ? 300 : 240, Math.round(W * (fitH ? 0.5 : 0.46)), fitH ? Math.floor(fitH) - 8 : 999)
         : Math.min(230, W - 40);
-      // 좁으면 도넛 아래 목록이 남는 높이를 나눠 갖는다
-    var rowH = fitH ? Math.max(32, Math.min(46, Math.floor((fitH - (wide ? 4 : S + 20)) / data.length))) : 32;
+      var rowH = wide && fitH ? Math.max(32, Math.min(46, Math.floor((fitH - 4) / data.length))) : 32;
       var c = S / 2, R = c - 4, r = R * 0.6;
       var svg = svgEl("svg", { viewBox: "0 0 " + S + " " + S, "class": "donut", "aria-hidden": "true", style: "max-width:" + S + "px" });
       var list = el("ol", { className: "donut-list", style: "--row:" + rowH + "px",
@@ -1755,36 +1748,25 @@
     return card;
   }
 
-  /* 많이 찾는 지원사업 카드: 목록·전환 단추·더 보기는 index.html의 #homePopParts에 있는 그대로 옮겨 쓴다
-   * (이벤트는 bind에서 한 번만 단다). 목록 내용은 renderPopular가 채운다 */
-  function popularCard() {
-    var card = vizCard("많이 찾는 지원사업", "누적 조회수 순", $("#homePop"), el("div", null, $("#homePopMore")), $("#homePopKind"));
-    card.classList.add("list-card");
-    return card;
-  }
-
-  /* 넓은 화면(1100px~) 배치: 첫 줄 세 칸(대상 · 지원 내용 · 지역), 다음 줄부터 두 칸(마감 달력 · 공고 달, 많이 찾는 · 곧 올라올).
-   * 900~1099px은 두 칸이고 지역 지도만 한 줄 전체(style.css .home-charts) */
   function renderCharts(live) {
     chartsDrawnAt = chartWidth();
     $("#vizTip").hidden = true;
-    var persona = personaCard(live), support = supportCard(), region = regionCard();
+    var support = supportCard();
+    support.querySelector(".viz-body").classList.add("top"); // 옆 목록 카드가 길어도 막대는 제목 바로 아래에
     var due = dueCard(live), months = openMonthsCard();
     due.querySelector(".viz-body").classList.add("bottom");
     months.querySelector(".viz-body").classList.add("top"); // 범례를 제목 바로 아래에, 남는 높이는 그래프가 채운다
-    persona.querySelector(".viz-body").classList.add("top");
-    support.querySelector(".viz-body").classList.add("top");
-    var popular = popularCard(), upcoming = upcomingCard();
-    var cards = [persona, support, region, due, months, popular, upcoming];
-    ["persona", "svc", "map", "due", "months", "pop", "upcoming"].forEach(function (k, i) { cards[i].dataset.key = k; });
+    var persona = personaCard(live);
+    persona.querySelector(".viz-body").classList.add("top"); // 범례를 제목 바로 아래에
+    var upcoming = upcomingCard(), region = regionCard();
+    var cards = [persona, region, due, months, support, upcoming];
+    ["persona", "map", "due", "months", "svc", "upcoming"].forEach(function (k, i) { cards[i].dataset.key = k; });
     $("#homeCharts").replaceChildren.apply($("#homeCharts"), cards);
     fitListHeight(upcoming.querySelector(".results"), upcoming._expandable, WIDE_CHARTS); // 막대 채우기보다 먼저
-    fitListHeight($("#homePop"), popExpandable, WIDE_CHARTS);
     [persona, support, months].forEach(fillCard);
     setupMotion(cards);
     placeSegGliders(); // 글꼴이 온 뒤 그래프만 다시 그릴 때도 전환 단추 알약을 맞춘다
   }
-
 
   /* ---------- 그래프 움직임 ----------
    * 카드가 화면에 들어올 때(play): 카드가 올라오며 나타나고 막대가 자라나고 선이 그려진다.
