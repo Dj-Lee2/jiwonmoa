@@ -14,7 +14,7 @@
   var GOV24_URL = "https://www.gov.kr/portal/rcvfvrSvc/dtlEx/";
   var DETAIL_BUCKETS = 64; // build_site.py의 DETAIL_BUCKETS와 같아야 한다
   var SITE_TITLE = "지원모아";
-  var SRC_NAME = { bizinfo: "기업마당", kstartup: "K-Startup", bojo: "국고보조금 공모", gov24: "보조금24" };
+  var SRC_NAME = { bizinfo: "기업마당", kstartup: "K-Startup", bojo: "국고보조금", gov24: "보조금24" };
   var SRC_LINK = { bizinfo: "기업마당에서 원문 보기", kstartup: "K-Startup에서 원문 보기",
     bojo: "보조금 통합포털에서 원문 보기", gov24: "정부24에서 자세히 보기" };
   // 기간 종류(collector/normalize.py PERIOD_RULES·STATUS_BY_TYPE와 같아야 한다). 날짜가 없는 사업을 원문 표기로 나눈다
@@ -409,7 +409,7 @@
     box.className = "state" + (kind === "error" ? " error" : "");
     if (kind === "empty") {
       box.replaceChildren(icon("magnifying-glass"),
-        el("p", { className: "state-title", text: "조건에 맞는 사업이 없습니다" }),
+        el("p", { className: "state-title", text: "조건에 맞는 지원사업이 없습니다" }),
         activeFilterCount() ? el("button", { type: "button", className: "btn dark", dataset: { action: "reset" },
           text: "조건 모두 지우기" }) : null);
     } else if (kind === "error") {
@@ -672,7 +672,7 @@
         return;
       }
       pane.replaceChildren(detailBar(), el("div", { className: "detail-inner" },
-        el("p", { text: "지금 목록에 없는 사업입니다." })));
+        el("p", { text: "지금 목록에 없는 지원사업입니다." })));
       openOverlay();
       return;
     }
@@ -886,9 +886,9 @@
     var runs = META.runs || [];
     var at = runs.map(function (r) { return r.at; }).sort().pop() || META.builtAt;
 
-    $("#homeTitle").replaceChildren((state.r ? state.r + "에서 " : "") + "지금 신청할 수 있는 지원사업 ",
+    $("#homeTitle").replaceChildren((state.r ? state.r + "에서 " : "") + "지금 신청할 수 있는 모집 공고 ",
       el("strong", { text: fmtN(live.length) }), "건");
-    $("#homeSub").textContent = "모집 공고 기준 · " + fmtStamp(at) + " 수집";
+    $("#homeSub").textContent = fmtStamp(at) + " 수집 · 상시 제도는 따로 셈";
 
     var svcN = svcCount("all");
     $("#homeStats").replaceChildren(
@@ -898,8 +898,8 @@
         function () { goTo({ tab: "open", st: ["접수 예정"] }); }, "blue", live.length, "모집 공고"),
       statTile(byStatus["소진 시까지"] || 0, "예산 소진 시까지", "hourglass-medium",
         function () { goTo({ tab: "open", st: ["소진 시까지"] }); }, "blue", live.length, "모집 공고"),
-      statTile(svcN, "상시 지원제도", "hand-heart",
-        function () { goTo({ tab: "services" }); }, "green", live.length + svcN, "공고·제도"));
+      statTile(svcN, "상시 제도", "hand-heart",
+        function () { goTo({ tab: "services" }); }, "green", live.length + svcN, "전체 지원사업"));
     if (!statsGrown) { $("#homeStats").classList.add("grow"); statsGrown = true; }
     else $("#homeStats").classList.remove("grow");
 
@@ -1260,7 +1260,7 @@
   function monthBars(A, B, W, fitH, tipAt) {
     var f = monthFrame(W, fitH, Math.max.apply(null, A.concat(B)));
     var root = svgEl("svg", { viewBox: "0 0 " + W + " " + f.H, role: "group", "class": "month-chart",
-      "aria-label": "달별 국고보조금 공모 수, 올해와 작년 비교 막대 그래프" });
+      "aria-label": "달별 국고보조금 공고 수, 올해와 작년 비교 막대 그래프" });
     monthAxes(root, f, B.length - 1);
     var wp = Math.min(30, f.band * 0.72), wc = Math.max(5, Math.round(wp * 0.46));
     for (var i = 0; i < 12; i++) {
@@ -1286,7 +1286,7 @@
   function monthCum(CA, CB, W, fitH) {
     var f = monthFrame(W, fitH, Math.max(CA[11], CB[CB.length - 1] || 0), 64);
     var root = svgEl("svg", { viewBox: "0 0 " + W + " " + f.H, role: "group", "class": "month-chart",
-      "aria-label": "1월부터 쌓은 국고보조금 공모 수, 올해와 작년 비교 선 그래프" });
+      "aria-label": "1월부터 쌓은 국고보조금 공고 수, 올해와 작년 비교 선 그래프" });
     monthAxes(root, f, CB.length - 1);
     function pts(v) { return v.map(function (x, i) { return [f.cx(i), f.Y(x)]; }); }
     function area(p, cls) {
@@ -1569,15 +1569,15 @@
     return card;
   }
 
-  /* 공모는 언제 열리나요?: 국고보조금 공모가 접수를 시작한 달, 올해(파랑)와 작년(회색). META.openMonths.
+  /* 공고는 언제 올라오나요?: 국고보조금 공고가 접수를 시작한 달, 올해(파랑)와 작년(회색). META.openMonths.
    * 카드 머리 단추로 '달별'(겹친 막대)과 '누적'(1월부터 쌓은 선)을 바꾼다. 누적 보기의 부제는
    * 지난달까지(이번 달은 아직 진행 중이라 빼고) 올해와 작년을 비교한다 */
   var monthsView = "month";
   function openMonthsCard() {
     var am = META.openMonths;
-    var title = "공모는 언제 열리나요?";
+    var title = "공고는 언제 올라오나요?";
     var foot = null;
-    if (!am || !am.years) return vizCard(title, null, el("p", { className: "muted", text: "공모 자료가 없습니다." }), foot);
+    if (!am || !am.years) return vizCard(title, null, el("p", { className: "muted", text: "공고 자료가 없습니다." }), foot);
     var prev = String(am.years[0]), cur = String(am.years[1]), upto = am.month;
     function vals(y) {
       return am.total[y].map(function (v, i) {
@@ -1589,10 +1589,10 @@
     function cum(a) { var t = 0; return a.map(function (v) { return (t += v); }); }
     var A = vals(prev), B = vals(cur).slice(0, upto); // 올해는 자료를 모은 달까지만
     if (!sum(A) && !sum(B)) {
-      return vizCard(title, null, el("p", { className: "muted", text: "이 지역의 공모 자료가 없습니다." }), foot);
+      return vizCard(title, null, el("p", { className: "muted", text: "이 지역의 공고 자료가 없습니다." }), foot);
     }
     var byCum = monthsView === "cum";
-    var sub = "국고보조금 공모 기준";
+    var sub = "국고보조금 공고 기준";
     if (byCum) {
       var done = B.length - 1, sa = sum(A.slice(0, done)), sb = sum(B.slice(0, done));
       sub = "1월부터 쌓은 수";
@@ -1613,7 +1613,7 @@
     }
     var series = [{ name: cur + "년(올해)", color: SERIES_BLUE }, { name: prev + "년(작년)", color: byCum ? SERIES_GRAY : LAST_YEAR_BAR }];
     var card = vizCard(title, sub, el("div", { className: "viz-fig" }, legend(series), draw()), foot,
-      segToggle("months", "공모 그래프 보기", [{ value: "month", label: "달별" }, { value: "cum", label: "누적" }], monthsView,
+      segToggle("months", "공고 그래프 보기", [{ value: "month", label: "달별" }, { value: "cum", label: "누적" }], monthsView,
         function (v) { monthsView = v; }));
     card._redraw = draw;
     return card;
@@ -1715,7 +1715,7 @@
     return card;
   }
 
-  /* 곧 열릴 수 있는 공모: 작년 이맘때 접수를 시작한 국고보조금 공모(META.upcoming, build_site.py가 사업별로 묶음) */
+  /* 곧 올라올 수 있는 공고: 작년 이맘때 접수를 시작한 국고보조금 공고(META.upcoming, build_site.py가 사업별로 묶음) */
   var upcomingShown = HOME_FIRST;
   function upcomingRow(u) {
     var last = fmtDate(u.od, true);
@@ -1739,7 +1739,7 @@
     var up = META.upcoming || { items: [] };
     var items = up.items.filter(inRegion);
     var list = el("ul", { className: "results upcoming" });
-    fillList(list, items.slice(0, upcomingShown).map(upcomingRow), "해당하는 공모가 없습니다.");
+    fillList(list, items.slice(0, upcomingShown).map(upcomingRow), "해당하는 공고가 없습니다.");
     var foot = null;
     if (items.length > upcomingShown) {
       var more = el("button", { type: "button", className: "btn gray more", text: "더 보기 (" + fmtN(items.length - upcomingShown) + "건 더)" });
@@ -1754,8 +1754,8 @@
     }
     function md(iso) { var p = iso.split("-"); return (+p[1]) + "." + (+p[2]); }
     var range = up.from ? md(up.from) + "~" + md(up.to) : "";
-    var card = vizCard("곧 열릴 수 있는 공모",
-      "작년 " + range + "에 열린 국고보조 공모 " + fmtN(items.length) + "개",
+    var card = vizCard("곧 올라올 수 있는 공고",
+      "작년 " + range + "에 접수를 시작한 국고보조금 공고 " + fmtN(items.length) + "개",
       list, foot);
     card.classList.add("list-card");
     card._expandable = items.length > HOME_FIRST;

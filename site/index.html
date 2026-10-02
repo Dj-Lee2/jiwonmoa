@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>지원모아</title>
-<meta name="description" content="정부·지자체·공공기관의 지원사업 공고와 제도를 한곳에서 찾아보는 비공식 개인 프로젝트">
+<meta name="description" content="정부·지자체·공공기관의 지원사업(모집 공고와 상시 제도)을 한곳에서 찾아보는 비공식 개인 프로젝트">
 <meta name="color-scheme" content="only light">
 <meta name="theme-color" content="#ffffff">
 <link rel="icon" type="image/png" href="img/favicon.png">
@@ -36,8 +36,8 @@
 <nav class="tabs" aria-label="보기 선택">
   <div class="wrap tabs-inner" role="tablist">
     <button role="tab" id="tab-home" data-tab="home" aria-controls="homePane">홈</button>
-    <button role="tab" id="tab-open" data-tab="open" aria-controls="listPane">지금 모집 중 <span class="tab-count"></span></button>
-    <button role="tab" id="tab-services" data-tab="services" aria-controls="listPane">상시 지원제도 <span class="tab-count"></span></button>
+    <button role="tab" id="tab-open" data-tab="open" aria-controls="listPane">모집 공고 <span class="tab-count"></span></button>
+    <button role="tab" id="tab-services" data-tab="services" aria-controls="listPane">상시 제도 <span class="tab-count"></span></button>
   </div>
 </nav>
 <script>
@@ -74,7 +74,7 @@
         </div>
       </div>
       <button class="btn yellow hero-go" type="submit">찾기</button>
-      <label class="check national"><input type="checkbox" id="homeNat" checked> 전국 대상 사업 포함</label>
+      <label class="check national"><input type="checkbox" id="homeNat" checked> 전국 대상 지원사업 포함</label>
     </form>
   </section>
 
@@ -90,7 +90,7 @@
   <div class="home-grid">
     <section class="home-block" aria-labelledby="homeSoonTitle">
       <div class="block-head">
-        <h3 id="homeSoonTitle">마감이 가까운 사업</h3>
+        <h3 id="homeSoonTitle">마감이 가까운 공고</h3>
         <button type="button" class="more-link" id="homeSoonAll">전체 보기<i class="ph ph-arrow-right" aria-hidden="true"></i></button>
       </div>
       <ul id="homeSoon" class="results"></ul>
@@ -187,7 +187,7 @@
           <select id="region"><option value="">전체 지역</option></select>
         </div>
       </div>
-      <label class="check national"><input type="checkbox" id="withNational" checked> 전국 대상 사업 포함</label>
+      <label class="check national"><input type="checkbox" id="withNational" checked> 전국 대상 지원사업 포함</label>
     </div>
 
     <div class="toolbar">
