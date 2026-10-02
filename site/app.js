@@ -833,6 +833,7 @@
   /* 홈에서 목록으로 넘어갈 때: 홈에서 고른 지역은 그대로 들고 간다 */
   function goTo(partial) {
     $("#vizTip").hidden = true;
+    closePeek(false);
     state = Object.assign(blankState({ r: state.r, nat: state.nat }), partial);
     state.sort = partial.sort || defaultSort(state);
     shown = PAGE;
@@ -1075,14 +1076,181 @@
     node.setAttribute("aria-label", label);
     if (onPick) {
       node.setAttribute("role", "button");
-      node.addEventListener("click", onPick);
+      node.addEventListener("click", function () { onPick(node); });
       node.addEventListener("keydown", function (e) {
-        if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onPick(); }
+        if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onPick(node); }
       });
     } else {
       node.setAttribute("role", "img");
       node.classList.add("static");
     }
+  }
+
+  /* ---------- 그래프 요약 창(누르면 한 단계 더 자세히) ----------
+   * 그래프 표시(달력 칸·막대)를 누르면 바로 목록으로 가지 않고 작은 요약 창을 연다.
+   * 같은 표시를 다시 누르거나, 바깥을 누르거나, Esc·닫기로 닫는다. 다른 표시를 누르면 내용만 바뀐다.
+   * 넓은 화면은 누른 곳 옆에 뜨는 창(페이지와 함께 스크롤), 휴대폰(639px 이하)은 아래에서 올라오는 시트.
+   * 창은 카드 밖(body)에 떠서 카드 크기·배치를 바꾸지 않는다. 맨 아래 단추로 전체 목록에 간다.
+   * 상시 제도 요약은 data/peek.js(build_site.py service_peek)를 처음 열 때 읽는다 */
+  var peekKey = null, peekAnchor = null, peekBox = null, peekShade = null;
+  function peekSheet() { return window.matchMedia("(max-width: 639px)").matches; }
+
+  function closePeek(restoreFocus) {
+    if (!peekBox) return;
+    var anchor = peekAnchor;
+    peekBox.remove(); peekShade.remove();
+    peekBox = peekShade = null; peekKey = null; peekAnchor = null;
+    document.body.classList.remove("peek-lock");
+    document.querySelectorAll(".has-pick").forEach(function (n) { n.classList.remove("has-pick"); });
+    document.querySelectorAll(".picked").forEach(function (n) { n.classList.remove("picked"); n.setAttribute("aria-expanded", "false"); });
+    if (restoreFocus && anchor && anchor.isConnected) anchor.focus({ preventScroll: true });
+  }
+
+  function placePeek() {
+    if (!peekBox || !peekAnchor) return;
+    if (peekSheet()) { peekBox.style.left = peekBox.style.top = ""; return; }
+    var r = peekAnchor.getBoundingClientRect(), w = peekBox.offsetWidth, h = peekBox.offsetHeight, gap = 10;
+    var left = Math.max(12, Math.min(document.documentElement.clientWidth - w - 12, r.left + r.width / 2 - w / 2));
+    var below = r.bottom + gap + h <= window.innerHeight - 8 || r.top - gap - h < 8;
+    peekBox.style.left = Math.round(left + window.scrollX) + "px";
+    peekBox.style.top = Math.round((below ? r.bottom + gap : r.top - gap - h) + window.scrollY) + "px";
+  }
+
+  /* spec: { title, sub, n, flag(배지 글자), flagTone, kind("open"|"svc"), groups: [{ label, rows: [[이름, 건수]] }],
+   *   items: [항목], itemsLabel, more: { label, go } } */
+  function peekBody(spec) {
+    var close = el("button", { type: "button", className: "peek-close", "aria-label": "요약 닫기" }, icon("x"));
+    close.addEventListener("click", function () { closePeek(true); });
+    var head = el("div", { className: "peek-head" },
+      el("div", null, el("p", { className: "peek-title", id: "peekTitle", text: spec.title }),
+        spec.sub ? el("p", { className: "peek-sub", text: spec.sub }) : null),
+      close);
+    var num = el("div", { className: "peek-num kind-" + spec.kind },
+      el("strong", { text: fmtN(spec.n) }), el("span", { text: "건" }),
+      spec.flag ? badge(spec.flag, spec.flagTone || "soft") : null);
+    var groups = el("dl", { className: "peek-groups" });
+    spec.groups.forEach(function (g) {
+      if (!g.rows.length) return;
+      var dd = el("dd");
+      g.rows.forEach(function (r, i) {
+        if (i) dd.append(el("span", { className: "peek-dot", "aria-hidden": "true", text: "·" }));
+        dd.append(el("span", { className: "peek-pair" }, r[0] + " ", el("b", { text: fmtN(r[1]) })));
+      });
+      groups.append(el("div", null, el("dt", { text: g.label }), dd));
+    });
+    var list = null;
+    if (spec.items && spec.items.length) {
+      list = el("div", { className: "peek-items" }, el("p", { className: "peek-label", text: spec.itemsLabel || "많이 본 공고" }));
+      var ul = el("ul");
+      spec.items.forEach(function (it) {
+        var side = it.k === "s" ? null : statusBadge(it);
+        var b = el("button", { type: "button", className: "peek-item" },
+          el("span", { className: "peek-item-main" },
+            el("span", { className: "peek-item-title", text: it.t }),
+            el("span", { className: "peek-item-meta", text: [it.ag, regionText(it)].filter(Boolean).join(" · ") })),
+          side);
+        b.addEventListener("click", function () {
+          closePeek(false);
+          goTo({ tab: it.k === "s" ? "services" : "open", id: it.id });
+        });
+        ul.append(el("li", null, b));
+      });
+      list.append(ul);
+    }
+    var more = el("button", { type: "button", className: "btn dark peek-more" }, spec.more.label, icon("arrow-right"));
+    more.addEventListener("click", function () { closePeek(false); spec.more.go(); });
+    return [head, num, groups, list, more];
+  }
+
+  function openPeek(key, anchor, build) {
+    if (peekKey === key) { closePeek(true); return; }
+    var wasOpen = !!peekBox;
+    closePeek(false);
+    $("#vizTip").hidden = true;
+    peekKey = key; peekAnchor = anchor;
+    anchor.classList.add("picked");
+    anchor.setAttribute("aria-expanded", "true");
+    var fig = anchor.closest("svg");
+    if (fig) fig.classList.add("has-pick");
+    var sheet = peekSheet();
+    peekShade = el("div", { className: "peek-shade" + (sheet ? " on" : "") });
+    peekShade.addEventListener("click", function () { closePeek(true); });
+    peekBox = el("div", { className: "peek" + (sheet ? " sheet" : "") + (wasOpen ? " swap" : ""), role: "dialog",
+      "aria-labelledby": "peekTitle", tabindex: "-1" });
+    document.body.append(peekShade, peekBox);
+    if (sheet) document.body.classList.add("peek-lock");
+    function fill(spec) {
+      if (!peekBox || peekKey !== key) return;
+      peekBox.replaceChildren.apply(peekBox, peekBody(spec).filter(Boolean));
+      placePeek();
+    }
+    var spec = build();
+    if (spec && typeof spec.then === "function") {
+      peekBox.append(el("p", { className: "peek-wait", text: "요약을 불러오는 중…" }));
+      placePeek();
+      spec.then(fill, function () {
+        if (peekBox && peekKey === key) peekBox.replaceChildren(el("p", { className: "peek-wait", text: "요약을 불러오지 못했습니다." }));
+      });
+    } else fill(spec);
+    peekBox.focus({ preventScroll: true });
+  }
+
+  document.addEventListener("click", function (e) {
+    if (!peekBox) return;
+    if (peekBox.contains(e.target) || (peekAnchor && peekAnchor.contains(e.target))) return;
+    if (e.target.closest && e.target.closest("[aria-haspopup=dialog]")) return; // 다른 표시: 그쪽에서 바꿔 연다
+    closePeek(false);
+  });
+  document.addEventListener("keydown", function (e) {
+    if (e.key === "Escape" && peekBox) { e.stopPropagation(); closePeek(true); }
+  }, true);
+  window.addEventListener("resize", function () { placePeek(); });
+
+  function topN(counts, n) {
+    return Object.keys(counts).filter(function (k) { return k && counts[k]; })
+      .sort(function (a, b) { return counts[b] - counts[a] || a.localeCompare(b, "ko"); })
+      .slice(0, n || 3).map(function (k) { return [k, counts[k]]; });
+  }
+  function mostViewed(items, n) {
+    return items.filter(function (i) { return i.vw; }).sort(function (a, b) { return b.vw - a.vw; }).slice(0, n || 3);
+  }
+  function regionPrefix() { return state.r ? state.r + (state.nat ? "(전국 대상 포함)" : "") + " · " : ""; }
+
+  /* 모집 공고 묶음 요약(달력 날짜·대상 막대 공통) */
+  function noticePeek(items, title, sub, more, flag, flagTone) {
+    var soon = items.filter(isSoon).length;
+    return { title: title, sub: sub, n: items.length, kind: "open",
+      flag: flag !== undefined ? flag : (soon ? "7일 안 마감 " + fmtN(soon) + "건" : null), flagTone: flagTone || "soon",
+      groups: [
+        { label: "분야", rows: topN(countBy(items, function (i) { return i.nf; })) },
+        { label: "대상", rows: topN(countBy(items, function (i) { return i.pp; })) },
+        { label: "지역", rows: topN(countBy(items, function (i) { return i.rg; })) }],
+      items: mostViewed(items), more: more };
+  }
+
+  /* 상시 제도 대상 요약: peek.js의 칸(전체 / 지역 / 지역 + 전국 대상)을 더한다 */
+  var svcPeekData = null;
+  function ensureSvcPeek() {
+    if (svcPeekData) return Promise.resolve(svcPeekData);
+    return loadScript("data/peek.js").then(function () { svcPeekData = window.HUB_PEEK || {}; return svcPeekData; });
+  }
+  function servicePeek(p) {
+    return ensureSvcPeek().then(function (d) {
+      var cells = state.r ? [(d.region || {})[state.r] || {}].concat(state.nat ? [d.national || {}] : []) : [d.total || {}];
+      var cat = {}, sp = {}, ids = [];
+      cells.forEach(function (c) {
+        var x = c[p];
+        if (!x) return;
+        Object.keys(x.cat).forEach(function (k) { cat[k] = (cat[k] || 0) + x.cat[k]; });
+        Object.keys(x.sp).forEach(function (k) { sp[k] = (sp[k] || 0) + x.sp[k]; });
+        ids = ids.concat(x.top);
+      });
+      var items = ids.map(function (id) { return (d.items || {})[id]; }).filter(Boolean);
+      return { title: regionPrefix() + p + " 대상 상시 제도", sub: "언제든 신청할 수 있는 제도", n: svcCount(p) || 0, kind: "svc",
+        groups: [{ label: "분야", rows: topN(cat) }, { label: "방식", rows: topN(sp) }],
+        items: mostViewed(items), itemsLabel: "많이 본 제도",
+        more: { label: fmtN(svcCount(p) || 0) + "건 모두 보기", go: function () { goTo({ tab: "services", au: [p] }); } } };
+    });
   }
 
   function vizCard(title, sub, body, foot, tools) {
@@ -1204,6 +1372,7 @@
           "class": "bar" + (j ? "" : " flip"), style: "fill:" + series[j].color }));
         g.append(svgText(j ? cxR + w + 6 : cxL - w - 6, cy + 5, fmtN(v.n), "val sm", j ? "start" : "end"));
         activate(g, v.aria, v.onPick);
+        if (v.onPick) { g.setAttribute("aria-haspopup", "dialog"); g.setAttribute("aria-expanded", "false"); }
         tipFor(g, v.tipValue, v.tipLabel);
         root.append(g);
       });
@@ -1328,10 +1497,18 @@
   function personaCard(live) {
     var ppN = countBy(live, function (i) { return i.pp; });
     var series = [{ name: "모집 공고", color: SERIES_BLUE }, { name: "상시 제도", color: SERIES_GREEN }];
+    // 막대를 누르면 그 대상 요약 창(모집 공고는 바로 계산, 상시 제도는 peek.js)
     function bar(p, n, kind, tab) {
       return { n: n, tipValue: fmtN(n) + "건", tipLabel: p + " 대상 " + kind,
-        aria: p + " 대상 " + kind + " " + n + "건" + (n ? ". 누르면 목록으로 갑니다" : ""),
-        onPick: n ? function () { goTo({ tab: tab, au: [p] }); } : null };
+        aria: p + " 대상 " + kind + " " + n + "건" + (n ? ". 누르면 요약을 봅니다" : ""),
+        onPick: n ? function (node) {
+          openPeek("persona:" + tab + ":" + p, node, function () {
+            if (tab === "services") return servicePeek(p);
+            var items = live.filter(function (i) { return (i.pp || []).indexOf(p) >= 0; });
+            return noticePeek(items, regionPrefix() + p + " 대상 모집 공고", "지금 신청할 수 있는 것",
+              { label: fmtN(items.length) + "건 모두 보기", go: function () { goTo({ tab: "open", au: [p] }); } });
+          });
+        } : null };
     }
     var data = META.personas.map(function (p) { return { label: p, a: ppN[p] || 0, b: svcCount(p) || 0 }; })
       .sort(function (x, y) { return (y.a + y.b) - (x.a + x.b) || x.label.localeCompare(y.label, "ko"); })
@@ -1433,8 +1610,17 @@
       }
       if (n) {
         (function (day, cnt) {
-          activate(g, fmtDate(day, true) + " 마감 " + cnt + "건. 누르면 목록으로 갑니다",
-            function () { goTo({ tab: "open", due: day + "~" + day }); });
+          activate(g, fmtDate(day, true) + " 마감 " + cnt + "건. 누르면 요약을 봅니다", function (node) {
+            openPeek("due:" + day, node, function () {
+              var items = live.filter(function (it) { return statusOf(it) === "접수 중" && it.e === day; });
+              var d = daysBetween(today, day);
+              return noticePeek(items, regionPrefix() + fmtDate(day) + " 마감 모집 공고", "이날까지 신청해야 하는 공고",
+                { label: fmtN(items.length) + "건 모두 보기", go: function () { goTo({ tab: "open", due: day + "~" + day }); } },
+                d === 0 ? "오늘 마감" : "D-" + d, d <= 3 ? "urgent" : d <= SOON_DAYS ? "soon" : "line");
+            });
+          });
+          g.setAttribute("aria-haspopup", "dialog");
+          g.setAttribute("aria-expanded", "false");
           tipFor(g, fmtN(cnt) + "건", fmtDate(day, true) + " 마감");
         })(iso, n);
       } else {
@@ -1790,6 +1976,7 @@
   }
 
   function renderCharts(live) {
+    closePeek(false); // 표시가 새로 그려지므로 열린 요약 창은 닫는다
     chartsDrawnAt = chartWidth();
     $("#vizTip").hidden = true;
     var support = supportCard();

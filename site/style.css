@@ -5,7 +5,7 @@
  *  - 누르기·가리키기 반응은 즉시. 그래프만 화면에 들어올 때 움직인다(화면 밖으로 나갔다 돌아오면 다시)(움직임 줄이기 설정이면 없음)
  *  - 보조 글자 #666(흰 바탕 대비 4.5:1 이상), 누르는 칸은 44px 이상
  * 흰 화면으로 고정한다(index.html의 data-theme="light", color-scheme).
- * 층(z-index): 탭 10 / 상세 겹침 50 / 조건 겹침 60 / 알림 90.
+ * 층(z-index): 탭 10 / 그래프 요약 창 40 / 상세 겹침 50 / 조건 겹침 60 / 알림 90.
  */
 /* ---------- 색 체계 ----------
  * 색은 '뜻'에 붙인다. 같은 뜻 = 같은 색, 한 색 = 한 뜻.
@@ -843,3 +843,55 @@ html[data-boot="list"] #homePane { display: none !important; }
   .home-stats.grow .stat-ticks i.on { transform-origin: bottom; animation: tick-grow 400ms var(--ease-out) both; animation-delay: calc(250ms + var(--i) * 12ms); }
 }
 @keyframes tick-grow { from { transform: scaleY(.3); opacity: .3; } }
+
+/* ---------- 그래프 요약 창(app.js openPeek) ----------
+ * 넓은 화면: 누른 표시 옆에 뜨는 흰 창(페이지와 함께 스크롤). 휴대폰: 아래에서 올라오는 시트 + 어두운 뒤판.
+ * 누른 표시는 진하게 두고 같은 그래프의 다른 표시는 옅게(.has-pick / .picked) */
+.peek { position: absolute; z-index: 40; width: min(340px, calc(100vw - 24px)); background: var(--canvas); color: var(--fg);
+  border-radius: 20px; box-shadow: var(--shadow-panel); padding: 16px 16px 14px; display: grid; gap: 12px; outline: none; }
+.peek.sheet { position: fixed; left: 0; right: 0; bottom: 0; top: auto; width: auto; max-height: 78vh; overflow-y: auto;
+  border-radius: 24px 24px 0 0; padding: 12px 20px calc(16px + env(safe-area-inset-bottom)); overscroll-behavior: contain; }
+.peek.sheet::before { content: ""; justify-self: center; width: 40px; height: 4px; border-radius: 2px; background: var(--line); }
+.peek-shade { position: fixed; inset: 0; z-index: 39; display: none; }
+.peek-shade.on { display: block; background: rgba(0, 0, 0, .32); }
+body.peek-lock { overflow: hidden; }
+body.peek-lock .viz-tip { display: none; }
+.peek-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
+.peek-title { margin: 0; font-weight: 700; font-size: 1rem; line-height: 1.4; color: var(--fg-strong); letter-spacing: -0.3px; }
+.peek-sub { margin: 2px 0 0; font-size: .8125rem; color: var(--muted); }
+.peek-close { flex: none; width: 36px; height: 36px; margin: -6px -6px 0 0; border: 0; border-radius: 999px; background: none; color: var(--muted); cursor: pointer; font-size: 1.125rem; display: grid; place-items: center; }
+.peek-close:hover { background: var(--surface-hover); color: var(--fg-strong); }
+.peek-num { display: flex; align-items: baseline; gap: 4px; flex-wrap: wrap; }
+.peek-num strong { font-size: 1.75rem; line-height: 1; font-weight: 800; letter-spacing: -0.5px; font-variant-numeric: tabular-nums; }
+.peek-num.kind-open strong { color: var(--kind-open-text); }
+.peek-num.kind-svc strong { color: var(--green-600); }
+.peek-num > span { font-weight: 700; color: var(--fg-strong); margin-right: 8px; }
+.peek-num .badge { align-self: center; }
+.peek-groups { margin: 0; display: grid; gap: 6px; font-size: .8125rem; }
+.peek-groups > div { display: grid; grid-template-columns: 36px 1fr; gap: 8px; align-items: baseline; }
+.peek-groups dt { color: var(--muted); font-weight: 600; }
+.peek-groups dd { margin: 0; color: var(--fg); line-height: 1.6; }
+.peek-groups b { font-weight: 700; color: var(--fg-strong); font-variant-numeric: tabular-nums; }
+.peek-dot { color: var(--gray-300); margin: 0 6px; }
+.peek-pair { white-space: nowrap; }
+.peek-label { margin: 0 0 4px; font-size: .75rem; font-weight: 700; color: var(--muted); }
+.peek-items ul { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--divider); }
+.peek-items li { border-bottom: 1px solid var(--divider); }
+.peek-item { width: 100%; display: flex; align-items: center; gap: 8px; border: 0; background: none; padding: 8px 2px; min-height: 44px; text-align: left; cursor: pointer; color: inherit; font: inherit; }
+.peek-item:hover { background: var(--surface-hover); }
+.peek-item-main { flex: 1; min-width: 0; display: grid; }
+.peek-item-title { font-weight: 700; font-size: .875rem; line-height: 1.4; color: var(--fg-strong); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.peek-item-meta { font-size: .75rem; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.peek-item .badge { flex: none; }
+.peek-more { width: 100%; justify-content: center; gap: 6px; }
+.peek-wait { margin: 8px 0; color: var(--muted); font-size: .875rem; }
+/* 고른 표시만 진하게 */
+svg.has-pick .mark:not(.picked) { opacity: .35; }
+svg.has-pick .mark.picked .cell, svg.has-pick .mark.picked .bar { stroke: var(--fg-strong); stroke-width: 2; }
+@media (prefers-reduced-motion: no-preference) {
+  .peek:not(.sheet):not(.swap) { animation: peek-in .14s var(--ease-out); }
+  .peek.sheet:not(.swap) { animation: sheet-in .24s var(--ease-drawer); }
+  .peek-shade.on { animation: fade-in .2s ease-out; }
+}
+@keyframes peek-in { from { opacity: 0; translate: 0 4px; } to { opacity: 1; translate: 0 0; } }
+@keyframes sheet-in { from { translate: 0 100%; } to { translate: 0 0; } }

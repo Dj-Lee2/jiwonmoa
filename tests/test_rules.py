@@ -156,6 +156,29 @@ class NoticeFieldTest(unittest.TestCase):
                 self.assertIn(v, build_site.NOTICE_FIELDS)
 
 
+class ServicePeekTest(unittest.TestCase):
+    """홈 요약 창의 상시 제도 대상 요약: 전체·지역·전국 칸, 분야·방식 건수, 조회수 상위 3개"""
+
+    def test_cells(self):
+        def svc(i, pp, rg, cat, sp, vw):
+            return {"id": f"gov24:{i}", "src": "gov24", "k": "s", "t": f"제도{i}", "pp": pp, "rg": rg,
+                    "cat": cat, "sp": sp, "vw": vw, "sm": "길게 남기지 않는 글"}
+        items = [svc(1, ["청년"], ["전국"], "고용·창업", ["현금"], 50),
+                 svc(2, ["청년", "구직자"], ["경기"], "고용·창업", ["현금", "융자"], 30),
+                 svc(3, ["청년"], ["경기", "서울"], "주거·자립", ["융자"], 0),
+                 svc(4, ["청년"], ["서울"], "생활안정", [], 90),
+                 svc(5, ["청년"], ["전국"], "생활안정", ["현물"], 10)]
+        p = build_site.service_peek(items)
+        self.assertEqual(p["total"]["청년"]["cat"], {"고용·창업": 2, "주거·자립": 1, "생활안정": 2})
+        self.assertEqual(p["total"]["청년"]["sp"], {"현금": 2, "융자": 2, "현물": 1})
+        self.assertEqual(p["total"]["청년"]["top"], ["gov24:4", "gov24:1", "gov24:2"])  # 조회수 0은 뺀다
+        self.assertEqual(p["region"]["경기"]["청년"]["cat"], {"고용·창업": 1, "주거·자립": 1})
+        self.assertEqual(p["national"]["청년"]["top"], ["gov24:1", "gov24:5"])
+        self.assertNotIn("청년", p["region"]["부산"])  # 없는 대상은 칸을 만들지 않는다
+        self.assertNotIn("sm", p["items"]["gov24:1"])  # 짧은 항목만
+        self.assertEqual(set(p["items"]), {"gov24:1", "gov24:2", "gov24:4", "gov24:5"})
+
+
 class PersonaHistoryTest(unittest.TestCase):
     """대상별 올해 공고 집계: 끝난 공고(마감·목록에서 사라짐)를 따로 세고, 다른 해·제도·재게시는 빼거나 하나로."""
 

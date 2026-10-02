@@ -287,6 +287,44 @@ def top_services(services, n=TOP_MAX):
     return out
 
 
+PEEK_TOP = 3
+
+
+def service_peek(services):
+    """홈 그래프 요약 창(app.js openPeek)용 상시 제도 대상별 요약. 홈에서 큰 목록(services.js)을 읽지 않으려고 미리 센다.
+
+    반환: {"total"|"national": 칸, "region": {지역: 칸}, "items": {id: 짧은 항목}}.
+    칸 = {대상: {"cat": {분야: 건수}, "sp": {지원 방식: 건수}, "top": [조회수 상위 id 3개]}}.
+    지역 + 전국 대상은 화면에서 두 칸을 더한다(분야·방식 건수를 다 들고 있어 더해도 정확하다).
+    """
+    pool = {}
+
+    def cell(items):
+        out = {}
+        for p in PERSONAS:
+            sub = [i for i in items if p in (i.get("pp") or [])]
+            if not sub:
+                continue
+            cat, sp = {}, {}
+            for i in sub:
+                if i.get("cat"):
+                    cat[i["cat"]] = cat.get(i["cat"], 0) + 1
+                for s in i.get("sp") or []:
+                    sp[s] = sp.get(s, 0) + 1
+            top = sorted((i for i in sub if i.get("vw")), key=lambda i: -i["vw"])[:PEEK_TOP]
+            for i in top:
+                pool[i["id"]] = {k: i[k] for k in TOP_KEYS if k in i}
+            out[p] = {"cat": cat, "sp": sp, "top": [i["id"] for i in top]}
+        return out
+    out = {
+        "total": cell(services),
+        "national": cell([i for i in services if (i.get("rg") or []) == ["전국"]]),
+        "region": {r: cell([i for i in services if r in (i.get("rg") or [])]) for r in REGIONS},
+    }
+    out["items"] = pool
+    return out
+
+
 def write_js(name, var, data):
     SITE_DATA.mkdir(parents=True, exist_ok=True)
     body = json.dumps(data, ensure_ascii=False, separators=(",", ":"))
@@ -405,7 +443,8 @@ def main():
     history = persona_history(all_rows, last_run, today)
     history["firstDay"] = first_day
     paths = [write_js("meta", "HUB_META", meta), write_js("notices", "HUB_NOTICES", notices),
-             write_js("services", "HUB_SERVICES", services), write_js("history", "HUB_HISTORY", history)]
+             write_js("services", "HUB_SERVICES", services), write_js("history", "HUB_HISTORY", history),
+             write_js("peek", "HUB_PEEK", service_peek(services))]
     detail_dir = SITE_DATA / "sd"
     detail_dir.mkdir(parents=True, exist_ok=True)
     for i, chunk in enumerate(buckets):
