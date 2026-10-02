@@ -2381,58 +2381,99 @@
       "L" + p(r, a1) + "A" + r + " " + r + " 0 " + big + " 0 " + p(r, a0) + "Z";
   }
 
-  /* 도넛 + 목록(분야별 건수). data = [{key, n, color, what, pct}], total = 가운데 수, cap = 가운데 아랫말.
-   * 조각과 목록 줄의 가리키기가 서로 이어지고, 누르면 go(d). fitH를 주면(옆 카드가 길 때) 도넛과 목록 줄 간격을 키운다 */
+  /* 도넛 + 범례(Bklit UI Pie Chart 모양: size 180, innerRadius 55). data = [{key, n, color, what, pct}],
+   * total = 가운데 수, cap = 가운데 아랫말.
+   *  - 조각이나 범례를 가리키면(또는 눌러 요약 창을 열면) 그 조각이 바깥으로 8px 나오고 나머지는 옅어지며,
+   *    가운데 숫자가 그 조각의 건수·이름으로 바뀐다(숫자는 짧게 굴러간다). 범례도 그 칸만 진하게.
+   *  - 크기는 자료와 상관없이 같다: 도넛 180px, 범례는 가장 긴 목록(rowsMax개)이 들어갈 줄 수만큼 자리를 늘 차지한다
+   *    (분야 ↔ 지원 방식을 바꿔도, 나란한 공고·제도 두 카드도 크기가 그대로) */
+  var DONUT_SIZE = 180, DONUT_INNER = 55, DONUT_OFFSET = 8;
+  // 가운데 구멍(지름 110px)에 들어가게 긴 이름은 줄인다(전체 이름은 범례·요약 창에)
+  function shortName(k) { return k.length > 7 ? k.slice(0, 6) + "…" : k; }
   function donutFigure(data, total, cap, listLabel, go, peek) {
-    // 크기는 자료와 상관없이 카드 폭으로만 정한다: 도넛 지름·줄 높이가 같고, 목록은 가장 긴 목록(rowsMax줄) 높이를 늘 차지한다.
-    // 그래서 분야 ↔ 지원 방식을 바꿔도, 나란한 공고·제도 두 카드도 크기가 그대로다(옆 카드에 맞춰 늘이지 않는다)
     var sum = data.reduce(function (t, d) { return t + d.n; }, 0);
-    var W = chartWidth(), wide = W >= 460;
-    var S = wide ? Math.min(260, Math.round(W * 0.48)) : Math.min(230, W - 40);
-    var rowH = 34;
+    var W = chartWidth();
+    var S = DONUT_SIZE, c = S / 2, R = c - DONUT_OFFSET - 2, r = DONUT_INNER;
+    var cols = W >= 420 ? 3 : 2;
     var rowsMax = Math.max((META.serviceCats || []).length, (META.supports || []).length, (META.noticeFields || []).length);
-    var c = S / 2, R = c - 4, r = R * 0.6;
-    var svg = svgEl("svg", { viewBox: "0 0 " + S + " " + S, "class": "donut", "aria-hidden": "true", style: "max-width:" + S + "px" });
-    var list = el("ol", { className: "donut-list", style: "--row:" + rowH + "px;min-height:" + (rowsMax * (rowH + 1)) + "px",
+    var legendRows = Math.ceil(rowsMax / cols), rowH = 36;
+    var svg = svgEl("svg", { viewBox: "0 0 " + S + " " + S, width: S, height: S, "class": "donut", "aria-hidden": "true" });
+    var list = el("ol", { className: "donut-legend", style: "--cols:" + cols + ";--row:" + rowH + "px;min-height:" + (legendRows * rowH + (legendRows - 1) * 4) + "px",
       "aria-label": listLabel });
-    var rows = [], slices = [];
-    function hover(i) {
-      rows.forEach(function (b, k) { b.classList.toggle("hover", k === i); });
-      slices.forEach(function (g, k) { g.classList.toggle("hover", k === i); });
-      svg.classList.toggle("has-hover", i >= 0);
+    var rows = [], slices = [], hoverIdx = -1;
+    // 가운데 세 줄: 건수 / 이름 / 몫(%). 평소에는 전체 건수와 아랫말, 몫 줄은 '100%'
+    var totalText = svgText(c, c - 4, fmtN(total), "donut-total"), capText = svgText(c, c + 16, cap, "donut-cap"),
+      pctText = svgText(c, c + 33, "100%", "donut-pct");
+
+    // 가운데 숫자: from → to 로 0.3초 굴린다(움직임 줄이기 설정이면 바로)
+    var shown = total, rollId = 0;
+    function roll(to) {
+      var from = shown, id = ++rollId, t0 = performance.now(), dur = 300;
+      if (window.matchMedia("(prefers-reduced-motion: reduce)").matches || from === to) { shown = to; totalText.textContent = fmtN(to); return; }
+      (function step(now) {
+        if (id !== rollId) return;
+        var k = Math.min(1, (now - t0) / dur), e = 1 - Math.pow(1 - k, 3);
+        shown = Math.round(from + (to - from) * e);
+        totalText.textContent = fmtN(shown);
+        if (k < 1) requestAnimationFrame(step);
+      })(t0);
     }
-    var gapA = data.length > 1 ? 0.012 : 0, a = 0;
+    // 보이는 조각 = 마우스로 가리킨 것(hoverIdx), 없으면 요약 창으로 고른 것(.picked). 손가락 터치는 가리키기로 치지 않는다
+    function hover(i, e) {
+      if (e && e.pointerType && e.pointerType !== "mouse" && e.pointerType !== "pen") return;
+      hoverIdx = i;
+      show();
+    }
+    function show() {
+      var i = hoverIdx;
+      if (i < 0) i = slices.findIndex(function (g) { return g.classList.contains("picked"); });
+      slices.forEach(function (g, k) { g.classList.toggle("on", k === i); });
+      rows.forEach(function (b, k) { b.classList.toggle("on", k === i); });
+      svg.classList.toggle("has-on", i >= 0);
+      list.classList.toggle("has-on", i >= 0);
+      roll(i >= 0 ? data[i].n : total);
+      capText.textContent = i >= 0 ? shortName(data[i].key) : cap;
+      pctText.textContent = i >= 0 ? (data[i].n && !data[i].pct ? "1% 미만" : data[i].pct + "%") : "100%";
+    }
+    // 요약 창이 열리고 닫힐 때(조각에 .picked가 붙고 떨어질 때) 가운데·범례를 맞춘다
+    var lastPicked = -1;
+    new MutationObserver(function () {
+      var p = slices.findIndex(function (g) { return g.classList.contains("picked"); });
+      if (p !== lastPicked) { lastPicked = p; show(); }
+    }).observe(svg, { subtree: true, attributes: true, attributeFilter: ["class"] });
+
+    var a = 0;
     data.forEach(function (d, i) {
       var span = sum ? d.n / sum * Math.PI * 2 : 0;
-      var a0 = a + gapA / 2, a1 = Math.max(a0 + 0.001, a + span - gapA / 2);
+      var a0 = a, a1 = Math.max(a0 + 0.001, a + span);
       if (data.length === 1) { a0 = 0; a1 = Math.PI * 2 - 0.0001; }
       a += span;
-      var g = svgEl("g", { "class": "slice", style: "--i:" + i });
+      var mid = (a0 + a1) / 2;
+      var g = svgEl("g", { "class": "slice", style: "--i:" + i + ";--dx:" + (Math.sin(mid) * DONUT_OFFSET).toFixed(2) + "px;--dy:" +
+        (-Math.cos(mid) * DONUT_OFFSET).toFixed(2) + "px" });
       g.append(svgEl("path", { d: donutArc(c, c, R, r, a0, a1), style: "fill:" + d.color }));
-      g.addEventListener("pointerenter", function () { hover(i); });
-      g.addEventListener("pointerleave", function () { hover(-1); });
+      g.addEventListener("pointerenter", function (e) { hover(i, e); });
+      g.addEventListener("pointerleave", function (e) { hover(-1, e); });
       g.setAttribute("aria-haspopup", "dialog");
       g.addEventListener("click", function () { if (peek) peek(d, g, rows[i]); else go(d); });
-      tipFor(g, fmtN(d.n) + "건", d.what + " · 전체의 " + d.pct + "%");
       slices.push(g);
       svg.append(g);
 
-      var b = el("button", { type: "button", "aria-haspopup": peek ? "dialog" : null, "aria-expanded": peek ? "false" : null,
+      var b = el("button", { type: "button", title: d.key + " " + fmtN(d.n) + "건 · " + d.pct + "%",
+        "aria-haspopup": peek ? "dialog" : null, "aria-expanded": peek ? "false" : null,
         "aria-label": d.what + " " + d.n + "건, 전체의 " + d.pct + "%. " + (peek ? "누르면 요약을 봅니다" : "누르면 목록으로 갑니다") },
         el("i", { style: "background:" + d.color }),
-        el("span", { className: "name", text: d.key }),
-        el("span", { className: "cnt", text: fmtN(d.n) }),
-        el("span", { className: "pct", text: d.pct + "%" }));
+        el("span", { className: "name", text: d.key }));
       b.addEventListener("click", function () { if (peek) peek(d, b, slices[i]); else go(d); });
-      b.addEventListener("pointerenter", function () { hover(i); });
-      b.addEventListener("pointerleave", function () { hover(-1); });
-      b.addEventListener("focus", function () { hover(i); });
-      b.addEventListener("blur", function () { hover(-1); });
+      b.addEventListener("pointerenter", function (e) { hover(i, e); });
+      b.addEventListener("pointerleave", function (e) { hover(-1, e); });
+      b.addEventListener("focus", function () { if (b.matches(":focus-visible")) hover(i); });
+      b.addEventListener("blur", function () { if (hoverIdx === i) hover(-1); });
       rows.push(b);
       list.append(el("li", { style: "--i:" + i }, b));
     });
-    svg.append(svgText(c, c - 4, fmtN(total), "donut-total"), svgText(c, c + 18, cap, "donut-cap"));
-    return el("div", { className: "donut-wrap" + (wide ? " wide" : "") }, svg, list);
+    svg.append(totalText, capText, pctText);
+    return el("div", { className: "donut-wrap" }, el("div", { className: "donut-box", style: "width:" + S + "px;height:" + S + "px" }, svg), list);
   }
 
   /* 조각 색: 많은 순으로 진한 색부터, '기타'는 회색. 비율은 전체(total) 대비 */

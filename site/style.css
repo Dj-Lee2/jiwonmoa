@@ -568,28 +568,31 @@ select { appearance: none; background-image: linear-gradient(45deg, transparent 
 }
 
 /* 상시 제도 도넛(app.js supportCard): 조각 사이 흰 틈, 가리키면 나머지가 옅어진다. 목록과 가리키기가 이어진다 */
-.donut-wrap { display: grid; grid-template-columns: minmax(0, 1fr); justify-items: center; gap: 16px; width: 100%; align-items: center; }
-.donut-wrap.wide { grid-template-columns: auto minmax(0, 1fr); gap: 24px; }
-.viz-body svg.donut { width: 100%; height: auto; max-height: none; overflow: visible; }
+.donut-wrap { display: grid; justify-items: center; gap: 20px; width: 100%; }
+.donut-box { flex: none; }
+.viz-body svg.donut { width: 100%; height: 100%; max-height: none; overflow: visible; }
 .donut .slice { cursor: pointer; }
-.donut .slice path { transition: opacity .15s; }
-.donut.has-hover .slice:not(.hover) path { opacity: .3; }
-.donut .donut-total { fill: var(--fg-strong); font-size: 22px; font-weight: 800; font-variant-numeric: tabular-nums; }
-.donut .donut-cap { fill: var(--muted); font-size: 12px; font-weight: 600; }
-.donut-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 1px; width: 100%; align-content: start; }
-.donut-list button {
-  display: flex; align-items: center; gap: 8px; width: 100%; min-height: var(--row, 32px); border: 0; background: none;
-  padding: 4px 10px; border-radius: 10px; cursor: pointer; font-size: .875rem; color: var(--fg-strong); text-align: left;
-}
-.donut-list button:hover, .donut-list button.hover { background: var(--surface-hover); }
-.donut-list i { width: 12px; height: 12px; border-radius: 3px; flex: none; }
-.donut-list .name { flex: 1; min-width: 0; }
-.donut-list .cnt { font-weight: 700; font-variant-numeric: tabular-nums; }
-.donut-list .pct { width: 3.2em; text-align: right; color: var(--muted); font-size: .8125rem; font-variant-numeric: tabular-nums; }
+/* 조각 사이 흰 틈(Bklit 모양), 가리킨 조각은 바깥으로 8px, 나머지는 옅게 */
+.donut .slice path { stroke: var(--canvas); stroke-width: 2; stroke-linejoin: round;
+  transition: opacity .18s ease, translate .22s var(--ease-out, ease-out); }
+.donut.has-on .slice:not(.on) path { opacity: .4; }
+.donut .slice.on path { translate: var(--dx) var(--dy); }
+.donut .donut-total { fill: var(--fg-strong); font-size: 24px; font-weight: 800; letter-spacing: -0.5px; font-variant-numeric: tabular-nums; }
+.donut .donut-cap { fill: var(--fg); font-size: 12px; font-weight: 700; }
+.donut .donut-pct { fill: var(--muted); font-size: 11.5px; font-weight: 600; font-variant-numeric: tabular-nums; }
+/* 범례: 점 + 이름, 칸 수는 카드 폭으로(넓으면 3칸, 좁으면 2칸). 가리킨 칸은 옅은 알약, 나머지는 옅게 */
+.donut-legend { list-style: none; margin: 0; padding: 0; width: 100%; display: grid; grid-template-columns: repeat(var(--cols), minmax(0, 1fr));
+  grid-auto-rows: var(--row); gap: 4px; align-content: start; }
+.donut-legend button { width: 100%; height: 100%; display: flex; align-items: center; gap: 8px; padding: 0 10px; border: 0; border-radius: 999px;
+  background: none; color: var(--fg); font: inherit; font-size: .875rem; cursor: pointer; text-align: left; transition: opacity .18s ease, background-color .18s ease; }
+.donut-legend button i { width: 10px; height: 10px; border-radius: 50%; flex: none; }
+.donut-legend .name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.donut-legend.has-on button:not(.on) { opacity: .5; }
+.donut-legend button.on { background: var(--surface-hover); color: var(--fg-strong); font-weight: 700; }
 @media (prefers-reduced-motion: no-preference) {
   .viz-card:is(.play, .replay) .donut .slice { animation: fade-in .45s ease-out both; animation-delay: calc(var(--d0, 0ms) + var(--i, 0) * 50ms); }
   .viz-card:is(.play, .replay) svg.donut { animation: donut-spin .7s cubic-bezier(.2, .7, .2, 1) both; animation-delay: var(--d0, 0ms); }
-  .viz-card:is(.play, .replay) .donut-list li { animation: fade-in .35s ease-out both; animation-delay: calc(var(--d0, 0ms) + var(--i, 0) * 40ms + 150ms); }
+  .viz-card:is(.play, .replay) .donut-legend li { animation: fade-in .35s ease-out both; animation-delay: calc(var(--d0, 0ms) + var(--i, 0) * 40ms + 150ms); }
 }
 @keyframes donut-spin { from { rotate: -40deg; scale: .9; } to { rotate: 0deg; scale: 1; } }
 
@@ -799,7 +802,7 @@ input[type="search"]:focus-visible, select:focus-visible { outline-offset: 0; bo
 }
 
 /* 색 바뀜: 150ms, 바뀌는 속성만 */
-.btn, .chip, .toggle, .iconbtn, .tabs [role="tab"], .seg-mini button, .stat, .row, .kmap-list button, .donut-list button, .foot-links a, .linkish, .more-link, .file {
+.btn, .chip, .toggle, .iconbtn, .tabs [role="tab"], .seg-mini button, .stat, .row, .kmap-list button, .donut-legend button, .foot-links a, .linkish, .more-link, .file {
   transition-property: background-color, color, box-shadow, scale;
   transition-duration: 150ms;
   transition-timing-function: var(--ease-out);
@@ -819,7 +822,7 @@ input[type="search"]:focus-visible, select:focus-visible { outline-offset: 0; bo
 @media (prefers-reduced-motion: no-preference) {
   /* 누름: 모든 단추·칩·탭은 .96 */
   .btn:active, .chip:active, .toggle:active, .iconbtn:active, .tabs [role="tab"]:active,
-  .seg-mini button:active, .foot-links a:active, .kmap-list button:active, .donut-list button:active { scale: 0.96; }
+  .seg-mini button:active, .foot-links a:active, .kmap-list button:active, .donut-legend button:active { scale: 0.96; }
   /* 큰 면(숫자 타일)은 같은 .96이면 과해 보여 조금만 */
   .stat:active { scale: 0.98; }
 
@@ -926,9 +929,11 @@ body.peek-lock .viz-tip { display: none; }
 /* 고른 표시만 진하게 */
 svg.has-pick .mark:not(.picked) { opacity: .35; }
 svg.has-pick .mark.picked .cell, svg.has-pick .mark.picked .bar { stroke: var(--fg-strong); stroke-width: 2; }
-.donut.has-pick .slice:not(.picked) path, .kmap.has-pick .kmap-region:not(.picked) path { opacity: .3; }
+.kmap.has-pick .kmap-region:not(.picked) path { opacity: .3; }
+/* 도넛은 요약 창을 연 조각을 .on과 같이 보인다(app.js donutFigure가 .picked를 보고 .on을 붙임) */
 .kmap.has-pick .kmap-region.picked path { stroke: var(--fg-strong); stroke-width: 2; }
-.donut-list button.picked, .kmap-list button.picked { background: var(--surface); box-shadow: inset 0 0 0 2px var(--fg-strong); }
+.kmap-list button.picked { background: var(--surface); box-shadow: inset 0 0 0 2px var(--fg-strong); }
+.donut-legend button.picked { box-shadow: inset 0 0 0 1.5px var(--fg-strong); }
 .peek-note { margin: -4px 0 0; font-size: .8125rem; color: var(--muted); }
 .peek-more + .peek-more { margin-top: -4px; }
 @media (prefers-reduced-motion: no-preference) {
