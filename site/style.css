@@ -575,20 +575,25 @@ select { appearance: none; background-image: linear-gradient(45deg, transparent 
 
 /* 상시 제도 도넛(app.js supportCard): 조각 사이 흰 틈, 가리키면 나머지가 옅어진다. 목록과 가리키기가 이어진다 */
 .donut-wrap { display: grid; justify-items: center; gap: 20px; width: 100%; }
+/* 넓은 카드: 도넛 왼쪽, 범례 오른쪽(한 줄에 하나, 범례 높이 = 도넛 높이) */
+.donut-wrap.side { grid-template-columns: auto minmax(0, var(--legend)); justify-content: center; align-items: center; gap: 20px; }
 .donut-box { flex: none; }
 .viz-body svg.donut { width: 100%; height: 100%; max-height: none; overflow: visible; }
 .donut .slice { cursor: pointer; }
 /* 조각 사이 흰 틈(Bklit 모양), 가리킨 조각은 바깥으로 8px, 나머지는 옅게 */
-.donut .slice path { stroke: var(--canvas); stroke-width: 2; stroke-linejoin: round;
+.donut .slice .hit { fill: transparent; }
+.donut .slice .vis { pointer-events: none; stroke: var(--canvas); stroke-width: 2; stroke-linejoin: round;
   transition: opacity .18s ease, translate .22s var(--ease-out, ease-out); }
-.donut.has-on .slice:not(.on) path { opacity: .4; }
-.donut .slice.on path { translate: var(--dx) var(--dy); }
+.donut.has-on .slice:not(.on) .vis { opacity: .4; }
+.donut .slice.on .vis { translate: var(--dx) var(--dy); }
 .donut .donut-total { fill: var(--fg-strong); font-size: 24px; font-weight: 800; letter-spacing: -0.5px; font-variant-numeric: tabular-nums; }
 .donut .donut-cap { fill: var(--fg); font-size: 12px; font-weight: 700; }
 .donut .donut-pct { fill: var(--muted); font-size: 11.5px; font-weight: 600; font-variant-numeric: tabular-nums; }
 /* 범례: 점 + 이름, 칸 수는 카드 폭으로(넓으면 3칸, 좁으면 2칸). 가리킨 칸은 옅은 알약, 나머지는 옅게 */
 .donut-legend { list-style: none; margin: 0; padding: 0; width: 100%; display: grid; grid-template-columns: repeat(var(--cols), minmax(0, 1fr));
-  grid-auto-rows: var(--row); gap: 4px; align-content: start; }
+  grid-auto-rows: var(--row); gap: var(--rgap, 4px) 4px; align-content: start; }
+.donut-legend.side { align-content: center; }
+.donut-legend.side button { padding: 0 12px; }
 .donut-legend button { width: 100%; height: 100%; display: flex; align-items: center; gap: 8px; padding: 0 10px; border: 0; border-radius: 999px;
   background: none; color: var(--fg); font: inherit; font-size: .875rem; cursor: pointer; text-align: left; transition: opacity .18s ease, background-color .18s ease; }
 .donut-legend button i { width: 10px; height: 10px; border-radius: 50%; flex: none; }

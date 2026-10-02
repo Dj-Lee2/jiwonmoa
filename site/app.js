@@ -2466,23 +2466,37 @@
    *    가운데 숫자가 그 조각의 건수·이름으로 바뀐다(숫자는 짧게 굴러간다). 범례도 그 칸만 진하게.
    *  - 크기는 자료와 상관없이 같다: 도넛 180px, 범례는 가장 긴 목록(rowsMax개)이 들어갈 줄 수만큼 자리를 늘 차지한다
    *    (분야 ↔ 지원 방식을 바꿔도, 나란한 공고·제도 두 카드도 크기가 그대로) */
-  var DONUT_SIZE = 180, DONUT_INNER = 55, DONUT_OFFSET = 8;
-  // 가운데 구멍(지름 110px)에 들어가게 긴 이름은 줄인다(전체 이름은 범례·요약 창에)
-  function shortName(k) { return k.length > 7 ? k.slice(0, 6) + "…" : k; }
+  // 도넛 크기: 카드 폭(W)으로만 정한다. 넓으면 범례를 오른쪽 한 줄씩(도넛 최대 280px), 좁으면(휴대폰) 범례를 아래 두 칸.
+  // 안쪽 구멍은 Bklit 모양 비율(55/180) 그대로
+  var DONUT_MAX = 280, DONUT_INNER_K = 55 / 180, DONUT_OFFSET = 8, DONUT_SIDE_MIN = 360;
+  // 가운데 구멍에 들어가게 긴 이름은 줄인다(전체 이름은 범례·요약 창에)
+  function shortName(k, max) { max = max || 7; return k.length > max ? k.slice(0, max - 1) + "…" : k; }
   function donutFigure(data, total, cap, listLabel, go, peek) {
     var sum = data.reduce(function (t, d) { return t + d.n; }, 0);
     var W = chartWidth();
-    var S = DONUT_SIZE, c = S / 2, R = c - DONUT_OFFSET - 2, r = DONUT_INNER;
-    var cols = W >= 420 ? 3 : 2;
     var rowsMax = Math.max((META.serviceCats || []).length, (META.supports || []).length, (META.noticeFields || []).length);
-    var legendRows = Math.ceil(rowsMax / cols), rowH = 36;
+    var side = W >= DONUT_SIDE_MIN, S, cols, rowH, legendW = 0, gapX = 20;
+    if (side) {
+      legendW = Math.round(Math.min(210, Math.max(150, W * 0.36)));
+      S = Math.min(DONUT_MAX, W - legendW - gapX);
+      cols = 1;
+      rowH = Math.max(26, Math.floor((S - (rowsMax - 1) * 2) / rowsMax)); // 범례 높이 = 도넛 높이
+    } else {
+      S = Math.min(240, W - 20);
+      cols = 2;
+      rowH = 34;
+    }
+    var c = S / 2, R = c - DONUT_OFFSET - 2, r = Math.round(S * DONUT_INNER_K), k = S / 180;
+    var legendRows = Math.ceil(rowsMax / cols), rowGap = side ? 2 : 4;
     var svg = svgEl("svg", { viewBox: "0 0 " + S + " " + S, width: S, height: S, "class": "donut", "aria-hidden": "true" });
-    var list = el("ol", { className: "donut-legend", style: "--cols:" + cols + ";--row:" + rowH + "px;min-height:" + (legendRows * rowH + (legendRows - 1) * 4) + "px",
-      "aria-label": listLabel });
+    var list = el("ol", { className: "donut-legend" + (side ? " side" : ""), style: "--cols:" + cols + ";--row:" + rowH + "px;--rgap:" + rowGap +
+      "px;min-height:" + (legendRows * rowH + (legendRows - 1) * rowGap) + "px", "aria-label": listLabel });
     var rows = [], slices = [], hoverIdx = -1;
-    // 가운데 세 줄: 건수 / 이름 / 몫(%). 평소에는 전체 건수와 아랫말, 몫 줄은 '100%'
-    var totalText = svgText(c, c - 4, fmtN(total), "donut-total"), capText = svgText(c, c + 16, cap, "donut-cap"),
-      pctText = svgText(c, c + 33, "100%", "donut-pct");
+    // 가운데 세 줄: 건수 / 이름 / 몫(%). 글자 크기는 도넛 크기에 맞춰 키운다(180px일 때 24·12·11.5px)
+    var nameMax = Math.max(7, Math.floor((2 * r - 20) / (12 * k + 1)));
+    function fs(t, px) { t.style.fontSize = (px * Math.min(1.35, k)).toFixed(1) + "px"; return t; }
+    var totalText = fs(svgText(c, c - 4 * k, fmtN(total), "donut-total"), 24), capText = fs(svgText(c, c + 16 * k, cap, "donut-cap"), 12),
+      pctText = fs(svgText(c, c + 33 * k, "100%", "donut-pct"), 11.5);
 
     // 가운데 숫자: from → to 로 0.3초 굴린다(움직임 줄이기 설정이면 바로)
     var shown = total, rollId = 0;
@@ -2511,7 +2525,7 @@
       svg.classList.toggle("has-on", i >= 0);
       list.classList.toggle("has-on", i >= 0);
       roll(i >= 0 ? data[i].n : total);
-      capText.textContent = i >= 0 ? shortName(data[i].key) : cap;
+      capText.textContent = i >= 0 ? shortName(data[i].key, nameMax) : cap;
       pctText.textContent = i >= 0 ? (data[i].n && !data[i].pct ? "1% 미만" : data[i].pct + "%") : "100%";
     }
     // 요약 창이 열리고 닫힐 때(조각에 .picked가 붙고 떨어질 때) 가운데·범례를 맞춘다
@@ -2530,7 +2544,10 @@
       var mid = (a0 + a1) / 2;
       var g = svgEl("g", { "class": "slice", style: "--i:" + i + ";--dx:" + (Math.sin(mid) * DONUT_OFFSET).toFixed(2) + "px;--dy:" +
         (-Math.cos(mid) * DONUT_OFFSET).toFixed(2) + "px" });
-      g.append(svgEl("path", { d: donutArc(c, c, R, r, a0, a1), style: "fill:" + d.color }));
+      // 마우스를 받는 칸(hit)은 움직이지 않고, 보이는 조각(vis)만 튀어나온다. 칸이 같이 움직이면 가장자리에서
+      // 들어옴·나감이 번갈아 생겨 조각이 커졌다 작아졌다 떨린다. hit은 튀어나온 자리까지 덮게 바깥을 넓힌다
+      g.append(svgEl("path", { d: donutArc(c, c, R + DONUT_OFFSET + 2, r, a0, a1), "class": "hit" }),
+        svgEl("path", { d: donutArc(c, c, R, r, a0, a1), "class": "vis", style: "fill:" + d.color }));
       g.addEventListener("pointerenter", function (e) { hover(i, e); });
       g.addEventListener("pointerleave", function (e) { hover(-1, e); });
       g.setAttribute("aria-haspopup", "dialog");
@@ -2552,7 +2569,8 @@
       list.append(el("li", { style: "--i:" + i }, b));
     });
     svg.append(totalText, capText, pctText);
-    return el("div", { className: "donut-wrap" }, el("div", { className: "donut-box", style: "width:" + S + "px;height:" + S + "px" }, svg), list);
+    return el("div", { className: "donut-wrap" + (side ? " side" : ""), style: side ? "--legend:" + legendW + "px" : null },
+      el("div", { className: "donut-box", style: "width:" + S + "px;height:" + S + "px" }, svg), list);
   }
 
   /* 조각 색: 많은 순으로 진한 색부터, '기타'는 회색. 비율은 전체(total) 대비 */
