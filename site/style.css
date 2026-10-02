@@ -576,7 +576,7 @@ select { appearance: none; background-image: linear-gradient(45deg, transparent 
 /* 상시 제도 도넛(app.js supportCard): 조각 사이 흰 틈, 가리키면 나머지가 옅어진다. 목록과 가리키기가 이어진다 */
 .donut-wrap { display: grid; justify-items: center; gap: 20px; width: 100%; }
 /* 넓은 카드: 도넛 왼쪽, 범례 오른쪽(한 줄에 하나, 범례 높이 = 도넛 높이) */
-.donut-wrap.side { grid-template-columns: auto minmax(0, var(--legend)); justify-content: center; align-items: center; gap: 20px; }
+.donut-wrap.side { grid-template-columns: auto var(--legend); justify-content: center; align-items: center; column-gap: var(--gapx, 40px); }
 .donut-box { flex: none; }
 .viz-body svg.donut { width: 100%; height: 100%; max-height: none; overflow: visible; }
 .donut .slice { cursor: pointer; }

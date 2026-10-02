@@ -2468,16 +2468,26 @@
    *    (분야 ↔ 지원 방식을 바꿔도, 나란한 공고·제도 두 카드도 크기가 그대로) */
   // 도넛 크기: 카드 폭(W)으로만 정한다. 넓으면 범례를 오른쪽 한 줄씩(도넛 최대 280px), 좁으면(휴대폰) 범례를 아래 두 칸.
   // 안쪽 구멍은 Bklit 모양 비율(55/180) 그대로
-  var DONUT_MAX = 280, DONUT_INNER_K = 55 / 180, DONUT_OFFSET = 8, DONUT_SIDE_MIN = 360;
+  var DONUT_MAX = 360, DONUT_INNER_K = 55 / 180, DONUT_OFFSET = 8, DONUT_SIDE_MIN = 360;
+  /* 오른쪽 범례 칸 폭: 세 목록(제도 분야·지원 방식·공고 분야) 중 가장 긴 이름 + 점·안쪽 여백(42px).
+   * 세 도넛이 같은 폭을 써야 전환해도 크기가 그대로다 */
+  function donutLegendWidth() {
+    var names = [].concat(META.serviceCats || [], META.supports || [], META.noticeFields || []);
+    if (!measureCtx) measureCtx = document.createElement("canvas").getContext("2d");
+    measureCtx.font = "700 14px " + getComputedStyle(document.body).fontFamily; // 가리킨 칸은 굵게 바뀌므로 굵은 글자로 잰다
+    return Math.ceil(Math.max.apply(null, names.map(function (t) { return measureCtx.measureText(t).width; })) + 42);
+  }
   // 가운데 구멍에 들어가게 긴 이름은 줄인다(전체 이름은 범례·요약 창에)
   function shortName(k, max) { max = max || 7; return k.length > max ? k.slice(0, max - 1) + "…" : k; }
   function donutFigure(data, total, cap, listLabel, go, peek) {
     var sum = data.reduce(function (t, d) { return t + d.n; }, 0);
     var W = chartWidth();
     var rowsMax = Math.max((META.serviceCats || []).length, (META.supports || []).length, (META.noticeFields || []).length);
-    var side = W >= DONUT_SIDE_MIN, S, cols, rowH, legendW = 0, gapX = 20;
+    var side = W >= DONUT_SIDE_MIN, S, cols, rowH, legendW = 0, gapX = 0;
     if (side) {
-      legendW = Math.round(Math.min(210, Math.max(150, W * 0.36)));
+      // 도넛과 범례 사이는 넉넉히(카드 폭의 10%, 32~64px), 나머지 폭은 도넛이 채워 카드 좌우가 비지 않게
+      legendW = donutLegendWidth();
+      gapX = Math.round(Math.max(32, Math.min(64, W * 0.1)));
       S = Math.min(DONUT_MAX, W - legendW - gapX);
       cols = 1;
       rowH = Math.max(26, Math.floor((S - (rowsMax - 1) * 2) / rowsMax)); // 범례 높이 = 도넛 높이
@@ -2569,7 +2579,7 @@
       list.append(el("li", { style: "--i:" + i }, b));
     });
     svg.append(totalText, capText, pctText);
-    return el("div", { className: "donut-wrap" + (side ? " side" : ""), style: side ? "--legend:" + legendW + "px" : null },
+    return el("div", { className: "donut-wrap" + (side ? " side" : ""), style: side ? "--legend:" + legendW + "px;--gapx:" + gapX + "px" : null },
       el("div", { className: "donut-box", style: "width:" + S + "px;height:" + S + "px" }, svg), list);
   }
 
