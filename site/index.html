@@ -29,7 +29,6 @@
 <link rel="preload" href="data/meta.js" as="script">
 <link rel="preload" href="data/notices.js" as="script">
 <link rel="stylesheet" href="style.css">
-<link rel="stylesheet" href="sound.css?v=1">
 </head>
 <body>
 <a class="skip" href="#main">본문으로 건너뛰기</a>
@@ -76,7 +75,7 @@
    app.js readHash와 같은 규칙. app.js가 화면을 정하면(DOMContentLoaded) 표시를 뗀다 */
 (function () {
   var p = new URLSearchParams(location.hash.slice(1)), t = p.get("tab");
-  if (["home", "open", "services"].indexOf(t) < 0) t = location.hash.length > 1 ? "open" : "home";
+  if (["home", "open", "services"].indexOf(t) < 0) t = location.hash.indexOf("=") > 0 ? "open" : "home";
   var d = document.documentElement;
   d.setAttribute("data-boot", t === "home" ? "home" : "list");
   var b = document.getElementById("tab-" + t); if (b) b.setAttribute("aria-selected", "true");

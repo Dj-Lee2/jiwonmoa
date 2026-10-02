@@ -145,7 +145,8 @@
 
   /* '오늘 새 공고': 가장 최근 수집(매일 06:30)에서 처음 들어온 모집 공고(fs = 처음 수집한 날).
    * 첫 수집 날(META.firstDay)은 모두가 처음이라 세지 않는다. 오늘 수집 전(자정~6:30)에는 어제 수집분을 '어제 새 공고'로 */
-  var NEW_DAY = (META.builtAt || "").slice(0, 10);
+  // 기준일 = 마지막 수집일(화면 자료를 손으로 다시 만든 날이 아니라). 수집 기록이 없으면 자료 만든 날
+  var NEW_DAY = ((META.runs || []).map(function (r) { return r.at; }).sort().pop() || META.builtAt || "").slice(0, 10);
   function isTodayNew(item) {
     return item.k === "n" && item.fs === NEW_DAY && NEW_DAY !== META.firstDay;
   }
@@ -434,7 +435,8 @@
     var p = new URLSearchParams(location.hash.slice(1));
     var s = blankState();
     if (["home", "open", "services"].indexOf(p.get("tab")) >= 0) s.tab = p.get("tab");
-    else s.tab = location.hash.length > 1 ? "open" : "home";
+    // 탭이 없는 주소: 조건(이름=값)이 있으면 예전 공유 링크로 보고 모집 공고, 없으면(#main 같은 자리 표시) 홈
+    else s.tab = location.hash.indexOf("=") > 0 ? "open" : "home";
     s.q = p.get("q") || "";
     s.r = p.get("r") || "";
     s.nat = p.get("nat") !== "0";
@@ -483,7 +485,7 @@
     var rest = p.toString();
     var h = home && !rest ? "" : "tab=" + state.tab + (rest ? "&" + rest : "");
     var url = location.pathname + location.search + (h ? "#" + h : "");
-    if (push && history.state && history.state.peek) push = false; // 요약 시트가 넣어 둔 기록 자리는 바꿔 쓴다
+    if (push && ((history.state && history.state.peek) || filtersEntry)) push = false; // 요약·조건 시트가 넣어 둔 기록 자리는 바꿔 쓴다
     try {
       if (push) history.pushState(null, "", url); else history.replaceState(null, "", url);
     } catch (e) { /* 일부 환경(file://)에서 막히면 주소만 못 바꾼다 */ }
@@ -1587,7 +1589,7 @@
   /* 휴대폰 시트는 열 때 방문 기록을 하나 넣어 '뒤로 가기'가 시트만 닫게 한다(사이트를 벗어나지 않게).
    * 닫기 단추·뒤판·Esc로 닫으면 그 기록을 되돌린다(history.back → popstate는 무시하고 주소만 맞춘다).
    * 목록·상세로 갈 때(keepHistory)는 되돌리지 않고 writeHash가 그 기록 자리를 바꿔 쓴다 */
-  var peekPopIgnore = false;
+  var peekPopIgnore = false, filtersEntry = false, filtersPopIgnore = false;
   function peekEntry() { return !!(history.state && history.state.peek); }
   function peekPushEntry() {
     if (peekEntry()) return;
@@ -2300,7 +2302,6 @@
   function regionCard() {
     var counts = {};
     var national = 0;
-    var what = MAP_WHAT[mapKind];
     META.regions.forEach(function (r) { counts[r] = 0; });
     if (mapKind === "s") {
       META.regions.forEach(function (r) { counts[r] = (META.svc.region[r] || {}).all || 0; });
@@ -2334,7 +2335,6 @@
     });
     // 지역을 누르면 요약 창: 그 지역 한정 건수(지도 숫자와 같음)와 분야·대상, 목록 단추와 '홈을 이 지역 기준으로' 단추
     function peek(name, node, pair) {
-      var what = MAP_WHAT[mapKind];
       var regionBtn = { label: state.r === name ? "지역 선택 풀기" : "홈 화면을 " + name + " 기준으로 보기", go: function () { pick(name); } };
       openPeek("map:" + mapKind + ":" + name, node, function () {
         if (mapKind === "s") {
@@ -2816,6 +2816,13 @@
 
   function bind() {
     dockTopActions();
+    // 본문으로 건너뛰기: 주소(#)를 바꾸지 않고 본문으로 초점만 옮긴다(주소가 바뀌면 조건 주소로 읽혀 화면이 바뀐다)
+    document.querySelector(".skip").addEventListener("click", function (e) {
+      e.preventDefault();
+      var m = $("#main");
+      m.setAttribute("tabindex", "-1");
+      m.focus();
+    });
     var tabs = document.querySelectorAll("[role=tab]");
     tabs.forEach(function (t, i) {
       t.addEventListener("click", function () { switchTab(t.dataset.tab); });
@@ -2945,20 +2952,40 @@
       renderList();
     });
 
+    /* 조건 시트(좁은 화면)도 요약 시트처럼 열 때 방문 기록을 하나 넣어 '뒤로 가기'가 시트만 닫게 한다.
+     * 시트 안에서 조건을 바꾸면 writeHash가 그 기록의 주소를 바꿔 쓰고, 닫기·결과 보기·Esc로 닫으면 기록을 되돌린다 */
     function openFilters() {
       document.body.classList.add("filters-open", "lock");
       $("#filterOpen").setAttribute("aria-expanded", "true");
       $("#filtersTitle").focus();
+      if (narrow() && !filtersEntry) {
+        try { history.pushState({ filters: 1 }, "", location.href); filtersEntry = true; } catch (e) { /* 막히면 기록 없이 */ }
+      }
     }
-    function closeFilters() {
+    function closeFilters(fromBack) {
+      if (filtersEntry && fromBack !== true) { filtersPopIgnore = true; history.back(); }
+      filtersEntry = false;
       document.body.classList.remove("filters-open");
       if (!document.body.classList.contains("detail-open") || !narrow()) document.body.classList.remove("lock");
       $("#filterOpen").setAttribute("aria-expanded", "false");
       $("#filterOpen").focus();
     }
     $("#filterOpen").addEventListener("click", openFilters);
-    $("#filterClose").addEventListener("click", closeFilters);
-    $("#filterDone").addEventListener("click", closeFilters);
+    $("#filterClose").addEventListener("click", function () { closeFilters(); });
+    $("#filterDone").addEventListener("click", function () { closeFilters(); });
+    window.addEventListener("popstate", function (e) {
+      if (filtersPopIgnore) {
+        filtersPopIgnore = false;
+        e.stopImmediatePropagation();
+        writeHash(false); // 시트에서 고른 조건을 지금 기록에 맞춘다
+        return;
+      }
+      if (filtersEntry) {
+        e.stopImmediatePropagation();
+        closeFilters(true);
+        writeHash(false);
+      }
+    });
 
     document.addEventListener("keydown", function (e) {
       if (e.key !== "Escape") return;
