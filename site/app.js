@@ -1866,7 +1866,19 @@
 
   /* ---------- 이벤트 ---------- */
 
+  /* 위에 고정한 머리·탭 높이를 CSS 변수(--sticky-h)로 알린다: 넓은 화면의 조건·상세 창이 그 바로 아래에 붙는다.
+   * 글자 크게·화면 폭이 바뀌면 높이도 바뀌므로 ResizeObserver로 따라간다 */
+  function trackStickyHead() {
+    var head = $("#stickyHead");
+    if (!head) return;
+    function put() { document.documentElement.style.setProperty("--sticky-h", Math.round(head.getBoundingClientRect().height) + "px"); }
+    put();
+    if ("ResizeObserver" in window) new ResizeObserver(put).observe(head);
+    else window.addEventListener("resize", put);
+  }
+
   function bind() {
+    trackStickyHead();
     var tabs = document.querySelectorAll("[role=tab]");
     tabs.forEach(function (t, i) {
       t.addEventListener("click", function () { switchTab(t.dataset.tab); });

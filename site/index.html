@@ -17,6 +17,8 @@
 <body>
 <a class="skip" href="#main">본문으로 건너뛰기</a>
 
+<!-- 머리(이름·소리·글자 크게)와 탭을 한 덩어리로 위에 고정한다(스크롤해도 늘 보임). 자리와 모양은 그대로 -->
+<div class="sticky-head" id="stickyHead">
 <header class="top">
   <div class="wrap top-inner">
     <div class="brand">
@@ -40,6 +42,7 @@
     <button role="tab" id="tab-services" data-tab="services" aria-controls="listPane">상시 제도 <span class="tab-count"></span></button>
   </div>
 </nav>
+</div>
 <script>
 /* 첫 화면 깜빡임 막기: 자료(수 MB)를 받는 동안 목록 화면이 먼저 보이지 않게, 주소(#)로 고를 탭을 미리 정한다.
    app.js readHash와 같은 규칙. app.js가 화면을 정하면(DOMContentLoaded) 표시를 뗀다 */
