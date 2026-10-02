@@ -86,6 +86,15 @@
   </section>
 
   <section class="home-charts" id="homeCharts" aria-label="현황 그래프"></section>
+  <!-- 많이 찾는 지원사업 카드의 부품: app.js popularCard가 그래프 칸으로 옮긴다 -->
+  <div id="homePopParts" hidden>
+    <div class="seg-mini" id="homePopKind" role="group" aria-label="자료 종류" data-seg="pop">
+      <button type="button" data-pop="s" aria-pressed="true">상시 제도</button>
+      <button type="button" data-pop="n" aria-pressed="false">모집 공고</button>
+    </div>
+    <ul id="homePop" class="results"></ul>
+    <button type="button" class="btn gray more" id="homePopMore" hidden></button>
+  </div>
 
   <div class="home-grid">
     <section class="home-block" aria-labelledby="homeSoonTitle">
@@ -103,17 +112,6 @@
       </div>
       <ul id="homeNew" class="results"></ul>
       <button type="button" class="btn gray more" id="homeNewMore" hidden></button>
-    </section>
-    <section class="home-block" aria-labelledby="homePopTitle">
-      <div class="block-head">
-        <h3 id="homePopTitle">많이 찾는 지원사업</h3>
-        <div class="seg-mini" id="homePopKind" role="group" aria-label="자료 종류" data-seg="pop">
-          <button type="button" data-pop="s" aria-pressed="true">상시 제도</button>
-          <button type="button" data-pop="n" aria-pressed="false">모집 공고</button>
-        </div>
-      </div>
-      <ul id="homePop" class="results"></ul>
-      <button type="button" class="btn gray more" id="homePopMore" hidden></button>
     </section>
   </div>
 </main>

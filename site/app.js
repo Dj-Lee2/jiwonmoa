@@ -935,12 +935,13 @@
     var rest = items.length - homeShown[key];
     moreBtn.hidden = rest <= 0;
     moreBtn.textContent = "더 보기 (" + fmtN(rest) + "건 더)";
-    fitListHeight(box, items.length > HOME_FIRST, WIDE_LISTS);
+    fitListHeight(box, items.length > HOME_FIRST, key === "pop" ? WIDE_CHARTS : WIDE_LISTS);
+    return items.length > HOME_FIRST;
   }
 
   /* 넓은 화면에서 '더 보기'로 목록이 길어지면 옆 칸이 함께 늘어나 빈 곳이 생긴다.
    * 그래서 목록 칸을 처음 5줄 높이로 고정하고, 더 붙은 줄은 칸 안에서 스크롤한다(좁은 화면은 그대로 늘어남) */
-  var WIDE_LISTS = "(min-width: 1100px)", WIDE_CHARTS = "(min-width: 900px)";
+  var WIDE_LISTS = "(min-width: 1100px)", WIDE_CHARTS = "(min-width: 900px)", WIDE_THIRDS = "(min-width: 1100px)";
   function fitListHeight(ul, expandable, query) {
     ul.style.maxHeight = "";
     ul.classList.remove("scroll-list");
@@ -987,7 +988,7 @@
 
   /* 많이 찾는 지원사업: 상시 제도는 미리 뽑아 둔 순위(META.topServices, id 목록 + items), 모집 공고는 기업마당 조회수.
    * 둘 다 20개까지 */
-  var popKind = "s", POP_MAX = 20;
+  var popKind = "s", POP_MAX = 20, popExpandable = false;
   function renderPopular(live) {
     var items;
     if (popKind === "s") {
@@ -998,7 +999,7 @@
       items = live.filter(function (n) { return n.vw; })
         .sort(function (a, b) { return b.vw - a.vw; }).slice(0, POP_MAX);
     }
-    homeList("pop", $("#homePop"), $("#homePopMore"), items, function (n) { return row(n, "누적 조회 " + fmtViews(n.vw) + "회", true); },
+    popExpandable = homeList("pop", $("#homePop"), $("#homePopMore"), items, function (n) { return row(n, "누적 조회 " + fmtViews(n.vw) + "회", true); },
       "조회수 자료가 없습니다.");
     document.querySelectorAll("#homePopKind button").forEach(function (b) {
       b.setAttribute("aria-pressed", String(b.dataset.pop === popKind));
@@ -1022,11 +1023,15 @@
   function mapShades() { return mapKind === "s" ? MAP_SHADES_GREEN : MAP_SHADES; }
 
   /* 카드 안쪽 실제 폭(px). 이 폭으로 좌표를 잡아야 휴대폰에서 글자가 작아지지 않는다 */
-  function chartWidth() {
+  /* 카드 안쪽 실제 폭(px). 이 폭으로 좌표를 잡아야 휴대폰에서 글자가 작아지지 않는다.
+   * 넓은 화면(1100px~) 첫 줄은 세 칸(대상·지원 내용·지역, kind "third"), 900~1099px에서는 지역 지도만 한 줄 전체(kind "map") */
+  function chartWidth(kind) {
     var w = $("#homeCharts").clientWidth || 480;
-    if (window.matchMedia("(min-width: 900px)").matches) w = (w - 16) / 2;
+    if (window.matchMedia(WIDE_THIRDS).matches && (kind === "third" || kind === "map")) w = (w - 32) / 3;
+    else if (window.matchMedia(WIDE_CHARTS).matches && kind !== "map") w = (w - 16) / 2;
     return Math.max(280, Math.min(880, Math.round(w - 50))); // 카드 안쪽 여백 24px×2와 테두리 제외
   }
+
 
   function svgEl(tag, attrs) {
     var n = document.createElementNS(SVGNS, tag);
@@ -1156,53 +1161,39 @@
     return Math.round(Math.min(W * 0.4, widest + 16));
   }
 
-  /* 가로 막대: 이름은 왼쪽, 값은 막대 끝. fitH를 주면 그 높이를 채우도록 줄 간격(40~52px)과 두께를 키운다 */
-  function hbars(data, label, W, color, fitH) {
-    var rowH = fitH ? Math.max(40, Math.min(52, Math.floor((fitH - 4) / data.length))) : 40;
-    var barT = Math.min(28, Math.round(rowH * 0.6));
-    var labelW = labelColumn(data.map(function (d) { return d.label; }), W), valueW = 64;
-    var H = data.length * rowH + 4;
-    var plotW = Math.max(40, W - labelW - valueW);
-    var max = Math.max.apply(null, data.map(function (d) { return d.n; })) || 1;
-    var root = svgEl("svg", { viewBox: "0 0 " + W + " " + H, role: "group", "aria-label": label, style: "--bar:" + color,
-      "class": "hb" });
-    root.append(svgEl("line", { x1: labelW + 0.5, x2: labelW + 0.5, y1: 0, y2: H, "class": "axis" }));
-    data.forEach(function (d, i) {
-      var cy = 2 + i * rowH + rowH / 2;
-      var w = d.n ? Math.max(3, Math.round(plotW * d.n / max)) : 0;
-      var g = svgEl("g", { "class": "mark", style: "--i:" + i });
-      g.append(svgEl("rect", { x: 0, y: cy - rowH / 2 + 1, width: W, height: rowH - 2, rx: 8, "class": "hit" }));
-      g.append(svgText(labelW - 10, cy + 5, d.label, "cat", "end"));
-      if (w) g.append(svgEl("path", { d: hbarPath(labelW + 1, cy - barT / 2, w, barT), "class": "bar" }));
-      g.append(svgText(labelW + w + 8, cy + 5, fmtN(d.n), "val", "start"));
-      activate(g, d.aria, d.onPick);
-      tipFor(g, d.tipValue, d.tipLabel);
-      root.append(g);
-    });
-    return root;
+
+
+  /* 나비 그래프: 가운데에 이름, 왼쪽으로 첫 계열(모집 공고), 오른쪽으로 둘째 계열(상시 제도).
+   * 양쪽 막대 길이는 각 계열 안에서 가장 많은 값 기준(두 계열 수가 열 배 가까이 달라 한 눈금이면 공고 막대가 안 보인다).
+   * fitH를 주면 그 높이를 채우도록 줄 간격(24~36px)을 키운다 */
+  function hbarPathLeft(x, y, w, h) {
+    var r = Math.min(4, w, h / 2); // 바닥(오른쪽, 가운데 이름 쪽)은 네모, 값 쪽 끝(왼쪽)만 둥글게
+    return "M" + (x + w) + " " + y + "H" + (x + r) + "Q" + x + " " + y + " " + x + " " + (y + r) +
+      "V" + (y + h - r) + "Q" + x + " " + (y + h) + " " + (x + r) + " " + (y + h) + "H" + (x + w) + "Z";
   }
 
-  /* 두 계열 가로 막대: 한 줄에 막대 두 개(계열 색), 값은 막대 끝. 막대마다 따로 누르고 가리킬 수 있다 */
-  function groupedBars(data, series, label, W, fitH) {
-    var rowH = fitH ? Math.max(44, Math.min(58, Math.floor(fitH / data.length))) : 44;
-    var barH = Math.min(20, Math.floor((rowH - 12) / 2)), gap = 2;
-    var labelW = labelColumn(data.map(function (d) { return d.label; }), W), valueW = 60;
-    var H = data.length * rowH;
-    var plotW = Math.max(40, W - labelW - valueW);
-    var max = 1;
-    data.forEach(function (d) { d.values.forEach(function (v) { max = Math.max(max, v.n); }); });
-    var root = svgEl("svg", { viewBox: "0 0 " + W + " " + H, role: "group", "aria-label": label, "class": "hb" });
-    root.append(svgEl("line", { x1: labelW + 0.5, x2: labelW + 0.5, y1: 0, y2: H, "class": "axis" }));
+  function butterflyBars(data, series, label, W, fitH) {
+    var head = 24, rowH = fitH ? Math.max(24, Math.min(40, Math.floor((fitH - head - 4) / data.length))) : 26;
+    var barT = Math.min(16, rowH - 8);
+    var labelW = labelColumn(data.map(function (d) { return d.label; }), W) + 4;
+    var side = (W - labelW) / 2, plot = side - 40;
+    var max = [0, 1].map(function (j) { return Math.max.apply(null, data.map(function (d) { return d.values[j].n; })) || 1; });
+    var H = head + data.length * rowH + 4, cxL = side, cxR = side + labelW;
+    var root = svgEl("svg", { viewBox: "0 0 " + W + " " + H, role: "group", "aria-label": label, "class": "hb fly" });
+    root.append(svgEl("rect", { x: cxL - 10, y: 6, width: 10, height: 10, rx: 2, style: "fill:" + series[0].color }),
+      svgText(cxL - 16, 15, series[0].name, "tick", "end"),
+      svgEl("rect", { x: cxR, y: 6, width: 10, height: 10, rx: 2, style: "fill:" + series[1].color }),
+      svgText(cxR + 16, 15, series[1].name, "tick", "start"));
     data.forEach(function (d, i) {
-      var top = i * rowH, y0 = top + (rowH - barH * 2 - gap) / 2;
-      root.append(svgText(labelW - 10, top + rowH / 2 + 5, d.label, "cat", "end"));
+      var cy = head + 2 + i * rowH + rowH / 2;
+      root.append(svgText(side + labelW / 2, cy + 5, d.label, "cat", "middle"));
       d.values.forEach(function (v, j) {
-        var y = y0 + j * (barH + gap);
-        var w = v.n ? Math.max(3, Math.round(plotW * v.n / max)) : 0;
+        var w = v.n ? Math.max(2, Math.round(plot * v.n / max[j])) : 0;
         var g = svgEl("g", { "class": "mark", style: "--i:" + i });
-        g.append(svgEl("rect", { x: labelW - 2, y: top + j * rowH / 2, width: W - labelW + 2, height: rowH / 2, rx: 6, "class": "hit" }));
-        if (w) g.append(svgEl("path", { d: hbarPath(labelW + 1, y, w, barH), "class": "bar", style: "fill:" + series[j].color }));
-        g.append(svgText(labelW + w + 6, y + barH / 2 + 5, fmtN(v.n), "val sm", "start"));
+        g.append(svgEl("rect", { x: j ? cxR : 0, y: cy - rowH / 2, width: side, height: rowH, rx: 6, "class": "hit" }));
+        if (w) g.append(svgEl("path", { d: j ? hbarPath(cxR, cy - barT / 2, w, barT) : hbarPathLeft(cxL - w, cy - barT / 2, w, barT),
+          "class": "bar" + (j ? "" : " flip"), style: "fill:" + series[j].color }));
+        g.append(svgText(j ? cxR + w + 6 : cxL - w - 6, cy + 5, fmtN(v.n), "val sm", j ? "start" : "end"));
         activate(g, v.aria, v.onPick);
         tipFor(g, v.tipValue, v.tipLabel);
         root.append(g);
@@ -1210,6 +1201,7 @@
     });
     return root;
   }
+
 
   /* 눈금 최댓값: 가운데 눈금도 정수가 되게 고른다 */
   function niceMax(v) {
@@ -1321,8 +1313,8 @@
 
   function chartHeight(W) { return Math.max(236, Math.min(290, Math.round(W * 0.4))); }
 
-  /* 누구를 위한 지원이 많나요?: 대상 11가지별 모집 공고(파랑)와 상시 제도(초록) 수.
-   * 한 사업이 여러 대상일 수 있다. 상시 제도 수는 META.svc에 미리 센 값 */
+  /* 누구를 위한 지원이 많나요?: 대상별 모집 공고(파랑, 왼쪽)와 상시 제도(초록, 오른쪽) 수를 나비 그래프로.
+   * 두 수를 더한 순. 한 사업이 여러 대상일 수 있다. 상시 제도 수는 META.svc에 미리 센 값 */
   function personaCard(live) {
     var ppN = countBy(live, function (i) { return i.pp; });
     var series = [{ name: "모집 공고", color: SERIES_BLUE }, { name: "상시 제도", color: SERIES_GREEN }];
@@ -1336,8 +1328,8 @@
       .map(function (d) {
         return { label: d.label, values: [bar(d.label, d.a, "모집 공고", "open"), bar(d.label, d.b, "상시 제도", "services")] };
       });
-    function draw(fitH) { return groupedBars(data, series, "대상별 모집 공고와 상시 제도 가로 막대 그래프", chartWidth(), fitH); }
-    var card = vizCard("누구를 위한 지원이 많나요?", null, el("div", { className: "viz-fig" }, legend(series), draw()), null);
+    function draw(fitH) { return butterflyBars(data, series, "대상별 모집 공고와 상시 제도 나비 그래프", chartWidth("third"), fitH); }
+    var card = vizCard("누구를 위한 지원이 많나요?", "많은 순 · 양쪽 막대는 각자 가장 많은 대상 기준", draw(), null);
     card._redraw = draw;
     return card;
   }
@@ -1516,7 +1508,7 @@
         list.append(el("li", null, b));
       });
 
-    return el("div", { className: "kmap-wrap" + (chartWidth() >= 520 ? " wide" : "") },
+    return el("div", { className: "kmap-wrap" + (chartWidth("map") >= 520 ? " wide" : "") },
       el("div", { className: "kmap-figure" }, svg, scale), list);
   }
 
@@ -1660,10 +1652,11 @@
 
     // fitH를 주면(옆 카드가 길 때) 도넛과 목록 줄 간격을 키워 그 높이를 채운다(fillCard)
     function draw(fitH) {
-      var W = chartWidth(), wide = W >= 460;
+      var W = chartWidth("third"), wide = W >= 460;
       var S = wide ? Math.min(fitH ? 300 : 240, Math.round(W * (fitH ? 0.5 : 0.46)), fitH ? Math.floor(fitH) - 8 : 999)
         : Math.min(230, W - 40);
-      var rowH = wide && fitH ? Math.max(32, Math.min(46, Math.floor((fitH - 4) / data.length))) : 32;
+      // 좁으면 도넛 아래 목록이 남는 높이를 나눠 갖는다
+    var rowH = fitH ? Math.max(32, Math.min(46, Math.floor((fitH - (wide ? 4 : S + 20)) / data.length))) : 32;
       var c = S / 2, R = c - 4, r = R * 0.6;
       var svg = svgEl("svg", { viewBox: "0 0 " + S + " " + S, "class": "donut", "aria-hidden": "true", style: "max-width:" + S + "px" });
       var list = el("ol", { className: "donut-list", style: "--row:" + rowH + "px",
@@ -1762,25 +1755,36 @@
     return card;
   }
 
+  /* 많이 찾는 지원사업 카드: 목록·전환 단추·더 보기는 index.html의 #homePopParts에 있는 그대로 옮겨 쓴다
+   * (이벤트는 bind에서 한 번만 단다). 목록 내용은 renderPopular가 채운다 */
+  function popularCard() {
+    var card = vizCard("많이 찾는 지원사업", "누적 조회수 순", $("#homePop"), el("div", null, $("#homePopMore")), $("#homePopKind"));
+    card.classList.add("list-card");
+    return card;
+  }
+
+  /* 넓은 화면(1100px~) 배치: 첫 줄 세 칸(대상 · 지원 내용 · 지역), 다음 줄부터 두 칸(마감 달력 · 공고 달, 많이 찾는 · 곧 올라올).
+   * 900~1099px은 두 칸이고 지역 지도만 한 줄 전체(style.css .home-charts) */
   function renderCharts(live) {
     chartsDrawnAt = chartWidth();
     $("#vizTip").hidden = true;
-    var support = supportCard();
-    support.querySelector(".viz-body").classList.add("top"); // 옆 목록 카드가 길어도 막대는 제목 바로 아래에
+    var persona = personaCard(live), support = supportCard(), region = regionCard();
     var due = dueCard(live), months = openMonthsCard();
     due.querySelector(".viz-body").classList.add("bottom");
     months.querySelector(".viz-body").classList.add("top"); // 범례를 제목 바로 아래에, 남는 높이는 그래프가 채운다
-    var persona = personaCard(live);
-    persona.querySelector(".viz-body").classList.add("top"); // 범례를 제목 바로 아래에
-    var upcoming = upcomingCard(), region = regionCard();
-    var cards = [persona, region, due, months, support, upcoming];
-    ["persona", "map", "due", "months", "svc", "upcoming"].forEach(function (k, i) { cards[i].dataset.key = k; });
+    persona.querySelector(".viz-body").classList.add("top");
+    support.querySelector(".viz-body").classList.add("top");
+    var popular = popularCard(), upcoming = upcomingCard();
+    var cards = [persona, support, region, due, months, popular, upcoming];
+    ["persona", "svc", "map", "due", "months", "pop", "upcoming"].forEach(function (k, i) { cards[i].dataset.key = k; });
     $("#homeCharts").replaceChildren.apply($("#homeCharts"), cards);
     fitListHeight(upcoming.querySelector(".results"), upcoming._expandable, WIDE_CHARTS); // 막대 채우기보다 먼저
+    fitListHeight($("#homePop"), popExpandable, WIDE_CHARTS);
     [persona, support, months].forEach(fillCard);
     setupMotion(cards);
     placeSegGliders(); // 글꼴이 온 뒤 그래프만 다시 그릴 때도 전환 단추 알약을 맞춘다
   }
+
 
   /* ---------- 그래프 움직임 ----------
    * 카드가 화면에 들어올 때(play): 카드가 올라오며 나타나고 막대가 자라나고 선이 그려진다.

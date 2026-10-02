@@ -393,7 +393,7 @@ select { appearance: none; background-image: linear-gradient(45deg, transparent 
 .home-grid .row-title, .list-card .row-title { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow: hidden; }
 .home-grid .row-meta, .list-card .row-meta { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 /* 가리킬 때만 보이는 화살표가 줄을 넘겨 빈칸을 만들지 않게: 홈 목록과 터치 화면에서는 뺀다 */
-.home-grid .row-arrow { display: none; }
+.home-grid .row-arrow, .list-card .row-arrow { display: none; }
 @media (hover: none) { .row-arrow { display: none; } }
 /* 많이 찾는 지원사업의 제도/공고 전환 */
 .seg-mini { position: relative; display: inline-flex; gap: 2px; padding: 3px; border-radius: 999px; background: var(--surface); }
@@ -476,6 +476,7 @@ select { appearance: none; background-image: linear-gradient(45deg, transparent 
   .viz-card.play { animation: card-in .6s cubic-bezier(.2, .7, .2, 1) both; --d0: 180ms; }
   .viz .bar { transform-box: fill-box; transform-origin: 50% 100%; }
   .viz svg.hb .bar { transform-origin: 0 50%; }
+  .viz svg.hb .bar.flip { transform-origin: 100% 50%; } /* 나비 그래프 왼쪽 막대는 가운데에서 왼쪽으로 자란다 */
   .viz-card:is(.play, .replay) .bar {
     animation: grow-y .7s cubic-bezier(.2, .7, .2, 1) both;
     animation-delay: calc(var(--d0, 0ms) + var(--i, 0) * 45ms);
@@ -635,6 +636,13 @@ select { appearance: none; background-image: linear-gradient(45deg, transparent 
 }
 @media (min-width: 900px) {
   .home-charts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .home-charts > [data-key="map"] { grid-column: 1 / -1; }
+}
+/* 넓은 화면: 첫 줄 세 칸(대상 · 지원 내용 · 지역), 다음 줄부터 두 칸 */
+@media (min-width: 1100px) {
+  .home-charts { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+  .home-charts > .viz-card { grid-column: span 3; }
+  .home-charts > :is([data-key="persona"], [data-key="svc"], [data-key="map"]) { grid-column: span 2; }
 }
 @media (max-width: 639px) {
   .wrap { padding-left: 16px; padding-right: 16px; }
@@ -663,12 +671,14 @@ select { appearance: none; background-image: linear-gradient(45deg, transparent 
 @media (min-width: 1100px) {
   .layout { grid-template-columns: 264px minmax(0, 1fr) minmax(360px, 440px); gap: 32px; align-items: start; }
   /* 홈 목록 셋을 나란히. 세 칸 높이를 같게 하고 '더 보기'는 바닥에, 줄 높이도 같게(제목 2줄 + 보조 1줄) */
-  .home-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 32px; }
+  .home-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 32px; }
   .home-grid .home-block { display: flex; flex-direction: column; }
   .home-grid .results { flex: 1 0 auto; margin-bottom: 16px; }
   .home-grid .block-head { min-height: 37px; }
   .home-grid .btn.more { margin-top: auto; }
   .home-grid .row-main { min-height: 4.85rem; }
+  /* 그래프 칸의 두 목록 카드(많이 찾는·곧 올라올)도 줄 높이를 같게 해 나란한 두 카드의 바닥을 맞춘다 */
+  .home-charts .list-card .row-main { min-height: 4.85rem; }
   .filters, .detail { display: block; position: sticky; top: 72px; max-height: calc(100vh - 88px); overflow-y: auto; }
   .filters { padding: 0 4px 0 0; }
   .detail { background: var(--canvas); border: 1px solid var(--line); border-radius: 24px; }
