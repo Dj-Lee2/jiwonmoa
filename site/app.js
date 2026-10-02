@@ -1160,6 +1160,7 @@
 
   /* 나비 그래프: 가운데에 이름, 왼쪽으로 첫 계열(모집 공고), 오른쪽으로 둘째 계열(상시 제도).
    * 양쪽 막대 길이는 각 계열 안에서 가장 많은 값 기준(두 계열 수가 열 배 가까이 달라 한 눈금이면 공고 막대가 안 보인다).
+   * 길이는 제곱근 눈금: 한 대상(중소기업)에 몰려 나머지 막대가 안 보이지 않게 차이를 줄인다. 정확한 수는 막대 끝 숫자.
    * fitH를 주면 그 높이를 채우도록 줄 간격(24~36px)을 키운다 */
   function hbarPathLeft(x, y, w, h) {
     var r = Math.min(4, w, h / 2); // 바닥(오른쪽, 가운데 이름 쪽)은 네모, 값 쪽 끝(왼쪽)만 둥글게
@@ -1183,7 +1184,7 @@
       var cy = head + 2 + i * rowH + rowH / 2;
       root.append(svgText(side + labelW / 2, cy + 5, d.label, "cat", "middle"));
       d.values.forEach(function (v, j) {
-        var w = v.n ? Math.max(2, Math.round(plot * v.n / max[j])) : 0;
+        var w = v.n ? Math.max(2, Math.round(plot * Math.sqrt(v.n / max[j]))) : 0;
         var g = svgEl("g", { "class": "mark", style: "--i:" + i });
         g.append(svgEl("rect", { x: j ? cxR : 0, y: cy - rowH / 2, width: side, height: rowH, rx: 6, "class": "hit" }));
         if (w) g.append(svgEl("path", { d: j ? hbarPath(cxR, cy - barT / 2, w, barT) : hbarPathLeft(cxL - w, cy - barT / 2, w, barT),
@@ -1323,7 +1324,7 @@
         return { label: d.label, values: [bar(d.label, d.a, "모집 공고", "open"), bar(d.label, d.b, "상시 제도", "services")] };
       });
     function draw(fitH) { return butterflyBars(data, series, "대상별 모집 공고와 상시 제도 나비 그래프", chartWidth(), fitH); }
-    var card = vizCard("누구를 위한 지원이 많나요?", "많은 순 · 양쪽 막대는 각자 가장 많은 대상 기준", draw(), null);
+    var card = vizCard("누구를 위한 지원이 많나요?", "많은 순 · 적은 수도 보이게 막대 차이를 줄여 그림(정확한 수는 숫자)", draw(), null);
     card._redraw = draw;
     return card;
   }
