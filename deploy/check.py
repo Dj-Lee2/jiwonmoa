@@ -20,7 +20,6 @@ import re
 import sqlite3
 import subprocess
 import sys
-import urllib.request
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -62,13 +61,16 @@ def read_js(name, var):
     return json.loads(text[len(f"window.{var}="):].rstrip().rstrip(";"))
 
 
-def http_ok(path):
-    try:
-        req = urllib.request.Request(SITE + path, method="GET", headers={"User-Agent": "jiwonmoa-check"})
-        with urllib.request.urlopen(req, timeout=20) as r:
-            return r.status == 200
-    except Exception:
-        return False
+SITE_PATHS = ("/", "/data/meta.js", "/data/notices.js", "/app.js")
+
+
+def http_codes():
+    """운영 사이트 고정 주소들의 응답 코드(curl, https만)."""
+    args = ["curl", "-s", "--proto", "=https", "--max-time", "20", "-o", "/dev/null", "-w", "%{http_code}\\n"]
+    for path in SITE_PATHS:
+        args += ["-o", "/dev/null", SITE + path] if path != SITE_PATHS[0] else [SITE + path]
+    out = subprocess.run(args, capture_output=True, text=True).stdout.split()
+    return dict(zip(SITE_PATHS, out + ["000"] * (len(SITE_PATHS) - len(out))))
 
 
 def git(*args, check=True):
@@ -118,9 +120,9 @@ def run_checks(now, slot):
         facts.setdefault("notices", 0)
         facts.setdefault("services", 0)
     # 3. 운영 사이트
-    for path in ("/", "/data/meta.js", "/data/notices.js", "/app.js"):
-        if not http_ok(path):
-            problems.append(f"사이트 {path} 응답 이상")
+    for path, code in http_codes().items():
+        if code != "200":
+            problems.append(f"사이트 {path} 응답 이상({code})")
     # 4. 테스트
     t = subprocess.run(["/usr/bin/python3", "-m", "unittest", "discover", "-s", "tests"], cwd=ROOT,
                        capture_output=True, text=True, env={**os.environ, "TZ": "Asia/Seoul"})
