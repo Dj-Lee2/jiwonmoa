@@ -2702,8 +2702,9 @@
     var fields = noticeFieldCard(live);
     fields.querySelector(".viz-body").classList.add("top");
     var upcoming = upcomingCard(), region = regionCard();
-    var cards = [persona, region, due, months, fields, support, upcoming];
-    ["persona", "map", "due", "months", "nf", "svc", "upcoming"].forEach(function (k, i) { cards[i].dataset.key = k; });
+    // 순서: 무엇을 지원하나요(공고·제도 도넛) → 누구를·어느 지역 → 마감·올라오는 달 → 곧 올라올 공고
+    var cards = [fields, support, persona, region, due, months, upcoming];
+    ["nf", "svc", "persona", "map", "due", "months", "upcoming"].forEach(function (k, i) { cards[i].dataset.key = k; });
     // 그래프를 누르면 요약이 뜬다는 안내(휴대폰은 가리키기가 없어 단서가 필요하다)
     var hint = el("p", { className: "charts-hint" }, icon("hand-tap"), "그래프의 막대·칸·지역을 누르면 요약을 볼 수 있어요");
     $("#homeCharts").replaceChildren.apply($("#homeCharts"), [hint].concat(cards));
