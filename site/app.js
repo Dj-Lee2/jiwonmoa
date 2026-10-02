@@ -1638,15 +1638,18 @@
 
   /* 도넛 + 목록(분야별 건수). data = [{key, n, color, what, pct}], total = 가운데 수, cap = 가운데 아랫말.
    * 조각과 목록 줄의 가리키기가 서로 이어지고, 누르면 go(d). fitH를 주면(옆 카드가 길 때) 도넛과 목록 줄 간격을 키운다 */
-  function donutFigure(data, total, cap, listLabel, go, fitH) {
+  function donutFigure(data, total, cap, listLabel, go) {
+    // 크기는 자료와 상관없이 카드 폭으로만 정한다: 도넛 지름·줄 높이가 같고, 목록은 가장 긴 목록(rowsMax줄) 높이를 늘 차지한다.
+    // 그래서 분야 ↔ 지원 방식을 바꿔도, 나란한 공고·제도 두 카드도 크기가 그대로다(옆 카드에 맞춰 늘이지 않는다)
     var sum = data.reduce(function (t, d) { return t + d.n; }, 0);
     var W = chartWidth(), wide = W >= 460;
-    var S = wide ? Math.min(fitH ? 300 : 240, Math.round(W * (fitH ? 0.5 : 0.46)), fitH ? Math.floor(fitH) - 8 : 999)
-      : Math.min(230, W - 40);
-    var rowH = wide && fitH ? Math.max(32, Math.min(46, Math.floor((fitH - 4) / data.length))) : 32;
+    var S = wide ? Math.min(260, Math.round(W * 0.48)) : Math.min(230, W - 40);
+    var rowH = 34;
+    var rowsMax = Math.max((META.serviceCats || []).length, (META.supports || []).length, (META.noticeFields || []).length);
     var c = S / 2, R = c - 4, r = R * 0.6;
     var svg = svgEl("svg", { viewBox: "0 0 " + S + " " + S, "class": "donut", "aria-hidden": "true", style: "max-width:" + S + "px" });
-    var list = el("ol", { className: "donut-list", style: "--row:" + rowH + "px", "aria-label": listLabel });
+    var list = el("ol", { className: "donut-list", style: "--row:" + rowH + "px;min-height:" + (rowsMax * (rowH + 1)) + "px",
+      "aria-label": listLabel });
     var rows = [], slices = [];
     function hover(i) {
       rows.forEach(function (b, k) { b.classList.toggle("hover", k === i); });
@@ -1705,14 +1708,14 @@
     var data = donutData(keys.map(function (x) { return { key: x, n: svcCount((byCat ? "cat:" : "sp:") + x) || 0 }; }),
       DONUT_GREENS, all, function (k) { return byCat ? k + " 분야 상시 제도" : k + " 방식으로 지원하는 상시 제도"; });
     function go(d) { goTo(byCat ? { tab: "services", cg: [d.key] } : { tab: "services", sp: [d.key] }); }
-    function draw(fitH) {
-      return donutFigure(data, all, "상시 제도", byCat ? "분야별 상시 제도 수" : "지원 방식별 상시 제도 수", go, fitH);
+    function draw() {
+      return donutFigure(data, all, "상시 제도", byCat ? "분야별 상시 제도 수" : "지원 방식별 상시 제도 수", go);
     }
-    var card = vizCard(byCat ? "제도는 무엇을 지원하나요?" : "제도는 어떤 방식으로 지원하나요?",
-      byCat ? "상시 제도 기준" : "상시 제도 기준 · 한 제도가 여러 방식이면 겹쳐 셈", draw(), null,
+    // 제목은 두 보기에 같게 둔다(더 긴 제목이 좁은 화면에서 두 줄이 되면 카드 높이가 바뀐다)
+    var card = vizCard("제도는 무엇을 지원하나요?",
+      byCat ? "상시 제도 기준 · 분야별" : "상시 제도 기준 · 지원 방식별(여러 방식이면 겹쳐 셈)", draw(), null,
       segToggle("svc", "상시 제도 나누는 기준", [{ value: "cat", label: "분야" }, { value: "sp", label: "지원 방식" }], svcKind,
         function (v) { svcKind = v; }));
-    card._redraw = draw;
     return card;
   }
 
@@ -1724,9 +1727,8 @@
     var data = donutData((META.noticeFields || []).map(function (x) { return { key: x, n: n[x] || 0 }; }),
       DONUT_BLUES, live.length, function (k) { return k + " 분야 모집 공고"; });
     function go(d) { goTo({ tab: "open", cg: [d.key] }); }
-    function draw(fitH) { return donutFigure(data, live.length, "모집 공고", "분야별 모집 공고 수", go, fitH); }
-    var card = vizCard("공고는 무엇을 지원하나요?", "모집 공고 기준", draw(), null);
-    card._redraw = draw;
+    var card = vizCard("공고는 무엇을 지원하나요?", "모집 공고 기준",
+      donutFigure(data, live.length, "모집 공고", "분야별 모집 공고 수", go), null);
     return card;
   }
 
@@ -1795,7 +1797,7 @@
     ["persona", "map", "due", "months", "nf", "svc", "upcoming"].forEach(function (k, i) { cards[i].dataset.key = k; });
     $("#homeCharts").replaceChildren.apply($("#homeCharts"), cards);
     fitListHeight(upcoming.querySelector(".results"), upcoming._expandable, WIDE_CHARTS); // 막대 채우기보다 먼저
-    [persona, fields, support, months].forEach(fillCard);
+    [persona, months].forEach(fillCard);
     setupMotion(cards);
     placeSegGliders(); // 글꼴이 온 뒤 그래프만 다시 그릴 때도 전환 단추 알약을 맞춘다
   }
@@ -1828,9 +1830,17 @@
         }
       });
     }, { threshold: [0, 0.2] });
+    // 카드 전환 단추로 다시 그릴 때(scope = 그 카드)는 그 카드만 움직인다. 다른 카드는 아직 '본 적 없음'이어도
+    // 지금 화면에 보이면 본 것으로 치고 그대로 둔다(옆 카드 단추를 눌렀는데 이 카드가 처음처럼 움직이지 않게)
+    var vh = window.innerHeight || document.documentElement.clientHeight;
     cards.forEach(function (c) {
-      if (!seenCards[c.dataset.key]) c.classList.add("pending");
-      else if (scope === "all" || scope === c.dataset.key) c.classList.add("replay");
+      var key = c.dataset.key;
+      if (!seenCards[key] && scope && scope !== "all" && scope !== key) {
+        var r = c.getBoundingClientRect();
+        if (r.bottom > 0 && r.top < vh) seenCards[key] = true;
+      }
+      if (!seenCards[key]) c.classList.add("pending");
+      else if (scope === "all" || scope === key) c.classList.add("replay");
     });
     fontsReady.then(function () {
       if (gen === chartGen) cards.forEach(function (c) { chartObserver.observe(c); });
@@ -1838,7 +1848,7 @@
   }
 
   function fillCard(card) {
-    var body = card.querySelector(".viz-body"), svg = body.querySelector("svg.hb, svg.month-chart, .donut-wrap");
+    var body = card.querySelector(".viz-body"), svg = body.querySelector("svg.hb, svg.month-chart");
     if (!svg || !card._redraw) return;
     var used = (svg.closest(".viz-fig") || svg).getBoundingClientRect().height;
     var free = body.clientHeight - (parseFloat(getComputedStyle(body).paddingTop) || 0) - used;
