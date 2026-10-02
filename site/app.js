@@ -32,7 +32,7 @@
   NOTICES.forEach(function (n) { byId.set(n.id, n); });
 
   var DEFAULT = { tab: "open", q: "", r: "", nat: true, au: [], st: [], src: [], pv: true,
-    tp: [], sp: [], cg: [], soon: false, nw: false, due: "", sort: "", id: "" };
+    tp: [], sp: [], cg: [], soon: false, nw: false, due: "", om: "", sort: "", id: "" };
 
   /* 빈 조건. 배열은 매번 새로 만든다(DEFAULT의 배열을 같이 쓰면 칩을 누를 때 DEFAULT가 바뀐다) */
   function blankState(extra) {
@@ -220,6 +220,7 @@
     s.pv = p.get("pv") !== "0";
     s.soon = p.get("soon") === "1";
     s.due = /^\d{4}-\d{2}-\d{2}~\d{4}-\d{2}-\d{2}$/.test(p.get("due") || "") ? p.get("due") : "";
+    s.om = /^\d{4}-\d{2}$/.test(p.get("om") || "") ? p.get("om") : ""; // 접수를 시작한 달(홈 '공고는 언제 올라오나요?' 막대)
     s.nw = p.get("new") === "1";
     s.sp = list(p.get("sp"));
     s.cg = list(p.get("cat"));
@@ -239,6 +240,7 @@
       if (!state.pv) p.set("pv", "0");
       if (state.soon) p.set("soon", "1");
       if (state.due) p.set("due", state.due);
+      if (state.om) p.set("om", state.om);
       if (state.nw) p.set("new", "1");
       if (state.sp.length && state.tab === "services") p.set("sp", state.sp.join(","));
       if (state.cg.length && state.tab !== "home") p.set("cat", state.cg.join(","));
@@ -248,6 +250,7 @@
     var rest = p.toString();
     var h = home && !rest ? "" : "tab=" + state.tab + (rest ? "&" + rest : "");
     var url = location.pathname + location.search + (h ? "#" + h : "");
+    if (push && history.state && history.state.peek) push = false; // 요약 시트가 넣어 둔 기록 자리는 바꿔 쓴다
     try {
       if (push) history.pushState(null, "", url); else history.replaceState(null, "", url);
     } catch (e) { /* 일부 환경(file://)에서 막히면 주소만 못 바꾼다 */ }
@@ -297,6 +300,7 @@
     if (state.sp.length && state.tab === "services" &&
         !(item.sp || []).some(function (x) { return state.sp.indexOf(x) >= 0; })) return false;
     if (state.cg.length && state.cg.indexOf(fieldOf(item)) < 0) return false;
+    if (state.om && isNoticeView() && (item.s || item.e || "").slice(0, 7) !== state.om) return false;
     if (state.due && isNoticeView()) {
       var range = state.due.split("~");
       if (statusOf(item) !== "접수 중" || !item.e || item.e < range[0] || item.e > range[1]) return false;
@@ -481,6 +485,7 @@
     if (state.r) add(state.r + (state.nat ? " + 전국" : " 한정"), function () { state.r = ""; });
     if (state.soon && isNoticeView()) add("7일 안에 마감", function () { state.soon = false; });
     if (state.due && isNoticeView()) add(dueLabel(state.due), function () { state.due = ""; });
+    if (state.om && isNoticeView()) add((+state.om.slice(5)) + "월 접수 시작", function () { state.om = ""; });
     if (state.nw && isNoticeView()) add("최근 " + RECENT_DAYS + "일 새 공고", function () { state.nw = false; });
     state.cg.forEach(function (x) { add(x + " 분야", function () { remove("cg", x); }); });
     if (state.tab === "services") state.sp.forEach(function (x) { add(x + " 지원", function () { remove("sp", x); }); });
@@ -590,7 +595,7 @@
 
   function activeFilterCount() {
     return (state.q ? 1 : 0) + (state.r ? 1 : 0) + state.au.length + state.st.length + state.src.length +
-      (state.pv ? 0 : 1) + (agriSelected() ? state.tp.length : 0) + (state.soon ? 1 : 0) + (state.due ? 1 : 0) + (state.nw ? 1 : 0) +
+      (state.pv ? 0 : 1) + (agriSelected() ? state.tp.length : 0) + (state.soon ? 1 : 0) + (state.due ? 1 : 0) + (state.om ? 1 : 0) + (state.nw ? 1 : 0) +
       state.cg.length + (state.tab === "services" ? state.sp.length : 0);
   }
 
@@ -802,7 +807,7 @@
 
   function switchTab(tab) {
     if (tab === state.tab) return;
-    state = Object.assign({}, state, { tab: tab, st: [], src: [], sp: [], cg: [], soon: false, nw: false, due: "", id: "" });
+    state = Object.assign({}, state, { tab: tab, st: [], src: [], sp: [], cg: [], soon: false, nw: false, due: "", om: "", id: "" });
     state.sort = defaultSort(state);
     applyView();
     if (tab === "home") {
@@ -833,7 +838,7 @@
   /* 홈에서 목록으로 넘어갈 때: 홈에서 고른 지역은 그대로 들고 간다 */
   function goTo(partial) {
     $("#vizTip").hidden = true;
-    closePeek(false);
+    closePeek(false, true);
     state = Object.assign(blankState({ r: state.r, nat: state.nat }), partial);
     state.sort = partial.sort || defaultSort(state);
     shown = PAGE;
@@ -1095,8 +1100,32 @@
   var peekKey = null, peekAnchor = null, peekBox = null, peekShade = null;
   function peekSheet() { return window.matchMedia("(max-width: 639px)").matches; }
 
-  function closePeek(restoreFocus) {
+  /* 휴대폰 시트는 열 때 방문 기록을 하나 넣어 '뒤로 가기'가 시트만 닫게 한다(사이트를 벗어나지 않게).
+   * 닫기 단추·뒤판·Esc로 닫으면 그 기록을 되돌린다(history.back → popstate는 무시하고 주소만 맞춘다).
+   * 목록·상세로 갈 때(keepHistory)는 되돌리지 않고 writeHash가 그 기록 자리를 바꿔 쓴다 */
+  var peekPopIgnore = false;
+  function peekEntry() { return !!(history.state && history.state.peek); }
+  function peekPushEntry() {
+    if (peekEntry()) return;
+    try { history.pushState({ peek: 1 }, "", location.href); } catch (e) { /* 막히면 기록 없이 */ }
+  }
+  window.addEventListener("popstate", function (e) {
+    if (peekPopIgnore) {
+      peekPopIgnore = false;
+      e.stopImmediatePropagation();
+      writeHash(false); // 닫는 사이 바뀐 상태(지역 선택 등)를 지금 기록에 맞춘다
+      return;
+    }
+    if (peekBox) {
+      // 뒤로 가기로 시트를 닫음: 화면은 그대로 둔다
+      e.stopImmediatePropagation();
+      closePeek(true, true);
+    }
+  });
+
+  function closePeek(restoreFocus, keepHistory) {
     if (!peekBox) return;
+    if (!keepHistory && peekEntry()) { peekPopIgnore = true; history.back(); }
     var anchor = peekAnchor;
     peekBox.remove(); peekShade.remove();
     peekBox = peekShade = null; peekKey = null; peekAnchor = null;
@@ -1160,7 +1189,7 @@
             el("span", { className: "peek-item-meta", text: [it.ag, regionText(it)].filter(Boolean).join(" · ") })),
           side);
         b.addEventListener("click", function () {
-          closePeek(false);
+          closePeek(false, true);
           goTo({ tab: it.k === "s" ? "services" : "open", id: it.id });
         });
         ul.append(el("li", null, b));
@@ -1168,11 +1197,11 @@
       list.append(ul);
     }
     var more = el("button", { type: "button", className: "btn dark peek-more" }, spec.more.label, icon("arrow-right"));
-    more.addEventListener("click", function () { closePeek(false); spec.more.go(); });
+    more.addEventListener("click", function () { closePeek(false, true); spec.more.go(); });
     var more2 = null;
     if (spec.more2) {
       more2 = el("button", { type: "button", className: "btn gray peek-more" }, spec.more2.label);
-      more2.addEventListener("click", function () { closePeek(false); spec.more2.go(); });
+      more2.addEventListener("click", function () { closePeek(false, true); spec.more2.go(); });
     }
     return [head, num, note, groups, list, more, more2];
   }
@@ -1181,7 +1210,7 @@
   function openPeek(key, anchor, build, marks) {
     if (peekKey === key) { closePeek(true); return; }
     var wasOpen = !!peekBox;
-    closePeek(false);
+    closePeek(false, true); // 다른 표시로 바꿔 열 때는 기록을 그대로 쓴다
     $("#vizTip").hidden = true;
     peekKey = key; peekAnchor = anchor;
     [anchor].concat(marks || []).forEach(function (m) {
@@ -1195,9 +1224,18 @@
     peekShade = el("div", { className: "peek-shade" + (sheet ? " on" : "") });
     peekShade.addEventListener("click", function () { closePeek(true); });
     peekBox = el("div", { className: "peek" + (sheet ? " sheet" : "") + (wasOpen ? " swap" : ""), role: "dialog",
-      "aria-labelledby": "peekTitle", tabindex: "-1" });
+      "aria-modal": sheet ? "true" : null, "aria-labelledby": "peekTitle", tabindex: "-1" });
+    // Tab·Shift+Tab은 창 안에서만 돈다(뒤 화면으로 초점이 빠지지 않게)
+    peekBox.addEventListener("keydown", function (e) {
+      if (e.key !== "Tab") return;
+      var f = [].slice.call(peekBox.querySelectorAll("button, a[href]")).filter(function (n) { return !n.disabled; });
+      if (!f.length) { e.preventDefault(); return; }
+      var first = f[0], last = f[f.length - 1], at = document.activeElement;
+      if (e.shiftKey && (at === first || at === peekBox)) { e.preventDefault(); last.focus(); }
+      else if (!e.shiftKey && at === last) { e.preventDefault(); first.focus(); }
+    });
     document.body.append(peekShade, peekBox);
-    if (sheet) document.body.classList.add("peek-lock");
+    if (sheet) { document.body.classList.add("peek-lock"); peekPushEntry(); }
     function fill(spec) {
       if (!peekBox || peekKey !== key) return;
       peekBox.replaceChildren.apply(peekBox, peekBody(spec).filter(Boolean));
@@ -1859,7 +1897,9 @@
       });
       var spec = noticePeek(items, regionPrefix() + (thisYear ? cur + "년 " : prev + "년 ") + m + "월에 올라온 국고보조금 공고",
         thisYear ? "접수를 시작한 공고(마감 포함)" : "올해 " + m + "월은 아직 오지 않았습니다",
-        { label: "국고보조금 공고 모두 보기", go: function () { goTo({ tab: "open", src: ["bojo"] }); } }, null, null, "nf");
+        thisYear && items.length ? { label: "지금 신청할 수 있는 " + m + "월 공고 " + fmtN(items.length) + "건 보기",
+          go: function () { goTo({ tab: "open", src: ["bojo"], om: cur + "-" + mm }); } }
+          : { label: "국고보조금 공고 모두 보기", go: function () { goTo({ tab: "open", src: ["bojo"] }); } }, null, null, "nf");
       spec.n = thisYear ? B[i] : A[i];
       spec.flag = thisYear ? "작년 " + m + "월 " + fmtN(A[i]) + "건" : null;
       spec.flagTone = "soft";
@@ -2089,7 +2129,9 @@
     var upcoming = upcomingCard(), region = regionCard();
     var cards = [persona, region, due, months, fields, support, upcoming];
     ["persona", "map", "due", "months", "nf", "svc", "upcoming"].forEach(function (k, i) { cards[i].dataset.key = k; });
-    $("#homeCharts").replaceChildren.apply($("#homeCharts"), cards);
+    // 그래프를 누르면 요약이 뜬다는 안내(휴대폰은 가리키기가 없어 단서가 필요하다)
+    var hint = el("p", { className: "charts-hint" }, icon("hand-tap"), "그래프의 막대·칸·지역을 누르면 요약을 볼 수 있어요");
+    $("#homeCharts").replaceChildren.apply($("#homeCharts"), [hint].concat(cards));
     fitListHeight(upcoming.querySelector(".results"), upcoming._expandable, WIDE_CHARTS); // 막대 채우기보다 먼저
     [persona, months].forEach(fillCard);
     setupMotion(cards);
