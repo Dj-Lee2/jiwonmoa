@@ -339,7 +339,8 @@ def build_sigungu_map(gov24_items):
 
 
 def regions_from_sigungu(name, table):
-    name = re.sub(r"^(재단법인|\(재\)|사단법인|\(사\))\s*", "", name or "")
+    # 앞에 붙는 법인 종류는 떼고 본다('농업회사법인의령군토요애유통(주)' → '의령군…')
+    name = re.sub(r"^(재단법인|\(재\)|사단법인|\(사\)|농업회사법인|영농조합법인|주식회사|\(주\))\s*", "", name or "")
     for key, region in table.items():
         if name.startswith(key):
             return {region}

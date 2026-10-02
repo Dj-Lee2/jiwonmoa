@@ -27,7 +27,7 @@
   var SHOW_PERIOD_TEXT = ["확인 필요", "매년 정기", "매월·분기 접수", "사유 발생 후 신청", "기관별로 다름"];
   var WEEKDAY = ["일", "월", "화", "수", "목", "금", "토"];
 
-  var today = localDate(new Date());
+  var today = seoulDate(); // 한국 날짜(기기 시간대와 상관없이 마감·D-day·오늘을 한국 기준으로)
   var services = window.HUB_SERVICES || null;
   var byId = new Map();
   NOTICES.forEach(function (n) { byId.set(n.id, n); });
@@ -84,9 +84,8 @@
 
   function icon(name) { return el("i", { className: "ph ph-" + name, "aria-hidden": "true" }); }
 
-  function localDate(d) {
-    var m = d.getMonth() + 1, day = d.getDate();
-    return d.getFullYear() + "-" + (m < 10 ? "0" : "") + m + "-" + (day < 10 ? "0" : "") + day;
+  function seoulDate() {
+    return new Date(Date.now() + 9 * 3600000).toISOString().slice(0, 10); // UTC+9, 서머타임 없음
   }
 
   function daysBetween(a, b) {
@@ -438,12 +437,14 @@
     // 탭이 없는 주소: 조건(이름=값)이 있으면 예전 공유 링크로 보고 모집 공고, 없으면(#main 같은 자리 표시) 홈
     else s.tab = location.hash.indexOf("=") > 0 ? "open" : "home";
     s.q = p.get("q") || "";
-    s.r = p.get("r") || "";
+    s.r = META.regions.indexOf(p.get("r")) >= 0 ? p.get("r") : "";
     s.nat = p.get("nat") !== "0";
-    s.au = list(p.get("au"));
-    s.st = list(p.get("st"));
-    s.src = list(p.get("src"));
-    s.tp = list(p.get("tp"));
+    // 목록 값은 아는 값만 남긴다(예전 공유 링크의 바뀐 이름이나 잘못 친 값으로 0건이 되지 않게)
+    function known(v, okList) { return list(v).filter(function (x) { return okList.indexOf(x) >= 0; }); }
+    s.au = known(p.get("au"), META.personas);
+    s.st = known(p.get("st"), STATUS_ORDER);
+    s.src = known(p.get("src"), Object.keys(SRC_NAME));
+    s.tp = known(p.get("tp"), META.agriTopics || []);
     s.pv = p.get("pv") !== "0";
     s.soon = p.get("soon") === "1";
     s.due = /^\d{4}-\d{2}-\d{2}~\d{4}-\d{2}-\d{2}$/.test(p.get("due") || "") ? p.get("due") : "";
@@ -453,8 +454,8 @@
     // 내 조건: 주소에 있으면 그것(공유 링크), 없으면 이 기기에 기억한 것
     var me = cleanMe(p.has("age") || p.has("inc") || p.has("sex") ? { ag: p.get("age"), ic: p.get("inc"), sx: p.get("sex") } : loadMe());
     s.ag = me.ag; s.ic = me.ic; s.sx = me.sx;
-    s.sp = list(p.get("sp"));
-    s.cg = list(p.get("cat"));
+    s.sp = known(p.get("sp"), META.supports || []);
+    s.cg = known(p.get("cat"), [].concat(META.serviceCats || [], META.noticeFields || []));
     s.sort = ["deadline", "posted", "recent", "name"].indexOf(p.get("sort")) >= 0 ? p.get("sort") : defaultSort(s);
     s.id = p.get("id") || "";
     return s;
@@ -570,7 +571,9 @@
     function byName(a, b) { return a.t.localeCompare(b.t, "ko"); }
     if (state.sort === "name") return items.sort(byName);
     if (state.sort === "posted") {
-      return items.sort(function (a, b) { return (b.pd || "").localeCompare(a.pd || "") || byName(a, b); });
+      // 출처가 게시일을 앞날짜로 적은 공고가 맨 위로 오지 않게, 오늘보다 뒤인 게시일은 처음 수집한 날(fs)로 본다
+      var pd = function (it) { return it.pd && it.pd > today ? (it.fs || "") : (it.pd || ""); };
+      return items.sort(function (a, b) { return pd(b).localeCompare(pd(a)) || byName(a, b); });
     }
     if (state.sort === "recent") {
       return items.sort(function (a, b) { return (b.up || "").localeCompare(a.up || "") || byName(a, b); });
@@ -756,7 +759,7 @@
     if (state.due && isNoticeView()) add(dueLabel(state.due), function () { state.due = ""; });
     if (state.om && isNoticeView()) add((+state.om.slice(5)) + "월 접수 시작", function () { state.om = ""; });
     if (state.nw && isNoticeView()) add("최근 " + RECENT_DAYS + "일 새 공고", function () { state.nw = false; });
-    if (state.td && isNoticeView()) add(newDayLabel() + " 새 공고", function () { state.td = false; });
+    if (state.td && isNoticeView()) add(newDayLabel() + " 올라온 공고", function () { state.td = false; });
     state.cg.forEach(function (x) { add(x + " 분야", function () { remove("cg", x); }); });
     if (state.tab === "services") state.sp.forEach(function (x) { add(x + " 지원", function () { remove("sp", x); }); });
     state.au.forEach(function (a) {
@@ -1376,7 +1379,7 @@
     var tn = $("#homeTodayNew");
     tn.hidden = !todayN;
     tn.replaceChildren(el("span", { className: "badge new", text: "NEW" }),
-      newDayLabel() + " 새로 올라온 공고 ", el("strong", { text: fmtN(todayN) + "건" }), icon("arrow-right"));
+      newDayLabel() + " 올라온 공고 ", el("strong", { text: fmtN(todayN) + "건" }), icon("arrow-right"));
     // 오늘 마감: 접수 중이고 마감일이 오늘인 공고(고른 지역 기준). 목록 조건은 마감 달력과 같은 due=오늘~오늘
     var dueN = live.filter(function (n) { return statusOf(n) === "접수 중" && n.e === today; }).length;
     var td = $("#homeTodayDue");

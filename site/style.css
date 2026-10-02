@@ -1148,3 +1148,10 @@ body.peek-lock .to-top, body.detail-open .to-top, body.filters-open .to-top, bod
   .charts-hint { display: none; }
 }
 @media print { .top-hint { display: none !important; } }
+
+/* 휴대폰: 카드 전환 단추(분야/지원 방식, 10월/11월, 달별/누적, 모집 공고/상시 제도)와 탭의 누름 칸을 44px 이상으로.
+ * 보이는 알약은 그대로 두고, 위아래로 보이지 않는 여백을 늘린다 */
+@media (pointer: coarse), (max-width: 639px) {
+  .seg-mini button::before { content: ""; position: absolute; left: 0; right: 0; top: -7px; bottom: -7px; }
+  .tabs [role="tab"] { min-width: 44px; justify-content: center; }
+}

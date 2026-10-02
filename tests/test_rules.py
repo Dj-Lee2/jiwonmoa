@@ -156,6 +156,16 @@ class NoticeFieldTest(unittest.TestCase):
                 self.assertIn(v, build_site.NOTICE_FIELDS)
 
 
+class SigunguRegionTest(unittest.TestCase):
+    """기관 이름 앞 법인 종류를 떼고 시군구로 지역을 찾는다"""
+
+    def test_prefix(self):
+        table = {"의령군": "경남", "임실군": "전북"}
+        self.assertEqual(n.regions_from_sigungu("농업회사법인의령군토요애유통(주)", table), {"경남"})
+        self.assertEqual(n.regions_from_sigungu("(주)임실군치즈", table), {"전북"})
+        self.assertEqual(n.regions_from_sigungu("남도장학회", table), set())
+
+
 class LimitsTest(unittest.TestCase):
     """'내 조건으로 거르기'용 나이·소득·성별 값"""
 

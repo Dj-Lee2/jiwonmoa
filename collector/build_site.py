@@ -151,7 +151,7 @@ def compact(r):
         "pt": r["period_text"], "py": r["period_type"], "s": r["apply_start"], "e": r["apply_end"],
         "rg": r["regions"], "rb": r["region_basis"],
         "a": 1 if r["agri"] == 2 else 0, "p": int(r["is_private"] or 0),
-        "u": r["url"], "ap": r["apply_url"], "cn": trim(r["contact"], 200),
+        "u": (r["url"] or "").strip(), "ap": (r["apply_url"] or "").strip(), "cn": trim(r["contact"], 200),
         "up": r["source_updated"],
         # 상세 화면의 조건 줄 [이름, 값(, 덧붙임)]과 글 칸 [제목, 글] (normalize.py의 conditions, details)
         "cd": json.loads(r.get("conditions") or "[]"),
