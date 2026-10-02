@@ -1866,19 +1866,44 @@
 
   /* ---------- 이벤트 ---------- */
 
-  /* 위에 고정한 머리·탭 높이를 CSS 변수(--sticky-h)로 알린다: 넓은 화면의 조건·상세 창이 그 바로 아래에 붙는다.
-   * 글자 크게·화면 폭이 바뀌면 높이도 바뀌므로 ResizeObserver로 따라간다 */
-  function trackStickyHead() {
-    var head = $("#stickyHead");
-    if (!head) return;
-    function put() { document.documentElement.style.setProperty("--sticky-h", Math.round(head.getBoundingClientRect().height) + "px"); }
-    put();
-    if ("ResizeObserver" in window) new ResizeObserver(put).observe(head);
-    else window.addEventListener("resize", put);
+  /* 머리(지원모아 이름·소리·글자 크게)는 그대로 두고 탭 줄만 위에 고정한다.
+   * 스크롤로 머리의 단추가 화면 밖으로 나가면 그 단추 묶음(.top-actions)을 탭 줄 오른쪽(#tabsDock)으로 옮기고,
+   * 다시 보일 만큼 올라오면 제자리로 돌려놓는다. 같은 단추를 옮기므로 상태·눌림 동작은 그대로다.
+   * 머리에서 빠진 자리는 같은 크기의 빈 칸으로 채워 머리 높이가 흔들리지 않게 한다 */
+  function dockTopActions() {
+    var actions = document.querySelector(".top-actions"), dock = $("#tabsDock"), tabs = document.querySelector(".tabs");
+    var header = document.querySelector("header.top");
+    if (!actions || !dock || !header || !("IntersectionObserver" in window)) return;
+    var hold = el("div", { className: "top-actions-hold", "aria-hidden": "true" });
+    var docked = false;
+    function setDocked(on) {
+      if (on === docked) return;
+      var focused = actions.contains(document.activeElement) ? document.activeElement : null;
+      if (on) {
+        var r = actions.getBoundingClientRect();
+        hold.style.width = Math.round(r.width) + "px";
+        hold.style.height = Math.round(r.height) + "px";
+        actions.replaceWith(hold);
+        dock.append(actions);
+        // 탭 줄에서는 '글자 크게'가 아이콘만으로 줄어들 수 있으니 옮긴 뒤의 실제 폭을 잰다
+        document.documentElement.style.setProperty("--dock-w", Math.round(dock.getBoundingClientRect().width) + "px");
+      } else {
+        hold.replaceWith(actions);
+      }
+      tabs.classList.toggle("docked", on);
+      docked = on;
+      if (focused) focused.focus({ preventScroll: true });
+    }
+    // 머리 단추 줄 아래쪽이 탭 줄 밑으로 들어가면(= 가려지면) 옮긴다
+    var probe = header.querySelector(".top-inner");
+    new IntersectionObserver(function (entries) {
+      var e = entries[entries.length - 1];
+      setDocked(!e.isIntersecting && e.boundingClientRect.top < 0);
+    }, { threshold: 0 }).observe(probe);
   }
 
   function bind() {
-    trackStickyHead();
+    dockTopActions();
     var tabs = document.querySelectorAll("[role=tab]");
     tabs.forEach(function (t, i) {
       t.addEventListener("click", function () { switchTab(t.dataset.tab); });
