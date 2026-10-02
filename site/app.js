@@ -105,7 +105,7 @@
     return (+d[1]) + "월 " + (+d[2]) + "일 " + at.slice(11, 16);
   }
 
-  function list(v) { return v ? v.split(",").filter(Boolean) : []; }
+  function splitList(v) { return v ? v.split(",").filter(Boolean) : []; }
 
   function addDays(iso, n) {
     var p = iso.split("-");
@@ -260,8 +260,8 @@
   function ackChange(id) {
     var now = byId.get(id);
     if (!now) return;
-    [favs, cals].forEach(function (list) {
-      list.forEach(function (f) { if (f.id === id) { f.e = now.e; f.s = now.s; f.py = now.py; } });
+    [favs, cals].forEach(function (saved) {
+      saved.forEach(function (f) { if (f.id === id) { f.e = now.e; f.s = now.s; f.py = now.py; } });
     });
     saveFavs();
     try { localStorage.setItem(CAL_KEY, JSON.stringify(cals)); } catch (e) { /* 저장 못 해도 화면은 그대로 */ }
@@ -440,7 +440,7 @@
     s.r = META.regions.indexOf(p.get("r")) >= 0 ? p.get("r") : "";
     s.nat = p.get("nat") !== "0";
     // 목록 값은 아는 값만 남긴다(예전 공유 링크의 바뀐 이름이나 잘못 친 값으로 0건이 되지 않게)
-    function known(v, okList) { return list(v).filter(function (x) { return okList.indexOf(x) >= 0; }); }
+    function known(v, okList) { return splitList(v).filter(function (x) { return okList.indexOf(x) >= 0; }); }
     s.au = known(p.get("au"), META.personas);
     s.st = known(p.get("st"), STATUS_ORDER);
     s.src = known(p.get("src"), Object.keys(SRC_NAME));
@@ -1958,7 +1958,7 @@
     return 10 * p;
   }
 
-  function pt(p) { return p[0].toFixed(1) + " " + p[1].toFixed(1); }
+  function ptStr(p) { return p[0].toFixed(1) + " " + p[1].toFixed(1); }
 
   /* 공모 그래프 공통 틀: 1~12월 칸, 옅은 눈금 3줄, 이번 달(자료를 모은 마지막 달) 자리에 옅은 띠.
    * fitH를 주면 카드 남는 높이를 채운다(옆 카드가 길 때 제목과 그래프 사이가 비지 않게, 최대 440px) */
@@ -2031,15 +2031,15 @@
     monthAxes(root, f, CB.length - 1);
     function pts(v) { return v.map(function (x, i) { return [f.cx(i), f.Y(x)]; }); }
     function area(p, cls) {
-      root.append(svgEl("path", { d: "M" + p[0][0] + " " + f.base + "L" + p.map(pt).join("L") + "L" + p[p.length - 1][0] + " " + f.base + "Z",
+      root.append(svgEl("path", { d: "M" + p[0][0] + " " + f.base + "L" + p.map(ptStr).join("L") + "L" + p[p.length - 1][0] + " " + f.base + "Z",
         "class": cls }));
     }
     var PA = pts(CA), PB = pts(CB);
     area(PA, "area last");
-    root.append(svgEl("path", { d: "M" + PA.map(pt).join("L"), pathLength: 1, "class": "line", style: "stroke:" + SERIES_GRAY }));
+    root.append(svgEl("path", { d: "M" + PA.map(ptStr).join("L"), pathLength: 1, "class": "line", style: "stroke:" + SERIES_GRAY }));
     if (PB.length) {
       area(PB, "area cur");
-      root.append(svgEl("path", { d: "M" + PB.map(pt).join("L"), pathLength: 1, "class": "line thick", style: "stroke:" + SERIES_BLUE }));
+      root.append(svgEl("path", { d: "M" + PB.map(ptStr).join("L"), pathLength: 1, "class": "line thick", style: "stroke:" + SERIES_BLUE }));
       var e = PB[PB.length - 1];
       root.append(svgEl("circle", { cx: e[0], cy: e[1], r: 4.5, "class": "dot", style: "fill:" + SERIES_BLUE }));
       root.append(svgText(e[0] - 8, e[1] + 20, "올해 " + fmtN(CB[CB.length - 1]), "cat halo", "end"));
@@ -2174,11 +2174,11 @@
         "class": "cell", style: lvl ? "fill:" + DUE_SHADES[lvl - 1] : "" }));
       g.append(svgText(x + (big ? 6 : 4), y + (big ? 15 : 12), String(+iso.slice(8)), "dnum", "start"));
       if (n && big) {
-        var cnt = svgText(x + cw - 6, y + ch - 7, fmtN(n), "dcnt", "end");
+        var cntText = svgText(x + cw - 6, y + ch - 7, fmtN(n), "dcnt", "end");
         var unit = svgEl("tspan", { "class": "dunit" });
         unit.textContent = "건";
-        cnt.append(unit);
-        g.append(cnt);
+        cntText.append(unit);
+        g.append(cntText);
       } else if (n) {
         var txt = fmtN(n), pw = Math.min(cw - 6, txt.length * 7.6 + 8), ph = 17;
         var px = x + (cw - pw) / 2, py = y + ch - ph - 4;
@@ -2236,8 +2236,8 @@
     }
     return vizCard("언제 마감되나요?", sub,
       el("div", { className: "viz-fig duecal-fig" }, root, el("div", { className: "duecal-foot" }, scale, laterBtn)), null,
-      segToggle("due", "달력에 보일 달", months.map(function (iso, k) {
-        return { value: k, label: (+iso.slice(5, 7)) + "월" };
+      segToggle("due", "달력에 보일 달", months.map(function (monthIso, k) {
+        return { value: k, label: (+monthIso.slice(5, 7)) + "월" };
       }), dueMonth, function (v) { dueMonth = v; }));
   }
 
@@ -2500,28 +2500,28 @@
       cols = 2;
       rowH = 34;
     }
-    var c = S / 2, R = c - DONUT_OFFSET - 2, r = Math.round(S * DONUT_INNER_K), k = S / 180;
+    var c = S / 2, R = c - DONUT_OFFSET - 2, r = Math.round(S * DONUT_INNER_K), zoom = S / 180;
     var legendRows = Math.ceil(rowsMax / cols), rowGap = side ? 2 : 4;
     var svg = svgEl("svg", { viewBox: "0 0 " + S + " " + S, width: S, height: S, "class": "donut", "aria-hidden": "true" });
     var list = el("ol", { className: "donut-legend" + (side ? " side" : ""), style: "--cols:" + cols + ";--row:" + rowH + "px;--rgap:" + rowGap +
       "px;min-height:" + (legendRows * rowH + (legendRows - 1) * rowGap) + "px", "aria-label": listLabel });
     var rows = [], slices = [], hoverIdx = -1;
     // 가운데 세 줄: 건수 / 이름 / 몫(%). 글자 크기는 도넛 크기에 맞춰 키운다(180px일 때 24·12·11.5px)
-    var nameMax = Math.max(7, Math.floor((2 * r - 20) / (12 * k + 1)));
-    function fs(t, px) { t.style.fontSize = (px * Math.min(1.35, k)).toFixed(1) + "px"; return t; }
-    var totalText = fs(svgText(c, c - 4 * k, fmtN(total), "donut-total"), 24), capText = fs(svgText(c, c + 16 * k, cap, "donut-cap"), 12),
-      pctText = fs(svgText(c, c + 33 * k, "100%", "donut-pct"), 11.5);
+    var nameMax = Math.max(7, Math.floor((2 * r - 20) / (12 * zoom + 1)));
+    function fs(t, px) { t.style.fontSize = (px * Math.min(1.35, zoom)).toFixed(1) + "px"; return t; }
+    var totalText = fs(svgText(c, c - 4 * zoom, fmtN(total), "donut-total"), 24), capText = fs(svgText(c, c + 16 * zoom, cap, "donut-cap"), 12),
+      pctText = fs(svgText(c, c + 33 * zoom, "100%", "donut-pct"), 11.5);
 
     // 가운데 숫자: from → to 로 0.3초 굴린다(움직임 줄이기 설정이면 바로)
-    var shown = total, rollId = 0;
+    var centerN = total, rollId = 0;
     function roll(to) {
-      var from = shown, id = ++rollId, t0 = performance.now(), dur = 300;
-      if (window.matchMedia("(prefers-reduced-motion: reduce)").matches || from === to) { shown = to; totalText.textContent = fmtN(to); return; }
+      var from = centerN, id = ++rollId, t0 = performance.now(), dur = 300;
+      if (window.matchMedia("(prefers-reduced-motion: reduce)").matches || from === to) { centerN = to; totalText.textContent = fmtN(to); return; }
       (function step(now) {
         if (id !== rollId) return;
         var k = Math.min(1, (now - t0) / dur), e = 1 - Math.pow(1 - k, 3);
-        shown = Math.round(from + (to - from) * e);
-        totalText.textContent = fmtN(shown);
+        centerN = Math.round(from + (to - from) * e);
+        totalText.textContent = fmtN(centerN);
         if (k < 1) requestAnimationFrame(step);
       })(t0);
     }
