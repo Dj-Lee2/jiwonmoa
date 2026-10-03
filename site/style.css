@@ -515,8 +515,9 @@ select { appearance: none; background-image: linear-gradient(45deg, transparent 
 .viz-card .viz-body.bottom { align-items: flex-end; }
 /* 그래프 움직임(app.js setupMotion): pending = 아직 화면 밖, play = 처음 들어옴, replay = 그래프만 다시 */
 @media (prefers-reduced-motion: no-preference) {
-  .viz-card.pending { opacity: 0; transform: translateY(24px); }
-  .viz-card.play { animation: card-in .6s cubic-bezier(.2, .7, .2, 1) both; --d0: 180ms; }
+  /* .home-block.pending/.play = 홈 맨 아래 '많이 찾는 지원사업' 칸(옆 목록 카드와 같은 등장) */
+  :is(.viz-card, .home-block).pending { opacity: 0; transform: translateY(24px); }
+  :is(.viz-card, .home-block).play { animation: card-in .6s cubic-bezier(.2, .7, .2, 1) both; --d0: 180ms; }
   .viz .bar { transform-box: fill-box; transform-origin: 50% 100%; }
   .viz svg.hb .bar { transform-origin: 0 50%; }
   .viz svg.hb .bar.flip { transform-origin: 100% 50%; } /* 나비 그래프 왼쪽 막대는 가운데에서 왼쪽으로 자란다 */
@@ -875,8 +876,8 @@ input[type="search"]:focus-visible, select:focus-visible { outline-offset: 0; bo
   .stat:active { scale: 0.98; }
 
   /* 그래프 카드 등장: 24px·.6s → 12px·400ms·흐림 4px */
-  .viz-card.pending { transform: translateY(12px); filter: blur(4px); }
-  .viz-card.play { animation: card-in-soft 400ms var(--ease-out) both; --d0: 120ms; }
+  :is(.viz-card, .home-block).pending { transform: translateY(12px); filter: blur(4px); }
+  :is(.viz-card, .home-block).play { animation: card-in-soft 400ms var(--ease-out) both; --d0: 120ms; }
 
   /* 홈 첫 화면: 제목 → 검색 → 숫자 타일 → 대상 칩 순으로 100ms 간격 */
   .home-hero > *, .home-stats, .who-card { animation: rise-in 400ms var(--ease-out) both; }

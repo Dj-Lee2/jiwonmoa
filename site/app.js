@@ -3028,6 +3028,14 @@
     // 넓은 화면(셋이 나란히)에서는 목록을 처음 5줄 높이로 맞추고 더 붙은 줄은 칸 안에서 스크롤
     [upcoming, newsvc].forEach(function (c) { fitListHeight(c.querySelector(".results"), c._expandable, WIDE_LISTS); }); // 막대 채우기보다 먼저
     [persona, months].forEach(fillCard);
+    // 많이 찾는 지원사업 칸(index.html에 고정)도 옆 목록 카드처럼 화면에 들어올 때 올라오며 나타난다.
+    // 새로 만들지 않는 칸이라 지난번 움직임 표시를 지우고 다시 맡긴다
+    var popBlock = bottom.querySelector(":scope > .home-block");
+    if (popBlock) {
+      popBlock.dataset.key = "pop";
+      popBlock.classList.remove("pending", "play", "replay");
+      cards = cards.concat(popBlock);
+    }
     setupMotion(cards);
     placeSegGliders(); // 글꼴이 온 뒤 그래프만 다시 그릴 때도 전환 단추 알약을 맞춘다
   }
