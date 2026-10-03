@@ -986,7 +986,10 @@ svg.has-pick .mark.picked .cell, svg.has-pick .mark.picked .bar { stroke: var(--
 .peek-note { margin: -4px 0 0; font-size: .8125rem; color: var(--muted); }
 .peek-more + .peek-more { margin-top: -4px; }
 /* 두 장 요약(홈 숫자 타일 '7일 안에 마감': 모집 공고 | 공공서비스). 휴대폰 시트에서는 위아래로 */
-.peek.pair:not(.sheet) { width: min(680px, calc(100vw - 24px)); }
+/* 숫자 타일 요약: 화면 가운데 창(뒤는 어둡게). 두 장이면 넓게. 휴대폰은 아래 시트(.sheet) */
+.peek.modal { position: fixed; left: 50%; top: 50%; translate: -50% -50%; width: min(420px, calc(100vw - 48px));
+  max-height: calc(100vh - 48px); overflow-y: auto; overscroll-behavior: contain; }
+.peek.modal.pair { width: min(760px, calc(100vw - 48px)); }
 .peek-cards { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 .peek-card { display: flex; flex-direction: column; gap: 12px; min-width: 0; padding: 14px; border-radius: 16px; box-shadow: inset 0 0 0 1px var(--line); }
 .peek-card .peek-more { margin-top: auto; }
@@ -995,10 +998,12 @@ svg.has-pick .mark.picked .cell, svg.has-pick .mark.picked .bar { stroke: var(--
 /* 요약 창을 연 숫자 타일 */
 .stat.picked { box-shadow: inset 0 0 0 2px var(--fg-strong); }
 @media (prefers-reduced-motion: no-preference) {
-  .peek:not(.sheet):not(.swap) { animation: peek-in .14s var(--ease-out); }
+  .peek:not(.sheet):not(.swap):not(.modal) { animation: peek-in .14s var(--ease-out); }
+  .peek.modal:not(.swap) { animation: modal-in .18s var(--ease-out); }
   .peek.sheet:not(.swap) { animation: sheet-in .24s var(--ease-drawer); }
   .peek-shade.on { animation: fade-in .2s ease-out; }
 }
+@keyframes modal-in { from { opacity: 0; scale: .97; } to { opacity: 1; scale: 1; } }
 @keyframes peek-in { from { opacity: 0; translate: 0 4px; } to { opacity: 1; translate: 0 0; } }
 @keyframes sheet-in { from { translate: 0 100%; } to { translate: 0 0; } }
 /* 그래프 위 안내 줄(13px → 15px). 손가락 아이콘은 3초마다 한 번 '톡' 누르는 시늉을 한다(눌렸다 올라오며 둥근 물결) */

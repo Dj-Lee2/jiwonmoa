@@ -1465,8 +1465,9 @@
       el("span", { className: "stat-label" }, mark, label, icon("arrow-right")),
       el("span", { className: "stat-of" }, el("span", null, el("span", { className: "of-what", text: ofLabel + " " }), fmtN(of) + "건 중"), el("span", { text: pct })),
       ticks);
-    // 누르면 바로 목록으로 가지 않고 그래프처럼 요약 창(openPeek)을 연다. 목록은 창의 '모두 보기'로
-    b.addEventListener("click", function () { openPeek("stat:" + label, b, onClick); });
+    // 누르면 바로 목록으로 가지 않고 화면 가운데 요약 창(openPeek "modal", 뒤는 어둡게)을 연다. 목록은 창의 '모두 보기'로.
+    // 휴대폰은 다른 요약과 같은 아래 시트
+    b.addEventListener("click", function () { openPeek("stat:" + label, b, onClick, null, "modal"); });
     return b;
   }
 
@@ -1783,7 +1784,7 @@
     if (!keepHistory && peekEntry()) { peekPopIgnore = true; history.back(); }
     var anchor = peekAnchor;
     peekBox.remove(); peekShade.remove();
-    peekBox = peekShade = null; peekKey = null; peekAnchor = null;
+    peekBox = peekShade = null; peekKey = null; peekAnchor = null; peekMode = null;
     document.body.classList.remove("peek-lock");
     document.querySelectorAll(".has-pick").forEach(function (n) { n.classList.remove("has-pick"); });
     document.querySelectorAll(".picked").forEach(function (n) { n.classList.remove("picked"); n.setAttribute("aria-expanded", "false"); });
@@ -1792,25 +1793,11 @@
 
   function placePeek() {
     if (!peekBox || !peekAnchor) return;
-    if (peekSheet()) { peekBox.style.left = peekBox.style.top = ""; return; }
+    // 휴대폰 시트·가운데 창은 자리를 style.css가 정한다
+    if (peekSheet() || peekMode === "modal") { peekBox.style.left = peekBox.style.top = ""; return; }
     var r = peekAnchor.getBoundingClientRect(), w = peekBox.offsetWidth, h = peekBox.offsetHeight, gap = 10;
     var vw = document.documentElement.clientWidth, vh = window.innerHeight;
     var left = Math.max(12, Math.min(vw - w - 12, r.left + r.width / 2 - w / 2)), top;
-    if (peekAnchor.classList.contains("stat")) {
-      // 숫자 타일: 늘 타일 줄 바로 아래(다른 타일을 가리지 않게 — 옆 타일을 눌러 바로 바꿔 볼 수 있다).
-      // 창이 화면 아래로 넘치면 타일이 보이는 만큼만 페이지를 내려 창이 다 보이게 한다
-      var tiles = (peekAnchor.parentNode || peekAnchor).getBoundingClientRect();
-      top = tiles.bottom + gap;
-      peekBox.style.left = Math.round(left + window.scrollX) + "px";
-      peekBox.style.top = Math.round(top + window.scrollY) + "px";
-      var over = top + h - (vh - 8);
-      if (over > 0 && !peekBox.dataset.placed) {
-        var calm = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-        window.scrollBy({ top: Math.min(over, Math.max(0, r.top - 64)), behavior: calm ? "auto" : "smooth" });
-      }
-      peekBox.dataset.placed = "1";
-      return;
-    }
     if (r.bottom + gap + h <= vh - 8) top = r.bottom + gap;          // 아래에 자리가 있으면 아래
     else if (r.top - gap - h >= 8) top = r.top - gap - h;            // 아니면 위
     else {
@@ -1897,12 +1884,14 @@
   }
 
   /* marks: 누른 것과 짝인 표시(도넛 조각 ↔ 목록 줄, 지도 지역 ↔ 순위 줄)도 같이 '고름'으로 칠한다 */
-  function openPeek(key, anchor, build, marks) {
+  /* mode "modal": 화면 가운데 창(뒤는 어둡게, 홈 숫자 타일). 없으면 누른 표시 옆에 뜨는 그래프 요약 */
+  var peekMode = null;
+  function openPeek(key, anchor, build, marks, mode) {
     if (peekKey === key) { closePeek(true); return; }
     var wasOpen = !!peekBox;
     closePeek(false, true); // 다른 표시로 바꿔 열 때는 기록을 그대로 쓴다
     $("#vizTip").hidden = true;
-    peekKey = key; peekAnchor = anchor;
+    peekKey = key; peekAnchor = anchor; peekMode = mode || null;
     [anchor].concat(marks || []).forEach(function (m) {
       if (!m) return;
       m.classList.add("picked");
@@ -1910,11 +1899,11 @@
       var box = m.closest("svg, ol");
       if (box) box.classList.add("has-pick");
     });
-    var sheet = peekSheet();
-    peekShade = el("div", { className: "peek-shade" + (sheet ? " on" : "") });
+    var sheet = peekSheet(), cover = sheet || peekMode === "modal";
+    peekShade = el("div", { className: "peek-shade" + (cover ? " on" : "") });
     peekShade.addEventListener("click", function () { closePeek(true); });
-    peekBox = el("div", { className: "peek" + (sheet ? " sheet" : "") + (wasOpen ? " swap" : ""), role: "dialog",
-      "aria-modal": sheet ? "true" : null, "aria-labelledby": "peekTitle", tabindex: "-1" });
+    peekBox = el("div", { className: "peek" + (sheet ? " sheet" : peekMode === "modal" ? " modal" : "") + (wasOpen ? " swap" : ""), role: "dialog",
+      "aria-modal": cover ? "true" : null, "aria-labelledby": "peekTitle", tabindex: "-1" });
     // Tab·Shift+Tab은 창 안에서만 돈다(뒤 화면으로 초점이 빠지지 않게)
     peekBox.addEventListener("keydown", function (e) {
       if (e.key !== "Tab") return;
@@ -1926,6 +1915,7 @@
     });
     document.body.append(peekShade, peekBox);
     if (sheet) { document.body.classList.add("peek-lock"); peekPushEntry(); }
+    else if (cover) document.body.classList.add("peek-lock"); // 가운데 창: 뒤 화면 스크롤 막기
     function fill(spec) {
       if (!peekBox || peekKey !== key) return;
       peekBox.classList.toggle("pair", !!spec.cards);
