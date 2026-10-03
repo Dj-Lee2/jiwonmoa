@@ -387,7 +387,12 @@ select { appearance: none; background-image: linear-gradient(45deg, transparent 
 .hero-search .field { margin: 0; min-width: 0; }
 .hero-go { min-height: 48px; padding: 0 36px; font-size: 1rem; }
 
-.home-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(168px, 1fr)); gap: 12px; margin-bottom: 44px; }
+/* 숫자 타일 6장: 넓은 화면 한 줄 6칸, 중간 3칸×2줄, 휴대폰 2칸×3줄(아래 639px) — 남는 칸 없이 */
+.home-stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin-bottom: 44px; }
+@media (min-width: 1180px) {
+  .home-stats { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+  .home-stats .stat-of .of-what { display: none; } /* 칸이 좁아 '무엇 중'은 숨기고 '901건 중'만(타일 이름·창에서 보임) */
+}
 .stat {
   display: flex; flex-direction: column; align-items: flex-start; gap: 2px; padding: 20px; border: 0; border-radius: 24px;
   background: var(--surface-hover); color: var(--fg-strong); cursor: pointer; text-align: left;
@@ -717,6 +722,9 @@ select { appearance: none; background-image: linear-gradient(45deg, transparent 
   .hero-title { font-size: 1.875rem; line-height: 1.33; }
   .home-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
   .stat { padding: 16px; border-radius: 20px; }
+  /* 휴대폰: 화살표는 숨기고(타일 전체가 단추) 이름 글자를 조금 좁게 */
+  .stat-label { gap: 3px; font-size: .9375rem; letter-spacing: -0.3px; }
+  .stat-label .ph-arrow-right { display: none; }
   .stat-num { font-size: 1.5rem; }
   .who-card { padding: 20px; }
   .tabs-inner { gap: 2px; }
@@ -919,6 +927,21 @@ html[data-boot="list"] #homePane { display: none !important; }
 
 /* 숫자 타일 눈금 막대(app.js statTile): 40칸 중 칠한 칸 = 전체 가운데 몫. 색은 아이콘과 같게, 공공서비스는 그래프와 같은 초록 */
 .stat-label .tone-green { color: var(--kind-svc); }
+/* 내 조건에 맞는 지원사업: 검정 = 내가 고른 것(색 체계) */
+.stat-label .tone-dark { color: var(--fg-strong); }
+/* 타일 이름은 늘 한 줄. 칸보다 길면(6칸 줄의 좁은 PC·320px·글자 크게) app.js fitStatLabels가
+ * 1 화살표 숨김(.tight) → 2 줄인 이름(.squeeze, '예산 소진'·'7일 안 마감' 등)으로 바꾼다 */
+.stat-label { max-width: 100%; white-space: nowrap; }
+.stat-label.tight .ph-arrow-right { display: none; }
+.stat-short { display: none; }
+.stat-label.squeeze .stat-full { display: none; }
+.stat-label.squeeze .stat-short { display: inline; }
+.stat-ticks.tone-dark { --c: var(--fg-strong); }
+.stat.me-empty .stat-num { display: inline-flex; align-items: center; gap: 6px; }
+.stat.me-empty .stat-num .ph { font-size: 1.5rem; }
+.stat.me-empty .stat-of span { min-width: 0; white-space: normal; overflow: visible; }
+.stat.me-empty .stat-ticks { visibility: hidden; }
+.me-quick { margin: 0; }
 .stat { width: 100%; }
 .stat-of { display: flex; justify-content: space-between; gap: 8px; width: 100%; margin-top: 10px; font-size: .75rem; line-height: 1.4; color: var(--muted); font-variant-numeric: tabular-nums; }
 .stat-of span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

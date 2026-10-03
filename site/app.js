@@ -35,7 +35,7 @@
   NOTICES.forEach(function (n) { byId.set(n.id, n); });
 
   var DEFAULT = { tab: "open", q: "", r: "", nat: true, au: [], st: [], src: [], pv: true,
-    tp: [], sp: [], cg: [], soon: false, nw: false, td: false, due: "", om: "", starts: "", ag: "", ic: "", sx: "", sort: "", id: "" };
+    tp: [], sp: [], cg: [], soon: false, nw: false, td: false, due: "", om: "", starts: "", fit: false, ag: "", ic: "", sx: "", sort: "", id: "" };
 
   /* 내 조건(나이·소득·성별): 공공서비스 대부분과 일부 공고가 가진 나이(na)·중위소득(ic)·성별(sx) 조건으로 거른다.
    * 조건이 없는 사업은 늘 남긴다. 이 기기 localStorage "hub-me"에 기억해 다음에 열어도 그대로 쓴다(서버로 보내지 않음).
@@ -492,6 +492,7 @@
     s.om = /^\d{4}-\d{2}$/.test(p.get("om") || "") ? p.get("om") : ""; // 접수를 시작한 달(홈 '공고는 언제 올라오나요?' 막대)
     s.nw = p.get("new") === "1";
     s.td = p.get("today") === "1"; // 출처 게시일이 마지막 수집일인 공고(홈 '오늘 올라온 공고')
+    s.fit = p.get("fit") === "1"; // 나이·소득·성별 조건이 적혀 있고 내 조건과 맞는 것만(홈 '내 조건에 맞는 지원사업')
     s.starts = ["soon", "later"].indexOf(p.get("starts")) >= 0 ? p.get("starts") : ""; // 접수 예정: 7일 안 시작 / 그 뒤
     // 내 조건: 주소에 있으면 그것(공유 링크), 없으면 이 기기에 기억한 것
     var me = cleanMe(p.has("age") || p.has("inc") || p.has("sex") ? { ag: p.get("age"), ic: p.get("inc"), sx: p.get("sex") } : loadMe());
@@ -519,6 +520,7 @@
       if (state.ic) p.set("inc", state.ic);
       if (state.sx) p.set("sex", state.sx);
       if (state.nw) p.set("new", "1");
+      if (state.fit) p.set("fit", "1");
       if (state.td) p.set("today", "1");
       if (state.starts) p.set("starts", state.starts);
       if (state.sp.length && state.tab === "services") p.set("sp", state.sp.join(","));
@@ -572,6 +574,7 @@
     return [state.ag ? state.ag + "세" : "", band ? (band.v === "50" ? band.label : "중위소득 " + band.label) : "",
       state.sx === "f" ? "여성" : state.sx === "m" ? "남성" : ""].filter(Boolean).join(" · ");
   }
+  function hasMe() { return !!(state.ag || state.ic || state.sx); }
   function saveMe() {
     try {
       if (state.ag || state.ic || state.sx) localStorage.setItem(ME_KEY, JSON.stringify({ ag: state.ag, ic: state.ic, sx: state.sx }));
@@ -591,6 +594,7 @@
     }
     if (state.au.length && !(item.pp || []).some(function (a) { return state.au.indexOf(a) >= 0; })) return false;
     if (!fitsMe(item)) return false;
+    if (state.fit && hasMe() && !(item.na || item.ic || item.sx)) return false; // 조건이 적힌 것만
     if (state.st.length && state.st.indexOf(statusOf(item)) < 0) return false;
     if (state.src.length && state.src.indexOf(item.src) < 0) return false;
     if (!state.pv && item.p) return false;
@@ -848,6 +852,7 @@
     if (state.om && isNoticeView()) add((+state.om.slice(5)) + "월 접수 시작", function () { state.om = ""; });
     if (state.nw && isNoticeView()) add("최근 " + RECENT_DAYS + "일 새 공고", function () { state.nw = false; });
     if (state.td && isNoticeView()) add(newDayLabel() + " 올라온 공고", function () { state.td = false; });
+    if (state.fit && hasMe()) add("나이·소득·성별 조건이 맞는 것만", function () { state.fit = false; });
     if (state.starts && isNoticeView()) add(state.starts === "soon" ? SOON_DAYS + "일 안 접수 시작" : SOON_DAYS + "일 뒤 접수 시작",
       function () { state.starts = ""; });
     state.cg.forEach(function (x) { add(x + " 분야", function () { remove("cg", x); }); });
@@ -1389,7 +1394,7 @@
       if (tab === "home") window.scrollTo({ top: 0, behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
       return;
     }
-    state = Object.assign({}, state, { tab: tab, st: [], src: [], sp: [], cg: [], soon: false, nw: false, td: false, due: "", om: "", starts: "", id: "" });
+    state = Object.assign({}, state, { tab: tab, st: [], src: [], sp: [], cg: [], soon: false, nw: false, td: false, due: "", om: "", starts: "", fit: false, id: "" });
     state.sort = defaultSort(state);
     applyView();
     if (tab === "home") {
@@ -1451,6 +1456,20 @@
   /* 숫자 타일 아래 눈금 막대: 전체(of) 가운데 이 숫자가 차지하는 몫을 40칸 중 칠한 칸으로 보인다.
    * 막대는 홈을 처음 그릴 때만 자라난다(지역을 바꿔 다시 그릴 때는 칸 수만 바뀐다) */
   var STAT_TICKS = 40, statsGrown = false, todayDueTab = "open";
+  // 타일 이름이 칸보다 길 때(320px 휴대폰·글자 크게) 쓸 줄인 이름. 화면 읽기는 늘 전체 이름(aria-label)
+  var STAT_SHORT = { "7일 안에 마감": "7일 안 마감", "예산 소진 시까지": "예산 소진", "내 조건에 맞음": "내 조건", "공공서비스": "서비스" };
+  /* 타일 이름이 한 줄에 다 들지 않으면 줄인 이름으로(.squeeze). 홈을 그린 뒤·글자 크기·창 크기가 바뀔 때 */
+  function fitStatLabels() {
+    document.querySelectorAll("#homeStats .stat-label").forEach(function (l) {
+      var tile = l.closest(".stat"), cs = getComputedStyle(tile);
+      var room = tile.clientWidth - (parseFloat(cs.paddingLeft) || 0) - (parseFloat(cs.paddingRight) || 0);
+      l.classList.remove("tight", "squeeze");
+      if (!room) return; // 홈이 가려져 잴 수 없으면 다음에
+      if (l.scrollWidth > room + 1) l.classList.add("tight");
+      if (l.scrollWidth > room + 1 && l.querySelector(".stat-short")) l.classList.add("squeeze");
+    });
+  }
+  window.addEventListener("resize", fitStatLabels);
   function statTile(num, label, iconName, onClick, tone, of, ofLabel) {
     var mark = icon(iconName);
     mark.classList.add("tone-" + tone);
@@ -1462,13 +1481,133 @@
     var b = el("button", { type: "button", className: "stat", "aria-haspopup": "dialog", "aria-expanded": "false",
       "aria-label": label + " " + fmtN(num) + "건, " + ofLabel + " " + fmtN(of) + "건 중 " + pct + ". 누르면 요약을 봅니다" },
       el("span", { className: "stat-num", text: fmtN(num) }),
-      el("span", { className: "stat-label" }, mark, label, icon("arrow-right")),
+      el("span", { className: "stat-label" }, mark,
+        STAT_SHORT[label] ? el("span", { className: "stat-full", text: label }) : label,
+        STAT_SHORT[label] ? el("span", { className: "stat-short", "aria-hidden": "true", text: STAT_SHORT[label] }) : null,
+        icon("arrow-right")),
       el("span", { className: "stat-of" }, el("span", null, el("span", { className: "of-what", text: ofLabel + " " }), fmtN(of) + "건 중"), el("span", { text: pct })),
       ticks);
     // 누르면 바로 목록으로 가지 않고 화면 가운데 요약 창(openPeek "modal", 뒤는 어둡게)을 연다. 목록은 창의 '모두 보기'로.
     // 휴대폰은 다른 요약과 같은 아래 시트
     b.addEventListener("click", function () { openPeek("stat:" + label, b, onClick, null, "modal"); });
     return b;
+  }
+
+  /* ---------- 내 조건에 맞는 지원사업(홈 숫자 타일) ----------
+   * 나이·소득·성별 조건이 '적혀 있고' 내 조건과 맞는 것만 센다(조건 없는 사업은 누구나라 세지 않음). 고른 지역 기준.
+   * 공공서비스는 data/me.js(build_site.py me_index — 조건 있는 7천여 개만 짧게, 약 80KB)를 내 조건이 있을 때만 읽는다.
+   * 내 조건이 없으면 타일이 '입력'으로 보이고, 누르면 가운데 창에서 바로 넣는다(목록 '조건'의 내 조건과 같은 값, 이 기기에만 기억) */
+  var meRows = null;
+  function ensureMe() {
+    if (meRows) return Promise.resolve(meRows);
+    return loadScript("data/me.js").then(function () {
+      var d = window.HUB_ME || { rows: [] };
+      meRows = d.rows.map(function (r) {
+        var o = { k: "s", src: "gov24", na: r[0] || null, ic: r[1] || null, sx: r[2] || null,
+          rg: r[3].map(function (i) { return d.rgs[i]; }), cat: d.cats[r[4]], pp: r[5].map(function (i) { return d.pps[i]; }), vw: r[6] };
+        if (r.length > 7) { o.id = "gov24:" + r[7]; o.t = r[8]; o.ag = r[9]; }
+        return o;
+      });
+      return meRows;
+    });
+  }
+  function meFits(it) { return (it.na || it.ic || it.sx) && fitsMe(it) && inRegion(it); }
+  function meTile(live) {
+    if (!hasMe()) {
+      var b0 = el("button", { type: "button", className: "stat me-empty", "aria-haspopup": "dialog", "aria-expanded": "false",
+        "aria-label": "내 조건에 맞는 지원사업. 나이·소득·성별을 넣으면 세어 드립니다" },
+        el("span", { className: "stat-num" }, icon("user-circle-plus"), el("span", { text: "입력" })),
+        el("span", { className: "stat-label" }, icon("user-circle-check"), el("span", { className: "stat-full", text: "내 조건에 맞음" }),
+          el("span", { className: "stat-short", "aria-hidden": "true", text: "내 조건" }), icon("arrow-right")),
+        el("span", { className: "stat-of" }, el("span", { text: "나이·소득을 넣어 보세요" })),
+        el("span", { className: "stat-ticks", "aria-hidden": "true" }));
+      b0.querySelector(".stat-label .ph-user-circle-check").classList.add("tone-dark");
+      b0.addEventListener("click", function () { openPeek("stat:me", b0, meFormSpec, null, "modal"); });
+      return b0;
+    }
+    if (!meRows) {
+      // me.js를 받는 동안은 자리만(받으면 이 타일만 바꾼다 — 홈 전체를 다시 그리면 그래프가 다시 움직이므로)
+      var wait = el("div", { className: "stat stat-sk", "aria-hidden": "true" },
+        el("span", { className: "stat-num", text: "0" }), el("span", { className: "stat-label", text: "0" }),
+        el("span", { className: "stat-of" }, el("span", { text: "0" })), el("span", { className: "stat-ticks" }));
+      ensureMe().then(function () { if (wait.isConnected) { wait.replaceWith(meTile(homeLive())); fitStatLabels(); } },
+        function () { if (wait.isConnected) wait.replaceWith(el("div", { className: "stat stat-sk" })); });
+      return wait;
+    }
+    var nFit = live.filter(meFits), sFit = meRows.filter(meFits);
+    var withCond = live.filter(function (n) { return n.na || n.ic || n.sx; }).length +
+      meRows.filter(function (s) { return inRegion(s); }).length;
+    // 타일 이름은 한 줄에 들도록 '내 조건에 맞음'(창 제목·화면 읽기는 '내 조건에 맞는 지원사업')
+    var b = statTile(nFit.length + sFit.length, "내 조건에 맞음", "user-circle-check", function () {
+      return mePairSpec(nFit, sFit);
+    }, "dark", withCond, "조건 있는 지원사업");
+    b.setAttribute("aria-label", b.getAttribute("aria-label").replace("내 조건에 맞음", "내 조건(" + meLabel() + ")에 맞는 지원사업"));
+    b.querySelector(".stat-of span").replaceChildren(el("span", { className: "of-what", text: meLabel() + " · " }),
+      fmtN(withCond) + "건 중");
+    return b;
+  }
+  /* 내 조건이 있을 때 요약: 모집 공고 | 공공서비스 두 장 + '조건 바꾸기' */
+  function mePairSpec(nFit, sFit) {
+    var svcCard = { label: "공공서비스", kind: "svc", n: sFit.length,
+      groups: [{ label: "분야", rows: topN(countBy(sFit, function (i) { return i.cat; })) },
+        { label: "대상", rows: topN(countBy(sFit, function (i) { return i.pp; })) },
+        { label: "지역", rows: topN(countBy(sFit, function (i) { return i.rg; })) }],
+      items: mostViewed(sFit.filter(function (i) { return i.t; })), itemsLabel: "많이 본 서비스",
+      more: sFit.length ? { label: fmtN(sFit.length) + "건 모두 보기", go: function () { goTo({ tab: "services", fit: true, sort: "name" }); } } : null };
+    if (!sFit.length) { svcCard.note = "조건이 맞는 공공서비스가 없습니다."; svcCard.groups = []; }
+    var change = el("button", { type: "button", className: "btn gray peek-more" }, icon("pencil-simple"), "내 조건 바꾸기");
+    change.addEventListener("click", function (e) {
+      e.stopPropagation(); // 바로 연 입력 창을 '창 밖을 눌렀다'로 보고 닫지 않게(누른 단추는 앞 창과 함께 사라진다)
+      closePeek(false, true);
+      var t = document.querySelector("#homeStats .stat:last-child");
+      if (t) openPeek("stat:me-edit", t, meFormSpec, null, "modal");
+    });
+    return { title: regionPrefix() + "내 조건에 맞는 지원사업", sub: meLabel() + " · 나이·소득·성별 조건이 적혀 있고 맞는 것(조건 없는 사업은 빼고 셈)",
+      cards: [statCard(nFit, "모집 공고", false, function () { goTo({ tab: "open", fit: true }); }, "나이 조건이 맞는 모집 공고가 없습니다."), svcCard],
+      foot: [change] };
+  }
+  /* 내 조건 넣기(가운데 창): 나이·소득·성별. 저장하면 목록 '조건'의 내 조건에도 같이 쓰인다 */
+  function meFormSpec() {
+    var age = el("input", { type: "text", inputmode: "numeric", pattern: "[0-9]*", maxlength: "3", placeholder: "예: 34", autocomplete: "off",
+      id: "meQuickAge", value: state.ag || "" });
+    var inc = el("select", { id: "meQuickInc" }, el("option", { value: "", text: "모름·상관없음" }));
+    INCOME_BANDS.forEach(function (bd) { inc.append(el("option", { value: bd.v, text: bd.v === "50" ? bd.label : "중위소득 " + bd.label })); });
+    inc.value = state.ic || "";
+    var sx = state.sx;
+    var sexBox = el("div", { className: "me-row", role: "group", "aria-label": "성별" }, el("span", { className: "me-k", text: "성별" }));
+    [["f", "여성"], ["m", "남성"]].forEach(function (o) {
+      var bt = el("button", { type: "button", className: "chip sm", "aria-pressed": String(sx === o[0]), text: o[1] });
+      bt.addEventListener("click", function () {
+        sx = sx === o[0] ? "" : o[0];
+        sexBox.querySelectorAll("button").forEach(function (x, i) { x.setAttribute("aria-pressed", String(sx === ["f", "m"][i])); });
+      });
+      sexBox.append(bt);
+    });
+    var save = el("button", { type: "button", className: "btn dark peek-more" }, "내 조건으로 세어 보기", icon("arrow-right"));
+    save.addEventListener("click", function () {
+      var v = age.value.replace(/\D/g, "").slice(0, 3);
+      state.ag = v && +v <= 120 ? String(+v) : "";
+      state.ic = inc.value; state.sx = sx;
+      saveMe();
+      closePeek(false, true);
+      renderHome();
+      if (hasMe()) ensureMe().then(function () {
+        var t = document.querySelector("#homeStats .stat:last-child");
+        if (t && !t.classList.contains("stat-sk")) t.click(); // 센 결과를 바로 보여 준다
+      });
+    });
+    var clear = null;
+    if (hasMe()) {
+      clear = el("button", { type: "button", className: "btn gray peek-more", text: "내 조건 지우기" });
+      clear.addEventListener("click", function () { state.ag = state.ic = state.sx = ""; saveMe(); closePeek(true); renderHome(); });
+    }
+    return { title: "내 조건에 맞는 지원사업", sub: "나이·소득·성별을 넣으면 조건이 맞는 지원사업을 세어 드려요",
+      custom: [el("div", { className: "me-box me-quick" },
+        el("div", { className: "me-row" }, el("label", { className: "me-field", "for": "meQuickAge" }, el("span", { className: "me-k", text: "나이" }), age, el("em", { text: "세" }))),
+        el("div", { className: "me-row" }, el("label", { className: "me-field grow", "for": "meQuickInc" }, el("span", { className: "me-k", text: "소득" }), inc)),
+        sexBox,
+        el("p", { className: "me-note" }, icon("lock-simple"), " 이 기기에만 기억돼요(서버로 보내지 않음). 목록의 '내 조건'에도 같이 쓰여요.")),
+        save, clear].filter(Boolean) };
   }
 
   /* 숫자 타일 요약 창 한 장: 모집 공고 묶음(분야·대상·지역 + 많이 본 3건). 0건이면 '모두 보기' 없이 안내만 */
@@ -1525,6 +1664,7 @@
     var soonN = live.filter(isSoon), soonS = dueSvc.filter(isSoon);
     var laterN = live.filter(function (n) { return statusOf(n) === "접수 예정" && !startsSoon(n); });
     var budgetN = live.filter(function (n) { return statusOf(n) === "소진 시까지"; });
+    var alwaysN = live.filter(function (n) { return statusOf(n) === "상시"; });
     var where = regionPrefix();
     $("#homeStats").replaceChildren(
       statTile(soonAll.length, "7일 안에 마감", "clock", function () {
@@ -1542,9 +1682,16 @@
         return noticePeek(budgetN, where + "예산 소진 시까지 받는 모집 공고", "마감일 없이 예산이 다 쓰이면 끝나는 공고",
           { label: fmtN(budgetN.length) + "건 모두 보기", go: function () { goTo({ tab: "open", st: ["소진 시까지"] }); } }, null);
       }, "blue", live.length, "모집 공고"),
+      // 상시 접수: 마감일 없이 늘 받는 모집 공고(홈 어디에도 숫자로 안 보이던 묶음)
+      statTile(alwaysN.length, "상시 접수", "infinity", function () {
+        return noticePeek(alwaysN, where + "상시 접수하는 모집 공고", "마감일 없이 늘 신청을 받는 공고",
+          { label: fmtN(alwaysN.length) + "건 모두 보기", go: function () { goTo({ tab: "open", st: ["상시"] }); } }, null);
+      }, "blue", live.length, "모집 공고"),
       statTile(svcN, "공공서비스", "hand-heart", function () {
         return servicePeek("all", { title: where + "공공서비스", n: svcN, more: {} });
-      }, "green", live.length + svcN, "전체 지원사업"));
+      }, "green", live.length + svcN, "전체 지원사업"),
+      meTile(live));
+    fitStatLabels();
     if (!statsGrown) { $("#homeStats").classList.add("grow"); statsGrown = true; }
     else $("#homeStats").classList.remove("grow");
 
@@ -1827,6 +1974,7 @@
       el("div", null, el("p", { className: "peek-title", id: "peekTitle", text: spec.title }),
         spec.sub ? el("p", { className: "peek-sub", text: spec.sub }) : null),
       close);
+    if (spec.custom) return [head].concat(spec.custom);
     if (spec.cards) {
       var pair = el("div", { className: "peek-cards" });
       spec.cards.forEach(function (c) {
@@ -1835,7 +1983,7 @@
         peekSection(c).filter(Boolean).forEach(function (n) { box.append(n); });
         pair.append(box);
       });
-      return [head, pair];
+      return [head, pair].concat(spec.foot || []);
     }
     return [head].concat(peekSection(spec));
   }
@@ -1913,7 +2061,7 @@
     // Tab·Shift+Tab은 창 안에서만 돈다(뒤 화면으로 초점이 빠지지 않게)
     peekBox.addEventListener("keydown", function (e) {
       if (e.key !== "Tab") return;
-      var f = [].slice.call(peekBox.querySelectorAll("button, a[href]")).filter(function (n) { return !n.disabled; });
+      var f = [].slice.call(peekBox.querySelectorAll("button, a[href], input, select")).filter(function (n) { return !n.disabled; });
       if (!f.length) { e.preventDefault(); return; }
       var first = f[0], last = f[f.length - 1], at = document.activeElement;
       if (e.shiftKey && (at === first || at === peekBox)) { e.preventDefault(); last.focus(); }
@@ -3443,6 +3591,7 @@
       fontBtn.setAttribute("aria-pressed", String(large));
       fontBtn.querySelector("span").textContent = large ? "글자 보통" : "글자 크게";
       fitTabs(); // 기억해 둔 '글자 크게'로 시작할 때도 탭 줄을 큰 글자 기준으로 다시 맞춘다
+      fitStatLabels();
     }
     try { applyFont(localStorage.getItem("hub-size") === "large"); } catch (e) { applyFont(false); }
     fontBtn.addEventListener("click", function () {
@@ -3464,7 +3613,7 @@
     bindFooter();
     applyView();
     // 웹 글꼴이 오면 가로 막대 이름 칸 폭을 다시 재도록 한 번 더 그린다(움직임은 이 뒤에 시작)
-    fontsReady.then(function () { fitTabs(); if (state.tab === "home") renderCharts(homeLive()); });
+    fontsReady.then(function () { fitTabs(); fitStatLabels(); if (state.tab === "home") renderCharts(homeLive()); });
     if (state.tab === "home") {
       renderHome();
       renderDetail();

@@ -366,6 +366,35 @@ def due_services(services, today):
     return [{k: i[k] for k in keys if k in i} for i in picked]
 
 
+ME_TITLES = 1500  # 홈 '내 조건에 맞는 지원사업' 요약 창 '많이 본 서비스'에 쓸 제목: 조회수 상위만(파일을 작게)
+
+
+def me_index(services):
+    """홈 숫자 타일 '내 조건에 맞는 지원사업'용: 나이·소득·성별 조건이 있는 공공서비스만 짧게(data/me.js, 내 조건이 있을 때만 읽음).
+
+    홈에서 큰 목록(services.js, 약 5MB)을 읽지 않고 조건 맞는 수와 분야·대상·지역 요약을 세려고 미리 뽑는다.
+    반환: {"rgs": [지역], "cats": [분야], "pps": [대상], "rows": [[나이, 소득, 성별, [지역 번호], 분야 번호, [대상 번호], 조회수(, id, 제목, 기관)]]}
+    나이·소득은 [시작, 끝] 또는 0, 성별은 "f"|"m" 또는 0. 제목은 조회수 상위 ME_TITLES개에만 붙인다.
+    """
+    lim = [i for i in services if i.get("na") or i.get("ic") or i.get("sx")]
+    named = {i["id"] for i in sorted(lim, key=lambda i: (-(i.get("vw") or 0), i["id"]))[:ME_TITLES]}
+    rgs, cats, pps = [], [], []
+
+    def idx(lst, v):
+        if v not in lst:
+            lst.append(v)
+        return lst.index(v)
+
+    rows = []
+    for i in lim:
+        row = [i.get("na") or 0, i.get("ic") or 0, i.get("sx") or 0, [idx(rgs, r) for r in i.get("rg") or []],
+               idx(cats, i.get("cat") or ""), [idx(pps, p) for p in i.get("pp") or []], i.get("vw") or 0]
+        if i["id"] in named:
+            row += [i["id"].split(":", 1)[1], i["t"], i.get("ag") or ""]
+        rows.append(row)
+    return {"rgs": rgs, "cats": cats, "pps": pps, "rows": rows}
+
+
 PEEK_TOP = 3
 
 
@@ -544,7 +573,7 @@ def main():
     paths = [write_js("meta", "HUB_META", meta), write_js("notices", "HUB_NOTICES", notices),
              write_js("notices-text", "HUB_NOTICE_TEXT", notice_text),
              write_js("services", "HUB_SERVICES", services), write_js("history", "HUB_HISTORY", history),
-             write_js("peek", "HUB_PEEK", service_peek(services))]
+             write_js("peek", "HUB_PEEK", service_peek(services)), write_js("me", "HUB_ME", me_index(services))]
     detail_dir = SITE_DATA / "sd"
     detail_dir.mkdir(parents=True, exist_ok=True)
     for i, chunk in enumerate(buckets):

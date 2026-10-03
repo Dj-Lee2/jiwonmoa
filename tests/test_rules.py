@@ -337,6 +337,25 @@ class DueServicesTest(unittest.TestCase):
         self.assertEqual(out[1]["rg"], ["서울"])
 
 
+class MeIndexTest(unittest.TestCase):
+    """홈 '내 조건에 맞는 지원사업' 자료: 나이·소득·성별 조건이 있는 공공서비스만, 번호로 줄이고 조회수 상위에만 제목."""
+
+    def test_me_index(self):
+        s = [
+            {"id": "gov24:1", "t": "청년", "ag": "가", "na": [19, 34], "rg": ["서울"], "cat": "고용", "pp": ["청년"], "vw": 9},
+            {"id": "gov24:2", "t": "조건 없음", "rg": ["전국"], "cat": "고용", "vw": 99},
+            {"id": "gov24:3", "t": "여성", "sx": "f", "ic": [0, 100], "rg": ["전국"], "cat": "보건", "vw": 1},
+        ]
+        out = build_site.me_index(s)
+        self.assertEqual(len(out["rows"]), 2)
+        first = out["rows"][0]
+        self.assertEqual(first[:3], [[19, 34], 0, 0])
+        self.assertEqual(out["rgs"][first[3][0]], "서울")
+        self.assertEqual(out["pps"][first[5][0]], "청년")
+        self.assertEqual(first[7:], ["1", "청년", "가"])
+        self.assertEqual(out["rows"][1][:3], [0, [0, 100], "f"])
+
+
 class SecurityHeaderTest(unittest.TestCase):
     """첫 화면 인라인 스크립트를 고치면 CSP의 sha256도 함께 바꿔야 한다(안 그러면 운영에서 스크립트가 막힌다)."""
 
