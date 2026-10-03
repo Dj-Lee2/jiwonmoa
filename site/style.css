@@ -403,9 +403,17 @@ select { appearance: none; background-image: linear-gradient(45deg, transparent 
 .home-grid .home-block { border-radius: 24px; padding: 24px; background: var(--canvas); box-shadow: var(--shadow-border); min-width: 0; }
 .home-grid .results { border-top-width: 1px; }
 .home-grid .row { padding: 12px 4px; }
-/* 곧 올라올 수 있는 공고: 홈 맨 아래(목록 3개 다음), 한 줄 전체 */
-.home-upcoming { margin-top: 44px; }
+/* 홈 맨 아래 카드 셋(곧 올라올 수 있는 공고 · 곧 접수가 시작되는 공고 · 새로 생긴 상시 제도): 넓은 화면은 나란히,
+ * 목록 3개(.home-grid)와 같은 틀 — 세 칸 높이를 같게, '더 보기'는 바닥에 */
+.home-upcoming { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; margin-top: 16px; }
 .home-upcoming:empty { display: none; }
+.home-upcoming .viz-card .viz-body { flex: 1 0 auto; }
+.home-upcoming .viz-card .viz-body .results { margin-bottom: 16px; }
+.home-upcoming .viz-card .btn.more { width: 100%; }
+@media (min-width: 1100px) {
+  .home-upcoming { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .home-upcoming .row-main { min-height: 4.85rem; }
+}
 .block-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 16px; }
 .block-head h3 { display: flex; align-items: center; gap: 8px; margin: 0; font-size: 1.25rem; font-weight: 700; color: var(--fg-strong); }
 .more-link { display: inline-flex; align-items: center; gap: 4px; border: 0; background: none; padding: 6px 4px; cursor: pointer; font-weight: 700; color: var(--fg-strong); }

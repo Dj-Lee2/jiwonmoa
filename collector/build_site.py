@@ -337,6 +337,22 @@ def top_services(services, n=TOP_MAX):
     return out
 
 
+NEW_SERVICE_DAYS = 30  # 홈 '새로 생긴 상시 제도': 최근 30일 안에 처음 보인 제도
+NEW_SERVICE_MAX = 40
+
+
+def new_services(services, first_day, today):
+    """홈 '새로 생긴 상시 제도': 보조금24에 새로 등록돼 이 사이트가 처음 본 날(fs)이 최근 30일 안인 제도, 새것부터.
+
+    첫 수집 날(first_day)은 모두가 처음이라 빼고 센다. 홈에서 큰 목록(services.js)을 읽지 않으려고 미리 뽑는다.
+    반환: [{id, src, k, t, ag, py, pt, s, e, rg, vw, fs}, …]
+    """
+    since = (today - datetime.timedelta(days=NEW_SERVICE_DAYS)).isoformat()
+    picked = [i for i in services if i.get("fs") and i["fs"] != first_day and i["fs"] >= since]
+    picked.sort(key=lambda i: (i["fs"], i.get("vw") or 0, i["id"]), reverse=True)
+    return [dict({k: i[k] for k in TOP_KEYS if k in i}, fs=i["fs"]) for i in picked[:NEW_SERVICE_MAX]]
+
+
 PEEK_TOP = 3
 
 
@@ -500,6 +516,7 @@ def main():
         "openMonths": open_months(rows, datetime.date.today()),
         "topServices": top_services(services),
         "upcoming": upcoming_calls(rows, datetime.date.today()),
+        "newServices": new_services(services, first_day, datetime.date.today()),
         "personas": PERSONAS,
         "supports": SUPPORTS,
         "serviceCats": service_cats(services),

@@ -35,7 +35,7 @@
   NOTICES.forEach(function (n) { byId.set(n.id, n); });
 
   var DEFAULT = { tab: "open", q: "", r: "", nat: true, au: [], st: [], src: [], pv: true,
-    tp: [], sp: [], cg: [], soon: false, nw: false, td: false, due: "", om: "", ag: "", ic: "", sx: "", sort: "", id: "" };
+    tp: [], sp: [], cg: [], soon: false, nw: false, td: false, due: "", om: "", starts: "", ag: "", ic: "", sx: "", sort: "", id: "" };
 
   /* 내 조건(나이·소득·성별): 상시 제도 대부분과 일부 공고가 가진 나이(na)·중위소득(ic)·성별(sx) 조건으로 거른다.
    * 조건이 없는 사업은 늘 남긴다. 이 기기 localStorage "hub-me"에 기억해 다음에 열어도 그대로 쓴다(서버로 보내지 않음).
@@ -149,6 +149,11 @@
 
   function isSoon(item) {
     return statusOf(item) === "접수 중" && item.e && daysBetween(today, item.e) <= SOON_DAYS;
+  }
+  /* 곧 접수 시작: 접수 예정 중 7일 안에 시작하는 공고(홈 맨 아래 '곧 접수가 시작되는 공고' 카드).
+   * 홈 숫자 타일 '접수 예정'은 이 공고들을 빼고 그 뒤에 시작하는 것만 센다(같은 공고가 두 곳에 나오지 않게, 형님 지시) */
+  function startsSoon(item) {
+    return statusOf(item) === "접수 예정" && item.s && daysBetween(today, item.s) <= SOON_DAYS;
   }
 
   /* 출처에 올라온 날(pd)이 오늘부터 days일 안인가. 앞으로 접수가 시작될 날짜는 넣지 않는다 */
@@ -485,7 +490,8 @@
     s.due = /^\d{4}-\d{2}-\d{2}~\d{4}-\d{2}-\d{2}$/.test(p.get("due") || "") ? p.get("due") : "";
     s.om = /^\d{4}-\d{2}$/.test(p.get("om") || "") ? p.get("om") : ""; // 접수를 시작한 달(홈 '공고는 언제 올라오나요?' 막대)
     s.nw = p.get("new") === "1";
-    s.td = p.get("today") === "1"; // 마지막 수집에서 처음 들어온 공고(홈 '오늘 새 공고')
+    s.td = p.get("today") === "1"; // 출처 게시일이 마지막 수집일인 공고(홈 '오늘 올라온 공고')
+    s.starts = ["soon", "later"].indexOf(p.get("starts")) >= 0 ? p.get("starts") : ""; // 접수 예정: 7일 안 시작 / 그 뒤
     // 내 조건: 주소에 있으면 그것(공유 링크), 없으면 이 기기에 기억한 것
     var me = cleanMe(p.has("age") || p.has("inc") || p.has("sex") ? { ag: p.get("age"), ic: p.get("inc"), sx: p.get("sex") } : loadMe());
     s.ag = me.ag; s.ic = me.ic; s.sx = me.sx;
@@ -513,6 +519,7 @@
       if (state.sx) p.set("sex", state.sx);
       if (state.nw) p.set("new", "1");
       if (state.td) p.set("today", "1");
+      if (state.starts) p.set("starts", state.starts);
       if (state.sp.length && state.tab === "services") p.set("sp", state.sp.join(","));
       if (state.cg.length && state.tab !== "home") p.set("cat", state.cg.join(","));
       if (state.sort !== defaultSort(state)) p.set("sort", state.sort);
@@ -591,6 +598,7 @@
     if (!skipSoon && state.soon && isNoticeView() && !isSoon(item)) return false;
     if (state.nw && isNoticeView() && !postedWithin(item, RECENT_DAYS)) return false;
     if (state.td && isNoticeView() && !isTodayNew(item)) return false;
+    if (state.starts && isNoticeView() && (statusOf(item) !== "접수 예정" || startsSoon(item) !== (state.starts === "soon"))) return false;
     if (state.sp.length && state.tab === "services" &&
         !(item.sp || []).some(function (x) { return state.sp.indexOf(x) >= 0; })) return false;
     if (state.cg.length && state.cg.indexOf(fieldOf(item)) < 0) return false;
@@ -807,6 +815,8 @@
     if (state.om && isNoticeView()) add((+state.om.slice(5)) + "월 접수 시작", function () { state.om = ""; });
     if (state.nw && isNoticeView()) add("최근 " + RECENT_DAYS + "일 새 공고", function () { state.nw = false; });
     if (state.td && isNoticeView()) add(newDayLabel() + " 올라온 공고", function () { state.td = false; });
+    if (state.starts && isNoticeView()) add(state.starts === "soon" ? SOON_DAYS + "일 안 접수 시작" : SOON_DAYS + "일 뒤 접수 시작",
+      function () { state.starts = ""; });
     state.cg.forEach(function (x) { add(x + " 분야", function () { remove("cg", x); }); });
     if (state.tab === "services") state.sp.forEach(function (x) { add(x + " 지원", function () { remove("sp", x); }); });
     state.au.forEach(function (a) {
@@ -919,7 +929,7 @@
 
   function activeFilterCount() {
     return (state.q ? 1 : 0) + (state.r ? 1 : 0) + state.au.length + state.st.length + state.src.length +
-      (state.pv ? 0 : 1) + (agriSelected() ? state.tp.length : 0) + (state.soon ? 1 : 0) + (state.due ? 1 : 0) + (state.om ? 1 : 0) + (state.nw ? 1 : 0) + (state.td ? 1 : 0) +
+      (state.pv ? 0 : 1) + (agriSelected() ? state.tp.length : 0) + (state.soon ? 1 : 0) + (state.due ? 1 : 0) + (state.om ? 1 : 0) + (state.nw ? 1 : 0) + (state.td ? 1 : 0) + (state.starts ? 1 : 0) +
       (state.ag || state.ic || state.sx ? 1 : 0) +
       state.cg.length + (state.tab === "services" ? state.sp.length : 0);
   }
@@ -1344,7 +1354,7 @@
       if (tab === "home") window.scrollTo({ top: 0, behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
       return;
     }
-    state = Object.assign({}, state, { tab: tab, st: [], src: [], sp: [], cg: [], soon: false, nw: false, td: false, due: "", om: "", id: "" });
+    state = Object.assign({}, state, { tab: tab, st: [], src: [], sp: [], cg: [], soon: false, nw: false, td: false, due: "", om: "", starts: "", id: "" });
     state.sort = defaultSort(state);
     applyView();
     if (tab === "home") {
@@ -1462,8 +1472,9 @@
     $("#homeStats").replaceChildren(
       statTile(live.filter(isSoon).length, "7일 안에 마감", "clock",
         function () { goTo({ tab: "open", soon: true }); }, "red", live.length, "모집 공고"),
-      statTile(byStatus["접수 예정"] || 0, "접수 예정", "calendar-check",
-        function () { goTo({ tab: "open", st: ["접수 예정"] }); }, "blue", live.length, "모집 공고"),
+      // 접수 예정: 7일 안에 시작하는 공고는 홈 맨 아래 '곧 접수가 시작되는 공고'에서 보이므로 그 뒤에 시작하는 것만
+      statTile(live.filter(function (n) { return statusOf(n) === "접수 예정" && !startsSoon(n); }).length, "접수 예정", "calendar-check",
+        function () { goTo({ tab: "open", starts: "later", sort: "deadline" }); }, "blue", live.length, "모집 공고"),
       statTile(byStatus["소진 시까지"] || 0, "예산 소진 시까지", "hourglass-medium",
         function () { goTo({ tab: "open", st: ["소진 시까지"] }); }, "blue", live.length, "모집 공고"),
       statTile(svcN, "상시 제도", "hand-heart",
@@ -2880,6 +2891,48 @@
     return card;
   }
 
+  /* 홈 맨 아래 목록 카드(곧 접수가 시작되는 공고·새로 생긴 상시 제도). 처음 5개, '더 보기'로 10개씩 */
+  var bottomShown = { starts: HOME_FIRST, newsvc: HOME_FIRST };
+  function bottomListCard(key, title, sub, items, makeRow, emptyText, allBtn) {
+    var list = el("ul", { className: "results bottom-list", dataset: { list: key } });
+    fillList(list, items.slice(0, bottomShown[key]).map(makeRow), emptyText);
+    var foot = null;
+    if (items.length > bottomShown[key]) {
+      var more = el("button", { type: "button", className: "btn gray more", text: "더 보기 (" + fmtN(items.length - bottomShown[key]) + "건 더)" });
+      more.addEventListener("click", function () {
+        var prev = bottomShown[key], top = list.scrollTop;
+        bottomShown[key] += HOME_STEP;
+        renderHome();
+        var ul = document.querySelector('#homeUpcoming [data-list="' + key + '"]');
+        if (ul) revealNew(ul, prev, top, ul.closest(".viz-card").querySelector(".more"));
+      });
+      foot = el("div", null, more);
+    }
+    var card = vizCard(title, sub, list, foot, allBtn);
+    card.classList.add("list-card");
+    card._expandable = items.length > HOME_FIRST;
+    return card;
+  }
+
+  // 곧 접수가 시작되는 공고: 접수 예정 중 7일 안에 시작하는 모집 공고, 시작이 빠른 순(지역 반영)
+  function startsSoonCard(live) {
+    var items = live.filter(startsSoon).sort(function (a, b) { return a.s.localeCompare(b.s) || a.t.localeCompare(b.t, "ko"); });
+    var all = el("button", { type: "button", className: "more-link" }, "전체 보기", icon("arrow-right"));
+    all.addEventListener("click", function () { goTo({ tab: "open", starts: "soon" }); });
+    return bottomListCard("starts", "곧 접수가 시작되는 공고",
+      SOON_DAYS + "일 안에 신청을 받기 시작하는 모집 공고 " + fmtN(items.length) + "건",
+      items, function (n) { return row(n, null, true); }, SOON_DAYS + "일 안에 접수를 시작하는 공고가 없습니다.", items.length ? all : null);
+  }
+
+  // 새로 생긴 상시 제도: 보조금24에 새로 등록돼 최근 30일 안에 처음 보인 제도(META.newServices, build_site.py가 미리 뽑음)
+  function newServicesCard() {
+    var items = (META.newServices || []).filter(inRegion);
+    var since = META.firstDay ? " · " + fmtDate(META.firstDay) + "부터 모음" : "";
+    return bottomListCard("newsvc", "새로 생긴 상시 제도",
+      "보조금24에 최근 30일 안에 새로 생긴 제도 " + fmtN(items.length) + "개" + since,
+      items, function (s) { return row(s, fmtDate(s.fs) + " 추가", true); }, "최근 30일 동안 새로 생긴 제도가 없습니다.");
+  }
+
   function renderCharts(live) {
     closePeek(false); // 표시가 새로 그려지므로 열린 요약 창은 닫는다
     chartsDrawnAt = chartWidth();
@@ -2894,15 +2947,17 @@
     var fields = noticeFieldCard(live);
     fields.querySelector(".viz-body").classList.add("top");
     var upcoming = upcomingCard(), region = regionCard();
+    var starts = startsSoonCard(live), newsvc = newServicesCard();
     // 순서: 무엇을 지원하나요(공고·제도 도넛) → 누구를·어느 지역 → 마감·올라오는 달.
-    // 곧 올라올 수 있는 공고는 그래프 묶음이 아니라 홈 맨 아래(목록 3개 다음, #homeUpcoming)에 둔다(형님 지시)
-    var cards = [fields, support, persona, region, due, months, upcoming];
-    ["nf", "svc", "persona", "map", "due", "months", "upcoming"].forEach(function (k, i) { cards[i].dataset.key = k; });
+    // 홈 맨 아래(목록 3개 다음, #homeUpcoming)에는 앞으로 올 것·새것 카드 셋: 곧 올라올 수 있는 공고 · 곧 접수가 시작되는 공고 · 새로 생긴 상시 제도
+    var cards = [fields, support, persona, region, due, months, upcoming, starts, newsvc];
+    ["nf", "svc", "persona", "map", "due", "months", "upcoming", "starts", "newsvc"].forEach(function (k, i) { cards[i].dataset.key = k; });
     // 그래프를 누르면 요약이 뜬다는 안내(휴대폰은 가리키기가 없어 단서가 필요하다)
     var hint = el("p", { className: "charts-hint" }, icon("hand-tap"), "그래프의 막대·칸·지역을 누르면 요약을 볼 수 있어요");
-    $("#homeCharts").replaceChildren.apply($("#homeCharts"), [hint].concat(cards.slice(0, -1)));
-    $("#homeUpcoming").replaceChildren(upcoming);
-    fitListHeight(upcoming.querySelector(".results"), upcoming._expandable, WIDE_CHARTS); // 막대 채우기보다 먼저
+    $("#homeCharts").replaceChildren.apply($("#homeCharts"), [hint].concat(cards.slice(0, 6)));
+    $("#homeUpcoming").replaceChildren(upcoming, starts, newsvc);
+    // 넓은 화면(목록 셋이 나란히)에서는 세 카드 목록을 처음 5줄 높이로 맞추고 더 붙은 줄은 칸 안에서 스크롤
+    [upcoming, starts, newsvc].forEach(function (c) { fitListHeight(c.querySelector(".results"), c._expandable, WIDE_LISTS); }); // 막대 채우기보다 먼저
     [persona, months].forEach(fillCard);
     setupMotion(cards);
     placeSegGliders(); // 글꼴이 온 뒤 그래프만 다시 그릴 때도 전환 단추 알약을 맞춘다
@@ -3088,6 +3143,10 @@
         var b = e.target.closest(".row[data-id]");
         if (b) goTo({ tab: /^gov24:/.test(b.dataset.id) ? "services" : "open", id: b.dataset.id });
       });
+    });
+    $("#homeUpcoming").addEventListener("click", function (e) {
+      var b = e.target.closest(".bottom-list .row[data-id]");
+      if (b) goTo({ tab: /^gov24:/.test(b.dataset.id) ? "services" : "open", id: b.dataset.id });
     });
     $("#homeNewAll").addEventListener("click", function () { goTo({ tab: "open", nw: true, sort: "posted" }); });
     $("#homeTodayNew").addEventListener("click", function () { goTo({ tab: "open", td: true, sort: "posted" }); });

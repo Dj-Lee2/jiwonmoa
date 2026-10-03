@@ -300,6 +300,23 @@ if __name__ == "__main__":
     unittest.main()
 
 
+class NewServicesTest(unittest.TestCase):
+    """홈 '새로 생긴 상시 제도': 첫 수집 날 것은 빼고, 최근 30일 안에 처음 보인 제도를 새것부터."""
+
+    def test_pick_and_order(self):
+        import datetime
+        s = [
+            {"id": "gov24:1", "src": "gov24", "k": "s", "t": "첫날", "fs": "2026-09-30", "vw": 9},
+            {"id": "gov24:2", "src": "gov24", "k": "s", "t": "옛날", "fs": "2026-08-01", "vw": 9},
+            {"id": "gov24:3", "src": "gov24", "k": "s", "t": "어제", "fs": "2026-10-02", "vw": 1, "rg": ["서울"]},
+            {"id": "gov24:4", "src": "gov24", "k": "s", "t": "오늘", "fs": "2026-10-03", "vw": 0},
+        ]
+        out = build_site.new_services(s, "2026-09-30", datetime.date(2026, 10, 3))
+        self.assertEqual([i["t"] for i in out], ["오늘", "어제"])
+        self.assertEqual(out[1]["rg"], ["서울"])
+        self.assertEqual(out[0]["fs"], "2026-10-03")
+
+
 class SecurityHeaderTest(unittest.TestCase):
     """첫 화면 인라인 스크립트를 고치면 CSP의 sha256도 함께 바꿔야 한다(안 그러면 운영에서 스크립트가 막힌다)."""
 
