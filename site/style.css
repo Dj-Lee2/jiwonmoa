@@ -985,6 +985,15 @@ svg.has-pick .mark.picked .cell, svg.has-pick .mark.picked .bar { stroke: var(--
 .donut-legend button.picked { box-shadow: inset 0 0 0 1.5px var(--fg-strong); }
 .peek-note { margin: -4px 0 0; font-size: .8125rem; color: var(--muted); }
 .peek-more + .peek-more { margin-top: -4px; }
+/* 두 장 요약(홈 숫자 타일 '7일 안에 마감': 모집 공고 | 공공서비스). 휴대폰 시트에서는 위아래로 */
+.peek.pair:not(.sheet) { width: min(680px, calc(100vw - 24px)); }
+.peek-cards { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.peek-card { display: flex; flex-direction: column; gap: 12px; min-width: 0; padding: 14px; border-radius: 16px; box-shadow: inset 0 0 0 1px var(--line); }
+.peek-card .peek-more { margin-top: auto; }
+.peek-kind { display: flex; align-items: center; gap: 6px; margin: 0; font-size: .875rem; font-weight: 700; color: var(--fg-strong); }
+@media (max-width: 639px) { .peek-cards { grid-template-columns: 1fr; } }
+/* 요약 창을 연 숫자 타일 */
+.stat.picked { box-shadow: inset 0 0 0 2px var(--fg-strong); }
 @media (prefers-reduced-motion: no-preference) {
   .peek:not(.sheet):not(.swap) { animation: peek-in .14s var(--ease-out); }
   .peek.sheet:not(.swap) { animation: sheet-in .24s var(--ease-drawer); }

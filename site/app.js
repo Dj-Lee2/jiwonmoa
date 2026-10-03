@@ -1459,13 +1459,25 @@
     var pct = of > 0 ? (share < 0.01 && num > 0 ? "1% 미만" : Math.round(share * 100) + "%") : "";
     var ticks = el("span", { className: "stat-ticks tone-" + tone, "aria-hidden": "true" });
     for (var i = 0; i < STAT_TICKS; i++) ticks.append(el("i", { className: i < on ? "on" : "", style: "--i:" + i }));
-    var b = el("button", { type: "button", className: "stat", "aria-label": label + " " + fmtN(num) + "건, " + ofLabel + " " + fmtN(of) + "건 중 " + pct },
+    var b = el("button", { type: "button", className: "stat", "aria-haspopup": "dialog", "aria-expanded": "false",
+      "aria-label": label + " " + fmtN(num) + "건, " + ofLabel + " " + fmtN(of) + "건 중 " + pct + ". 누르면 요약을 봅니다" },
       el("span", { className: "stat-num", text: fmtN(num) }),
       el("span", { className: "stat-label" }, mark, label, icon("arrow-right")),
       el("span", { className: "stat-of" }, el("span", null, el("span", { className: "of-what", text: ofLabel + " " }), fmtN(of) + "건 중"), el("span", { text: pct })),
       ticks);
-    b.addEventListener("click", onClick);
+    // 누르면 바로 목록으로 가지 않고 그래프처럼 요약 창(openPeek)을 연다. 목록은 창의 '모두 보기'로
+    b.addEventListener("click", function () { openPeek("stat:" + label, b, onClick); });
     return b;
+  }
+
+  /* 숫자 타일 요약 창 한 장: 모집 공고 묶음(분야·대상·지역 + 많이 본 3건). 0건이면 '모두 보기' 없이 안내만 */
+  function statCard(items, label, svc, go, empty) {
+    var today0 = items.filter(function (i) { return statusOf(i) === "접수 중" && i.e === today; }).length;
+    var spec = noticePeek(items, label, null, items.length ? { label: fmtN(items.length) + "건 모두 보기", go: go } : null,
+      today0 ? "오늘 마감 " + fmtN(today0) + "건" : null, "urgent", null, svc);
+    spec.label = label;
+    if (!items.length) { spec.note = empty; spec.groups = []; spec.items = []; }
+    return spec;
   }
 
   function todayButton(b, n, badgeEl, label) {
@@ -1485,7 +1497,6 @@
 
   function renderHome() {
     var live = NOTICES.filter(function (n) { return statusOf(n) !== "마감" && inRegion(n); });
-    var byStatus = countBy(live, statusOf);
     var runs = META.runs || [];
     var at = runs.map(function (r) { return r.at; }).sort().pop() || META.builtAt;
 
@@ -1509,16 +1520,30 @@
     var svcN = svcCount("all");
     // 7일 안에 마감: 모집 공고 + 마감일 있는 공공서비스. 눈금은 '마감일 있는 지원사업' 가운데 몫
     var withDue = live.filter(hasDue).concat(dueSvc.filter(hasDue)), soonAll = withDue.filter(isSoon);
+    // 숫자 타일을 누르면 요약 창. '7일 안에 마감'은 모집 공고와 공공서비스가 섞여 있어 두 장(종류별)으로 나눠 보인다
+    var soonN = live.filter(isSoon), soonS = dueSvc.filter(isSoon);
+    var laterN = live.filter(function (n) { return statusOf(n) === "접수 예정" && !startsSoon(n); });
+    var budgetN = live.filter(function (n) { return statusOf(n) === "소진 시까지"; });
+    var where = regionPrefix();
     $("#homeStats").replaceChildren(
-      statTile(soonAll.length, "7일 안에 마감", "clock",
-        function () { goTo({ tab: dueTab(soonAll), soon: true, sort: "deadline" }); }, "red", withDue.length, "마감일 있는 지원사업"),
+      statTile(soonAll.length, "7일 안에 마감", "clock", function () {
+        return { title: where + "7일 안에 마감하는 지원사업", sub: "마감일 있는 지원사업 " + fmtN(withDue.length) + "건 중 " + fmtN(soonAll.length) + "건",
+          cards: [
+            statCard(soonN, "모집 공고", false, function () { goTo({ tab: "open", soon: true, sort: "deadline" }); }, "7일 안에 마감하는 모집 공고가 없습니다."),
+            statCard(soonS, "공공서비스", true, function () { goTo({ tab: "services", soon: true, sort: "deadline" }); }, "7일 안에 마감하는 공공서비스가 없습니다.")] };
+      }, "red", withDue.length, "마감일 있는 지원사업"),
       // 접수 예정: 7일 안에 시작하는 공고는 홈 맨 아래 '곧 접수가 시작되는 공고'에서 보이므로 그 뒤에 시작하는 것만
-      statTile(live.filter(function (n) { return statusOf(n) === "접수 예정" && !startsSoon(n); }).length, "접수 예정", "calendar-check",
-        function () { goTo({ tab: "open", starts: "later", sort: "deadline" }); }, "blue", live.length, "모집 공고"),
-      statTile(byStatus["소진 시까지"] || 0, "예산 소진 시까지", "hourglass-medium",
-        function () { goTo({ tab: "open", st: ["소진 시까지"] }); }, "blue", live.length, "모집 공고"),
-      statTile(svcN, "공공서비스", "hand-heart",
-        function () { goTo({ tab: "services" }); }, "green", live.length + svcN, "전체 지원사업"));
+      statTile(laterN.length, "접수 예정", "calendar-check", function () {
+        return noticePeek(laterN, where + "접수 예정인 모집 공고", SOON_DAYS + "일 뒤에 접수를 시작하는 것",
+          { label: fmtN(laterN.length) + "건 모두 보기", go: function () { goTo({ tab: "open", starts: "later", sort: "deadline" }); } }, null);
+      }, "blue", live.length, "모집 공고"),
+      statTile(budgetN.length, "예산 소진 시까지", "hourglass-medium", function () {
+        return noticePeek(budgetN, where + "예산 소진 시까지 받는 모집 공고", "마감일 없이 예산이 다 쓰이면 끝나는 공고",
+          { label: fmtN(budgetN.length) + "건 모두 보기", go: function () { goTo({ tab: "open", st: ["소진 시까지"] }); } }, null);
+      }, "blue", live.length, "모집 공고"),
+      statTile(svcN, "공공서비스", "hand-heart", function () {
+        return servicePeek("all", { title: where + "공공서비스", n: svcN, more: {} });
+      }, "green", live.length + svcN, "전체 지원사업"));
     if (!statsGrown) { $("#homeStats").classList.add("grow"); statsGrown = true; }
     else $("#homeStats").classList.remove("grow");
 
@@ -1771,6 +1796,21 @@
     var r = peekAnchor.getBoundingClientRect(), w = peekBox.offsetWidth, h = peekBox.offsetHeight, gap = 10;
     var vw = document.documentElement.clientWidth, vh = window.innerHeight;
     var left = Math.max(12, Math.min(vw - w - 12, r.left + r.width / 2 - w / 2)), top;
+    if (peekAnchor.classList.contains("stat")) {
+      // 숫자 타일: 늘 타일 줄 바로 아래(다른 타일을 가리지 않게 — 옆 타일을 눌러 바로 바꿔 볼 수 있다).
+      // 창이 화면 아래로 넘치면 타일이 보이는 만큼만 페이지를 내려 창이 다 보이게 한다
+      var tiles = (peekAnchor.parentNode || peekAnchor).getBoundingClientRect();
+      top = tiles.bottom + gap;
+      peekBox.style.left = Math.round(left + window.scrollX) + "px";
+      peekBox.style.top = Math.round(top + window.scrollY) + "px";
+      var over = top + h - (vh - 8);
+      if (over > 0 && !peekBox.dataset.placed) {
+        var calm = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+        window.scrollBy({ top: Math.min(over, Math.max(0, r.top - 64)), behavior: calm ? "auto" : "smooth" });
+      }
+      peekBox.dataset.placed = "1";
+      return;
+    }
     if (r.bottom + gap + h <= vh - 8) top = r.bottom + gap;          // 아래에 자리가 있으면 아래
     else if (r.top - gap - h >= 8) top = r.top - gap - h;            // 아니면 위
     else {
@@ -1785,7 +1825,8 @@
   }
 
   /* spec: { title, sub, n, unit, flag(배지 글자), flagTone, kind("open"|"svc"), note,
-   *   groups: [{ label, rows: [[이름, 건수]] }], items: [항목], itemsLabel, more: { label, go }, more2: { label, go } } */
+   *   groups: [{ label, rows: [[이름, 건수]] }], items: [항목], itemsLabel, more: { label, go }, more2: { label, go } }
+   * 두 장 요약(홈 숫자 타일처럼 모집 공고와 공공서비스가 섞인 것): { title, sub, cards: [spec, spec] } — 카드마다 label(종류 이름) */
   function peekBody(spec) {
     var close = el("button", { type: "button", className: "peek-close", "aria-label": "요약 닫기" }, icon("x"));
     close.addEventListener("click", function () { closePeek(true); });
@@ -1793,6 +1834,19 @@
       el("div", null, el("p", { className: "peek-title", id: "peekTitle", text: spec.title }),
         spec.sub ? el("p", { className: "peek-sub", text: spec.sub }) : null),
       close);
+    if (spec.cards) {
+      var pair = el("div", { className: "peek-cards" });
+      spec.cards.forEach(function (c) {
+        var box = el("section", { className: "peek-card", "aria-label": c.label },
+          el("p", { className: "peek-kind" }, el("span", { className: "kind-dot " + c.kind, "aria-hidden": "true" }), c.label));
+        peekSection(c).filter(Boolean).forEach(function (n) { box.append(n); });
+        pair.append(box);
+      });
+      return [head, pair];
+    }
+    return [head].concat(peekSection(spec));
+  }
+  function peekSection(spec) {
     var num = el("div", { className: "peek-num kind-" + spec.kind },
       el("strong", { text: fmtN(spec.n) }), el("span", { text: spec.unit || "건" }),
       spec.flag ? badge(spec.flag, spec.flagTone || "soft") : null);
@@ -1829,14 +1883,17 @@
     }
     var pinned = spec.pinned && spec.pinned.length ? itemList("내 달력에 넣은 공고", spec.pinned, "mine") : null;
     var list = spec.items && spec.items.length ? itemList(spec.itemsLabel || "많이 본 공고", spec.items) : null;
-    var more = el("button", { type: "button", className: "btn dark peek-more" }, spec.more.label, icon("arrow-right"));
-    more.addEventListener("click", function () { closePeek(false, true); spec.more.go(); });
+    var more = null;
+    if (spec.more) {
+      more = el("button", { type: "button", className: "btn dark peek-more" }, spec.more.label, icon("arrow-right"));
+      more.addEventListener("click", function () { closePeek(false, true); spec.more.go(); });
+    }
     var more2 = null;
     if (spec.more2) {
       more2 = el("button", { type: "button", className: "btn gray peek-more" }, spec.more2.label);
       more2.addEventListener("click", function () { closePeek(false, true); spec.more2.go(); });
     }
-    return [head, num, note, pinned, groups, list, more, more2];
+    return [num, note, pinned, groups, list, more, more2];
   }
 
   /* marks: 누른 것과 짝인 표시(도넛 조각 ↔ 목록 줄, 지도 지역 ↔ 순위 줄)도 같이 '고름'으로 칠한다 */
@@ -1871,6 +1928,7 @@
     if (sheet) { document.body.classList.add("peek-lock"); peekPushEntry(); }
     function fill(spec) {
       if (!peekBox || peekKey !== key) return;
+      peekBox.classList.toggle("pair", !!spec.cards);
       peekBox.replaceChildren.apply(peekBox, peekBody(spec).filter(Boolean));
       placePeek();
     }
