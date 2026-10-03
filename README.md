@@ -4,7 +4,7 @@
 
 **흩어진 정부·지자체 지원사업을 한곳에 모아, 나에게 맞는 것을 쉽게 찾는 사이트**
 
-[![사이트 바로가기](https://img.shields.io/badge/사이트-jiwonmoa.orfa.shop-2a78d6?style=for-the-badge)](https://jiwonmoa.orfa.shop)
+### 👉 [jiwonmoa.orfa.shop](https://jiwonmoa.orfa.shop)
 
 🔄 하루 두 번 새로 모음 · 📋 모집 공고 약 1,700건 · 🏛️ 상시 제도 약 1만 500건 · 💸 무료 · 🙈 가입 없음
 
