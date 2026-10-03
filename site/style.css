@@ -370,7 +370,7 @@ select { appearance: none; background-image: linear-gradient(45deg, transparent 
   background: var(--kind-open-weak); color: var(--fg-strong); font: inherit; font-size: .9375rem; cursor: pointer; }
 .today-new:hover { background: var(--blue-100); }
 .today-new strong { color: var(--kind-open-text); font-weight: 800; font-variant-numeric: tabular-nums; }
-.today-new .badge { height: 26px; background: var(--kind-open); color: #fff; letter-spacing: .5px; }
+.today-new .badge { height: 26px; background: var(--kind-open-text); color: #fff; letter-spacing: .5px; } /* 흰 글자 5.4:1 */
 .today-new[hidden] { display: none; }
 .today-new.due { background: var(--red-50); }
 .today-new.due:hover { background: color-mix(in srgb, var(--red-50), var(--red-500) 10%); }
@@ -719,8 +719,8 @@ select { appearance: none; background-image: linear-gradient(45deg, transparent 
 }
 /* 휴대폰 탭 줄의 '글자 크게'는 아이콘만(글자는 화면 읽기 프로그램에만 남긴다) */
 @media (max-width: 639px) {
-  .tabs-dock :is(#fontToggle, #soundToggle) { padding: 0; min-width: 44px; justify-content: center; }
-  .tabs-dock :is(#fontToggle, #soundToggle) span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  .tabs-dock .iconbtn { padding: 0; min-width: 44px; justify-content: center; }
+  .tabs-dock .iconbtn span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 }
 /* 360px급 화면: 단추가 탭 줄에 왔을 때 탭 셋과 단추 둘이 한 줄에 들어가게 탭 안쪽 여백만 줄인다 */
 @media (max-width: 380px) {
@@ -1065,7 +1065,7 @@ svg.has-pick .mark.picked .cell, svg.has-pick .mark.picked .bar { stroke: var(--
 .info-dialog[open] { display: flex; flex-direction: column; }
 .info-dialog::backdrop { background: rgba(0, 0, 0, .32); }
 .info-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 18px 16px 10px 24px; border-bottom: 1px solid var(--divider); }
-.info-head h2:focus { outline: none; }
+.info-head h2:focus, #detailTitle:focus, #filtersTitle:focus { outline: none; }
 .info-head h2 { margin: 0; font-size: 1.25rem; font-weight: 800; color: var(--fg-strong); letter-spacing: -0.3px; }
 .info-close { width: 44px; justify-content: center; }
 .info-body { padding: 8px 24px 24px; overflow-y: auto; overscroll-behavior: contain; }
@@ -1155,3 +1155,50 @@ body.peek-lock .to-top, body.detail-open .to-top, body.filters-open .to-top, bod
   .seg-mini button::before { content: ""; position: absolute; left: 0; right: 0; top: -7px; bottom: -7px; }
   .tabs [role="tab"] { min-width: 44px; justify-content: center; }
 }
+
+/* ---------- 탭 줄이 좁을 때 단계별로 줄이기(app.js fitTabs) ----------
+ * 1 탭 건수 숨김 → 2 탭 줄로 옮겨 온 소리·글자 단추를 아이콘만 → 3 탭 이름 '공고'·'제도'(화면 읽기는 '모집 공고' 그대로) */
+.tab-short { display: none; }
+.tabs.fit-1 .tab-count { display: none; }
+.tabs.fit-2 .tabs-dock .iconbtn { padding: 0; min-width: 44px; justify-content: center; }
+.tabs.fit-2 .tabs-dock .iconbtn span,
+.tabs.fit-3 .tab-name { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.tabs.fit-3 .tab-short { display: inline; }
+
+/* ---------- 손가락으로 누르는 화면: 작은 글자 단추·링크도 누름 칸 44px 이상 ---------- */
+@media (pointer: coarse), (max-width: 639px) {
+  .tel { min-height: 44px; padding: 0 12px; margin: 2px; }
+  .sn-more { position: relative; }
+  .sn-more::before { content: ""; position: absolute; left: -6px; right: -6px; top: -5px; bottom: -5px; }
+  .foot-links a { height: 44px; }
+  .foot-menu-btn, .foot-up, .more-link, .detail-bar .iconbtn, .actions.tools .btn { min-height: 44px; }
+  .foot-bottom p { line-height: 1.9; }
+}
+
+/* ---------- 첫 화면 자리 잡기(index.html) ----------
+ * 자료를 받는 동안 숫자·단추·칩·그래프와 같은 크기의 빈 칸을 두어, 느린 망에서 내용이 들어올 때 화면이 밀리지 않게 */
+.sk-num { display: inline-block; width: 2.4em; height: .78em; border-radius: 10px; background: var(--surface); vertical-align: -.04em; }
+.today-sk { display: block; width: 16rem; max-width: 100%; height: 44px; border-radius: 999px; background: var(--surface-hover); }
+.stat-sk, .stat-sk .stat-of { cursor: default; color: transparent; }
+.stat-sk:hover, .stat-sk:active { background: var(--surface-hover); }
+.stat-sk .stat-num, .stat-sk .stat-label { border-radius: 10px; background: var(--surface); }
+.stat-sk .stat-num { width: 3em; }
+.stat-sk .stat-label { width: 7em; }
+.stat-sk .stat-ticks { border-radius: 4px; background: var(--surface); }
+.chip-sk { color: transparent; cursor: default; }
+.chip-sk:hover, .chip-sk:active { background: var(--canvas); }
+.viz-sk { min-height: 30rem; }
+@media (prefers-reduced-motion: no-preference) {
+  .sk-num, .today-sk, .stat-sk .stat-num, .stat-sk .stat-label, .stat-sk .stat-ticks, .viz-sk {
+    background: linear-gradient(110deg, var(--surface) 30%, var(--surface-hover) 50%, var(--surface) 70%) 0 0 / 300% 100%;
+    animation: shimmer 1.4s linear infinite;
+  }
+}
+
+/* ---------- 자료 일부를 못 받았을 때의 안내 줄(app.js loadNote): 빨강 = 오류 ---------- */
+.load-note { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 10px; margin: 0 0 16px; padding: 10px 12px 10px 14px; border-radius: 16px;
+  background: var(--red-50); color: var(--fg-strong); font-size: .875rem; font-weight: 600; }
+.load-note .ph { font-size: 1.125rem; color: var(--warn-text); }
+.load-note span { flex: 1 1 200px; }
+.load-note .btn { min-height: 44px; padding: 0 16px; font-size: .8125rem; background: var(--canvas); }
+@media print { .load-note { display: none !important; } }

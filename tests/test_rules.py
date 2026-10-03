@@ -298,3 +298,25 @@ class PersonaHistoryTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class SecurityHeaderTest(unittest.TestCase):
+    """첫 화면 인라인 스크립트를 고치면 CSP의 sha256도 함께 바꿔야 한다(안 그러면 운영에서 스크립트가 막힌다)."""
+
+    def test_csp_hash_matches_inline_script(self):
+        import base64
+        import hashlib
+        import re
+        html = (ROOT / "site" / "index.html").read_text(encoding="utf-8")
+        bodies = re.findall(r"<script>(.*?)</script>", html, re.S)
+        self.assertEqual(len(bodies), 1, "인라인 스크립트가 늘면 CSP에 해시를 더해야 한다")
+        h = base64.b64encode(hashlib.sha256(bodies[0].encode("utf-8")).digest()).decode()
+        hosting = (ROOT / "deploy" / "setup_hosting.sh").read_text(encoding="utf-8")
+        self.assertIn("'sha256-" + h + "'", hosting)
+
+    def test_no_inline_handlers(self):
+        # CSP가 막으므로 onclick= 같은 인라인 처리기와 javascript: 주소를 쓰지 않는다
+        html = (ROOT / "site" / "index.html").read_text(encoding="utf-8")
+        app = (ROOT / "site" / "app.js").read_text(encoding="utf-8")
+        self.assertNotRegex(html, r"\son[a-z]+\s*=")
+        self.assertNotIn("javascript:", html + app)

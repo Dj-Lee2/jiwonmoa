@@ -7,6 +7,8 @@
   "use strict";
 
   var META = window.HUB_META;
+  if (!META) { bootFailed(); return; }
+  var NOTICES_MISSING = !window.HUB_NOTICES;
   var NOTICES = window.HUB_NOTICES || [];
   var PAGE = 40;
   var SOON_DAYS = 7;
@@ -58,6 +60,19 @@
   var lastRowFocus = null;
 
   function $(sel) { return document.querySelector(sel); }
+
+  /* 화면 자료(meta.js)를 못 받으면 아무것도 그릴 수 없다: 첫 화면 자리에 안내만 남긴다 */
+  function bootFailed() {
+    document.documentElement.removeAttribute("data-boot");
+    var home = $("#homePane"), list = $("#listLayout");
+    if (home) home.hidden = false;
+    if (list) list.hidden = true;
+    document.querySelectorAll("#homePane .sk-only, #homeStats, #homeCharts, .who-card, .home-grid, #homeSearch")
+      .forEach(function (e) { e.remove(); });
+    var t = $("#homeTitle"), s = $("#homeSub");
+    if (t) t.textContent = "자료를 불러오지 못했습니다";
+    if (s) s.textContent = "잠시 뒤 새로 고침해 주세요.";
+  }
   function fmtN(n) { return n.toLocaleString("ko-KR"); }
 
   /* ---------- 작은 도우미 ---------- */
@@ -393,17 +408,35 @@
 
   /* 공고 긴 글(개요·지원 대상·신청 방법·문의·원문 주소 등): 첫 화면을 빨리 그리려고 목록과 떼어 두고 뒤이어 읽는다.
    * 다 읽으면 공고에 붙이고 검색용 글(_h)을 다시 만든다. 파일이 없으면(예전 자료) 그냥 지나간다 */
-  var noticeText = null, noticeTextReady = false;
+  var noticeText = null, noticeTextReady = false, noticeTextFailed = false;
   function ensureNoticeText() {
     if (!noticeText) {
       noticeText = loadScript("data/notices-text.js").then(function () {
         noticeTextReady = true;
+        noticeTextFailed = false;
         var T = window.HUB_NOTICE_TEXT || {};
         NOTICES.forEach(function (n) { if (T[n.id]) { Object.assign(n, T[n.id]); delete n._h; } });
         window.HUB_NOTICE_TEXT = null;
-      }, function () { noticeTextReady = true; /* 없거나 못 읽음: 목록 자료만으로 보인다 */ });
+      }, function () {
+        // 못 읽음: 목록 자료(제목·기관)만으로 보이고, 검색 결과와 상세에 안내와 '다시 시도'를 띄운다
+        noticeTextReady = true;
+        noticeTextFailed = true;
+      });
     }
     return noticeText;
+  }
+  function retryNoticeText() {
+    noticeText = null;
+    noticeTextReady = false;
+    noticeTextFailed = false;
+    return ensureNoticeText();
+  }
+
+  /* 자료 일부를 못 받았을 때의 작은 안내 줄과 '다시 시도'(목록 위, 상세 맨 위) */
+  function loadNote(text, retry) {
+    var b = el("button", { type: "button", className: "btn gray" }, icon("arrow-clockwise"), "다시 시도");
+    b.addEventListener("click", function () { b.disabled = true; retry(); });
+    return el("div", { className: "load-note", role: "status" }, icon("warning-circle"), el("span", { text: text }), b);
   }
 
   function ensureDetail(item) {
@@ -419,7 +452,8 @@
     return loadScript("data/sd/" + (b < 10 ? "0" : "") + b + ".js").then(function () {
       Object.assign(item, (window.HUB_SD || {})[item.id] || {});
       item._d = true;
-    });
+      delete item._dFail;
+    }, function (e) { item._dFail = true; throw e; });
   }
 
   /* ---------- 주소(#)에 상태 담기: 공유 링크와 뒤로 가기 ---------- */
@@ -695,6 +729,13 @@
     var results = $("#results");
     var more = $("#more");
     renderActive();
+    if (NOTICES_MISSING && state.tab !== "services") {
+      results.replaceChildren();
+      $("#resultCount").textContent = "";
+      more.hidden = true;
+      showState("error");
+      return;
+    }
     if (!data) {
       renderSoon(null);
       results.setAttribute("aria-busy", "true");
@@ -726,6 +767,11 @@
       return;
     }
     var hits = sortItems(data.filter(function (it) { return matches(it, terms); }));
+    var listNote = $("#listNote"), textMissing = noticeTextFailed && terms.length > 0 && state.tab !== "services";
+    listNote.hidden = !textMissing;
+    listNote.replaceChildren(textMissing ? loadNote("공고 본문을 불러오지 못해 제목·기관 이름에서만 찾았습니다.", function () {
+      retryNoticeText().then(function () { renderList(); renderDetail(); });
+    }) : "");
     renderSoon(terms);
     $("#resultCount").textContent = fmtN(hits.length) + "건";
     $("#filterDone").textContent = "결과 " + fmtN(hits.length) + "건 보기";
@@ -1082,9 +1128,20 @@
     head.append.apply(head, Array.prototype.slice.call(tagsOf(item).childNodes));
     head.append(badge(SRC_NAME[item.src], "line"));
 
+    // 공고 본문·첨부(상세 버킷)를 못 받았으면 빈 채로 두지 않고 알린다
+    var lost = [];
+    if (item.k !== "s" && noticeTextFailed && !item.sm && !item.tg && !item.how) lost.push("공고 본문(지원 대상·사업 개요·신청 방법·문의)");
+    if (item._dFail) lost.push(item.k === "s" ? "상세 내용(선정 기준·구비 서류 등)" : "공고문·첨부 파일(" + fmtN(item.fc || 0) + "개)");
+    var lostNote = lost.length ? loadNote(lost.join("과 ") + "을 불러오지 못했습니다.", function () {
+      var again = item.k !== "s" && noticeTextFailed ? retryNoticeText() : Promise.resolve();
+      again.then(function () { return ensureDetail(item); })
+        .then(function () { if (state.id === item.id) drawDetail(item); }, function () { if (state.id === item.id) drawDetail(item); });
+    }) : null;
+
     var inner = el("div", { className: "detail-inner" },
       head,
       el("h2", { id: "detailTitle", tabindex: "-1", text: item.t }),
+      lostNote,
       changeNote,
       facts,
       actions,
@@ -1309,6 +1366,7 @@
       t.setAttribute("aria-selected", String(on));
       t.tabIndex = on ? 0 : -1;
     });
+    fitTabs(); // 그래프 안내가 보이고 숨는 만큼 탭 줄 자리가 달라진다
   }
 
   /* 홈에서 목록으로 넘어갈 때: 홈에서 고른 지역은 그대로 들고 간다 */
@@ -1374,7 +1432,9 @@
 
     $("#homeTitle").replaceChildren((state.r ? state.r + "에서 " : "") + "지금 신청할 수 있는 모집 공고 ",
       el("strong", { text: fmtN(live.length) }), "건");
-    $("#homeSub").textContent = fmtStamp(at) + " 수집 · 상시 제도는 따로 셈";
+    $("#homeSub").textContent = NOTICES_MISSING ? "모집 공고 자료를 불러오지 못했습니다. 새로 고침해 주세요."
+      : fmtStamp(at) + " 수집 · 상시 제도는 따로 셈";
+    document.querySelectorAll("#homePane .sk-only").forEach(function (e) { e.remove(); }); // 첫 화면 자리 잡기(index.html)
     var todayN = live.filter(isTodayNew).length;
     var tn = $("#homeTodayNew");
     tn.hidden = !todayN;
@@ -2245,6 +2305,7 @@
    * 옆에 16개 지역 순위 목록을 두고, 지도와 목록은 가리키기·고르기가 서로 이어진다 */
   function koreaMap(counts, bin, pick, scale, peek) {
     var map = window.HUB_KOREA_MAP;
+    if (!map) return el("p", { className: "muted", text: "지도를 불러오지 못했습니다. 새로 고침해 주세요." });
     var svg = svgEl("svg", { viewBox: map.viewBox, role: "group", "aria-label": "지역별 " + MAP_WHAT[mapKind] + " 지도", "class": "kmap" });
     var hoverLine = svgEl("g", { "class": "kmap-outline", "aria-hidden": "true" });
     var selLine = svgEl("g", { "class": "kmap-outline sel", "aria-hidden": "true" });
@@ -2791,14 +2852,13 @@
         hold.style.width = Math.round(r.width) + "px";
         hold.style.height = Math.round(r.height) + "px";
         actions.replaceWith(hold);
-        dock.append(actions);
-        // 탭 줄에서는 '글자 크게'가 아이콘만으로 줄어들 수 있으니 옮긴 뒤의 실제 폭을 잰다
-        document.documentElement.style.setProperty("--dock-w", Math.round(dock.getBoundingClientRect().width) + "px");
+        dock.append(actions); // 탭 줄에서는 단추가 아이콘만으로 줄어들 수 있어 옮긴 뒤의 폭을 아래에서 잰다
       } else {
         hold.replaceWith(actions);
       }
       tabs.classList.toggle("docked", on);
       docked = on;
+      if (on) document.documentElement.style.setProperty("--dock-w", Math.round(dock.getBoundingClientRect().width) + "px");
       if (focused) focused.focus({ preventScroll: true });
     }
     // 휴대폰(639px 이하)은 이름 줄을 접어(style.css) 단추가 늘 탭 줄에 있다.
@@ -2812,9 +2872,39 @@
       setDocked(phone.matches || r.top < 0);
     }
     window.addEventListener("scroll", function () { if (!ticking) { ticking = true; requestAnimationFrame(update); } }, { passive: true });
-    window.addEventListener("resize", update);
-    if (phone.addEventListener) phone.addEventListener("change", update); else if (phone.addListener) phone.addListener(update);
+    function refit() { update(); fitTabs(); }
+    if (document.fonts && document.fonts.addEventListener) document.fonts.addEventListener("loadingdone", fitTabs); // 웹 글꼴이 늦게 와도 다시 잰다
+    window.addEventListener("resize", refit);
+    if (phone.addEventListener) phone.addEventListener("change", refit); else if (phone.addListener) phone.addListener(refit);
     update();
+    fitTabs();
+  }
+
+  /* 탭 줄이 좁을 때(태블릿 세로 640~830px, 320px 휴대폰, 글자 크게) 탭 줄로 옮겨 온 단추가 탭을 가리지 않게
+   * 1 탭 건수 숨김 → 2 탭 줄의 소리·글자 단추를 아이콘만(이름은 화면 읽기에 남김) → 3 탭 이름을 '공고'·'제도'로 줄인다.
+   * 단추가 아직 머리에 있어도 '탭 줄로 옮겼을 때'로 재서 정하므로 스크롤해도 탭 모양은 그대로다 */
+  var FIT_STEPS = ["fit-1", "fit-2", "fit-3"];
+  function fitTabs() {
+    var nav = document.querySelector(".tabs"), dock = $("#tabsDock"), actions = document.querySelector(".top-actions");
+    var tabs = nav ? nav.querySelectorAll("[role=tab]") : [];
+    if (!dock || !actions || !tabs.length) return;
+    var docked = nav.classList.contains("docked"), probe = null, box = actions;
+    if (!docked) {
+      // 머리의 단추 묶음과 같은 보이지 않는 사본을 탭 줄 자리에 잠깐 두고 잰다. 같은 함수 안에서 바로 지우므로
+      // 화면에 그려지지 않고, id도 그대로 두어 #soundToggle 같은 규칙이 진짜 단추와 똑같이 걸린다
+      probe = actions.cloneNode(true);
+      probe.setAttribute("aria-hidden", "true");
+      probe.style.visibility = "hidden";
+      dock.append(probe);
+      box = probe;
+      nav.classList.add("docked");
+    }
+    // 기기에서 직접 재므로 여백은 붙지 않을 만큼만(2px). 360px 휴대폰은 '모집 공고'가 그대로 들어간다
+    function fits() { return tabs[tabs.length - 1].getBoundingClientRect().right + 2 <= box.getBoundingClientRect().left; }
+    FIT_STEPS.forEach(function (c) { nav.classList.remove(c); });
+    for (var i = 0; i < FIT_STEPS.length && !fits(); i++) nav.classList.add(FIT_STEPS[i]);
+    if (probe) { probe.remove(); nav.classList.remove("docked"); }
+    else document.documentElement.style.setProperty("--dock-w", Math.round(dock.getBoundingClientRect().width) + "px");
   }
 
   function bind() {
@@ -2941,7 +3031,7 @@
       if (!a) return;
       var act = a.dataset.action;
       if (act === "reset") resetFilters();
-      else if (act === "retry") renderList();
+      else if (act === "retry") { if (NOTICES_MISSING && state.tab !== "services") location.reload(); else renderList(); }
       else if (act === "close") closeDetail();
     });
 
@@ -3023,6 +3113,7 @@
       var large = fontBtn.getAttribute("aria-pressed") !== "true";
       applyFont(large);
       try { localStorage.setItem("hub-size", large ? "large" : ""); } catch (e) { /* 저장 못 해도 동작 */ }
+      fitTabs();
       if (state.tab === "home") renderHome();
     });
   }
@@ -3038,7 +3129,7 @@
     bindFooter();
     applyView();
     // 웹 글꼴이 오면 가로 막대 이름 칸 폭을 다시 재도록 한 번 더 그린다(움직임은 이 뒤에 시작)
-    fontsReady.then(function () { if (state.tab === "home") renderCharts(homeLive()); });
+    fontsReady.then(function () { fitTabs(); if (state.tab === "home") renderCharts(homeLive()); });
     if (state.tab === "home") {
       renderHome();
       renderDetail();
@@ -3049,6 +3140,17 @@
     }
     // 첫 화면을 그린 뒤 공고 긴 글을 받아 둔다(검색·상세가 쓴다)
     setTimeout(ensureNoticeText, 0);
+    if (document.readyState === "complete") animateMascot(); else window.addEventListener("load", animateMascot);
+  }
+
+  /* 머리 마스코트: 처음엔 멈춘 그림(9KB)을 보이고, 첫 화면 자료를 다 받은 뒤 움직이는 그림(138KB)으로 바꾼다.
+   * 느린 망에서 첫 화면 자료와 대역을 다투지 않게. '움직임 줄이기'면 멈춘 그림 그대로 둔다 */
+  function animateMascot() {
+    var img = document.querySelector(".brand-mark img[data-anim]");
+    if (!img || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    var pre = new Image();
+    pre.onload = function () { img.src = img.dataset.anim; };
+    pre.src = img.dataset.anim;
   }
 
   init();

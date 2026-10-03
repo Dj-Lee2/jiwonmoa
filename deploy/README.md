@@ -13,6 +13,11 @@
 2. 프로젝트를 `~/jiwonmoa`에 올린 뒤 root로 `OWNER=<서버 사용자> bash /home/<서버 사용자>/jiwonmoa/deploy/setup_hosting.sh`.
    `/srv/jiwonmoa`로 옮기고 Caddy에 사이트를 더한다
 
+보안 헤더(HSTS·Permissions-Policy·CSP)도 이 스크립트가 넣는다. CSP에는 `site/index.html` 첫 화면 인라인 스크립트의
+sha256이 들어 있어, 그 스크립트를 고치면 `setup_hosting.sh`와 운영 `/etc/caddy/Caddyfile` 두 곳의 값을 바꾸고
+`sudo caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile && sudo systemctl reload caddy`로 다시 읽힌다.
+값은 `python3 -c "import sys; sys.path.insert(0,'deploy'); import check; print(check.inline_script_hash())"`로 구한다.
+
 ## 매일 갱신(예약 작업)
 
 `/srv/jiwonmoa/deploy/update.sh`를 하루 두 번 실행한다. sudo는 필요 없다.

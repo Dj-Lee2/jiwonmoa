@@ -7,13 +7,15 @@
 보는 것
   1. 이번 수집: 기준 시각(09:00 또는 16:00) 뒤에 4개 출처가 모두 성공했는지, 일부만 받은 출처가 있는지
   2. 화면 자료: site/data/*.js가 이번 수집 뒤에 만들어졌는지, id 중복·이미 마감된 공고가 없는지
-  3. 운영 사이트: 첫 화면·자료 파일이 200으로 열리는지
+  3. 운영 사이트: 첫 화면·자료 파일이 200으로 열리는지, 보안 헤더(CSP)가 첫 화면 스크립트를 허용하는지
   4. 규칙 테스트(tests/)가 통과하는지
 결과는 status/checks.md 맨 위에 한 줄, README의 '최근 점검' 줄에 반영하고 그 두 파일만 커밋한다.
 GitLab(gov) 먼저 올리고 통과하면 GitHub(origin). 이상이 있거나 올리기에 실패하면 표준 출력에 알림을 쓴다
 (Hermes 예약 작업이 이 출력을 텔레그램으로 보낸다 — 정상이면 아무것도 쓰지 않는다).
 """
+import base64
 import datetime
+import hashlib
 import json
 import os
 import re
@@ -73,6 +75,23 @@ def http_codes():
     return dict(zip(SITE_PATHS, out + ["000"] * (len(SITE_PATHS) - len(out))))
 
 
+def inline_script_hash():
+    """index.html의 첫 화면 인라인 스크립트 sha256(CSP 헤더에 같은 값이 있어야 실행된다)."""
+    html = (ROOT / "site" / "index.html").read_text(encoding="utf-8")
+    bodies = re.findall(r"<script>(.*?)</script>", html, re.S)
+    return ["sha256-" + base64.b64encode(hashlib.sha256(b.encode("utf-8")).digest()).decode() for b in bodies]
+
+
+def csp_header():
+    """운영 첫 화면의 Content-Security-Policy 헤더 값(curl, https만). 없으면 빈 문자열."""
+    out = subprocess.run(["curl", "-sI", "--proto", "=https", "--max-time", "20", SITE + "/"],
+                         capture_output=True, text=True).stdout
+    for line in out.splitlines():
+        if line.lower().startswith("content-security-policy:"):
+            return line.split(":", 1)[1].strip()
+    return ""
+
+
 def git(*args, check=True):
     return subprocess.run(["git", *args], cwd=ROOT, capture_output=True, text=True, check=check)
 
@@ -123,6 +142,11 @@ def run_checks(now, slot):
     for path, code in http_codes().items():
         if code != "200":
             problems.append(f"사이트 {path} 응답 이상({code})")
+    csp = csp_header()
+    if not csp:
+        problems.append("보안 헤더(CSP) 없음")
+    elif any(h not in csp for h in inline_script_hash()):
+        problems.append("보안 헤더(CSP)가 첫 화면 스크립트를 막음 — Caddy의 sha256 값을 index.html에 맞출 것")
     # 4. 테스트
     t = subprocess.run(["/usr/bin/python3", "-m", "unittest", "discover", "-s", "tests"], cwd=ROOT,
                        capture_output=True, text=True, env={**os.environ, "TZ": "Asia/Seoul"})

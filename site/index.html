@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>지원모아</title>
-<meta name="description" content="정부·지자체·공공기관의 지원사업(모집 공고와 상시 제도)을 지역·대상별로 한곳에서 찾아보는 비공식 개인 프로젝트. 청년·시니어·농업인·소상공인·중소기업 지원사업을 하루 두 번 새로 모읍니다.">
+<meta name="description" content="정부·지자체·공공기관의 지원사업(모집 공고와 상시 제도)을 지역·대상별로 한곳에서 찾아보는 개인 학습용 사이트(정부 공식 사이트 아님). 청년·시니어·농업인·소상공인·중소기업 지원사업을 하루 두 번 새로 모읍니다.">
 <link rel="canonical" href="https://jiwonmoa.orfa.shop/">
 <meta name="robots" content="index, follow">
 <meta name="color-scheme" content="only light">
@@ -20,12 +20,12 @@
 <meta property="og:image:height" content="630">
 <meta property="og:locale" content="ko_KR">
 <meta name="twitter:card" content="summary_large_image">
-<script type="application/ld+json">{"@context":"https://schema.org","@type":"WebSite","name":"지원모아","url":"https://jiwonmoa.orfa.shop/","inLanguage":"ko","description":"정부·지자체·공공기관의 지원사업(모집 공고와 상시 제도)을 지역·대상별로 한곳에서 찾아보는 비공식 개인 프로젝트"}</script>
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"WebSite","name":"지원모아","url":"https://jiwonmoa.orfa.shop/","inLanguage":"ko","description":"정부·지자체·공공기관의 지원사업(모집 공고와 상시 제도)을 지역·대상별로 한곳에서 찾아보는 개인 학습용 사이트(정부 공식 사이트 아님)"}</script>
 <link rel="icon" type="image/png" href="img/favicon.png">
 <link rel="apple-touch-icon" href="img/apple-touch-icon.png">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@phosphor-icons/web@2.1.1/src/regular/style.css">
-<!-- 첫 화면 자료를 먼저 받는다(움직이는 마스코트 그림 139KB보다 앞서게) -->
+<!-- 첫 화면 자료를 먼저 받는다. 움직이는 마스코트(138KB)는 첫 화면을 다 그린 뒤에 받는다(app.js animateMascot) -->
 <link rel="preload" href="data/meta.js" as="script">
 <link rel="preload" href="data/notices.js" as="script">
 <link rel="stylesheet" href="style.css">
@@ -46,7 +46,7 @@
 <header class="top">
   <div class="wrap top-inner">
     <div class="brand">
-      <h1><a id="homeLink" href="#" aria-label="지원모아, 홈으로"><picture class="brand-mark"><source srcset="img/mascot-still.webp" media="(prefers-reduced-motion: reduce)"><img src="img/mascot.webp" alt="" width="44" height="44" fetchpriority="low"></picture>지원모아</a></h1>
+      <h1><a id="homeLink" href="#" aria-label="지원모아, 홈으로"><picture class="brand-mark"><img src="img/mascot-still.webp" data-anim="img/mascot.webp" alt="" width="44" height="44"></picture>지원모아</a></h1>
     </div>
     <div class="top-actions">
       <!-- 그래프 안내: 소리 켬 왼쪽. 머리가 가려지면 소리·글자 단추와 함께 탭 줄로 옮겨 가 늘 보인다(홈에서만, 휴대폰은 그래프 위) -->
@@ -64,12 +64,14 @@
 <nav class="tabs" aria-label="보기 선택">
   <div class="wrap tabs-inner" role="tablist">
     <button role="tab" id="tab-home" data-tab="home" aria-controls="homePane">홈</button>
-    <button role="tab" id="tab-open" data-tab="open" aria-controls="listPane">모집 공고 <span class="tab-count"></span></button>
-    <button role="tab" id="tab-services" data-tab="services" aria-controls="listPane">상시 제도 <span class="tab-count"></span></button>
+    <button role="tab" id="tab-open" data-tab="open" aria-controls="listPane"><span class="tab-name">모집 공고</span><span class="tab-short" aria-hidden="true">공고</span> <span class="tab-count"></span></button>
+    <button role="tab" id="tab-services" data-tab="services" aria-controls="listPane"><span class="tab-name">상시 제도</span><span class="tab-short" aria-hidden="true">제도</span> <span class="tab-count"></span></button>
   </div>
   <!-- 머리가 스크롤로 가려지면 머리의 소리·글자 크게 단추를 이 자리(탭 줄 오른쪽)로 옮긴다(app.js dockTopActions) -->
   <div class="tabs-dock" id="tabsDock"></div>
 </nav>
+<!-- 이 짧은 스크립트를 고치면 보안 헤더(CSP)의 sha256 값도 바꿔야 한다: deploy/setup_hosting.sh와 운영 Caddy.
+     tests/test_rules.py가 저장소 값을, deploy/check.py가 운영 헤더를 확인한다 -->
 <script>
 /* 첫 화면 깜빡임 막기: 자료(수 MB)를 받는 동안 목록 화면이 먼저 보이지 않게, 주소(#)로 고를 탭을 미리 정한다.
    app.js readHash와 같은 규칙. app.js가 화면을 정하면(DOMContentLoaded) 표시를 뗀다 */
@@ -86,10 +88,11 @@
 <div id="main">
 <main id="homePane" class="wrap home" role="tabpanel" aria-labelledby="tab-home" hidden>
   <section class="home-hero">
-    <h2 id="homeTitle" class="hero-title"></h2>
-    <p id="homeSub" class="hero-sub"></p>
+    <h2 id="homeTitle" class="hero-title">지금 신청할 수 있는 모집 공고 <span class="sk-num" aria-hidden="true"></span></h2>
+    <p id="homeSub" class="hero-sub">자료를 불러오는 중…</p>
     <!-- 오늘 새 공고(파랑) · 오늘 마감(빨강). 해당 건이 없는 단추는 숨는다 -->
     <div class="today-row" id="homeTodayRow">
+      <span class="today-sk sk-only" aria-hidden="true"></span>
       <button type="button" class="today-new" id="homeTodayNew" hidden></button>
       <button type="button" class="today-new due" id="homeTodayDue" hidden></button>
     </div>
@@ -109,7 +112,7 @@
         </div>
       </div>
       <button class="btn yellow hero-go" type="submit">찾기</button>
-      <label class="check national"><input type="checkbox" id="homeNat" checked> 전국 대상 지원사업 포함</label>
+      <label class="check national" hidden><input type="checkbox" id="homeNat" checked> 전국 대상 지원사업 포함</label>
     </form>
   </section>
 
@@ -123,14 +126,20 @@
     <p class="fav-note">이 기기 브라우저에만 저장됩니다. 상세 화면의 ‘관심 담기’로 담고 빼요.</p>
   </section>
 
-  <section class="home-stats" id="homeStats" aria-label="한눈에 보기"></section>
+  <section class="home-stats" id="homeStats" aria-label="한눈에 보기">
+    <!-- 자료를 받는 동안 숫자 타일과 같은 크기의 빈 칸으로 자리를 잡아 둔다(app.js renderHome이 바꾼다) -->
+    <div class="stat stat-sk" aria-hidden="true"><span class="stat-num">0</span><span class="stat-label">0</span><span class="stat-of"><span>0</span></span><span class="stat-ticks"></span></div>
+    <div class="stat stat-sk" aria-hidden="true"><span class="stat-num">0</span><span class="stat-label">0</span><span class="stat-of"><span>0</span></span><span class="stat-ticks"></span></div>
+    <div class="stat stat-sk" aria-hidden="true"><span class="stat-num">0</span><span class="stat-label">0</span><span class="stat-of"><span>0</span></span><span class="stat-ticks"></span></div>
+    <div class="stat stat-sk" aria-hidden="true"><span class="stat-num">0</span><span class="stat-label">0</span><span class="stat-of"><span>0</span></span><span class="stat-ticks"></span></div>
+  </section>
 
   <section class="home-block who-card" aria-labelledby="homeWhoTitle">
     <div class="block-head"><h3 id="homeWhoTitle"><i class="ph ph-user-circle" aria-hidden="true"></i>나에게 맞는 지원 찾기</h3></div>
-    <div class="chips" id="homeWho"></div>
+    <div class="chips" id="homeWho"><span class="chip chip-sk" aria-hidden="true">청년<span class="n">000</span></span><span class="chip chip-sk" aria-hidden="true">시니어<span class="n">000</span></span><span class="chip chip-sk" aria-hidden="true">장애인<span class="n">000</span></span><span class="chip chip-sk" aria-hidden="true">임산부·출산<span class="n">000</span></span><span class="chip chip-sk" aria-hidden="true">한부모·다자녀<span class="n">000</span></span><span class="chip chip-sk" aria-hidden="true">구직자<span class="n">000</span></span><span class="chip chip-sk" aria-hidden="true">근로자·직장인<span class="n">000</span></span><span class="chip chip-sk" aria-hidden="true">학생<span class="n">000</span></span><span class="chip chip-sk" aria-hidden="true">보훈대상자<span class="n">000</span></span><span class="chip chip-sk" aria-hidden="true">질병·질환자<span class="n">000</span></span><span class="chip chip-sk" aria-hidden="true">다문화·북한이탈주민<span class="n">000</span></span><span class="chip chip-sk" aria-hidden="true">무주택<span class="n">000</span></span><span class="chip chip-sk" aria-hidden="true">1인가구<span class="n">000</span></span><span class="chip chip-sk" aria-hidden="true">농업인<span class="n">000</span></span><span class="chip chip-sk" aria-hidden="true">소상공인<span class="n">000</span></span><span class="chip chip-sk" aria-hidden="true">중소기업<span class="n">000</span></span><span class="chip chip-sk" aria-hidden="true">창업<span class="n">000</span></span><span class="chip chip-sk" aria-hidden="true">법인·단체<span class="n">000</span></span></div>
   </section>
 
-  <section class="home-charts" id="homeCharts" aria-label="현황 그래프"></section>
+  <section class="home-charts" id="homeCharts" aria-label="현황 그래프"><div class="viz-card viz-sk" aria-hidden="true"></div><div class="viz-card viz-sk" aria-hidden="true"></div></section>
 
   <div class="home-grid">
     <section class="home-block" aria-labelledby="homeSoonTitle">
@@ -276,8 +285,17 @@
     </div>
 
     <div id="activeFilters" class="active-filters" hidden></div>
+    <div id="listNote" hidden></div>
 
-    <ul id="results" class="results" tabindex="-1"></ul>
+    <!-- 자료를 받는 동안의 빈 줄(app.js renderList가 바꾼다) -->
+    <ul id="results" class="results" tabindex="-1">
+      <li class="skeleton" aria-hidden="true"><div class="row"><span class="row-main"><span class="bar w1"></span><span class="bar w2"></span></span><span class="row-side"><span class="bar w3"></span></span></div></li>
+      <li class="skeleton" aria-hidden="true"><div class="row"><span class="row-main"><span class="bar w1"></span><span class="bar w2"></span></span><span class="row-side"><span class="bar w3"></span></span></div></li>
+      <li class="skeleton" aria-hidden="true"><div class="row"><span class="row-main"><span class="bar w1"></span><span class="bar w2"></span></span><span class="row-side"><span class="bar w3"></span></span></div></li>
+      <li class="skeleton" aria-hidden="true"><div class="row"><span class="row-main"><span class="bar w1"></span><span class="bar w2"></span></span><span class="row-side"><span class="bar w3"></span></span></div></li>
+      <li class="skeleton" aria-hidden="true"><div class="row"><span class="row-main"><span class="bar w1"></span><span class="bar w2"></span></span><span class="row-side"><span class="bar w3"></span></span></div></li>
+      <li class="skeleton" aria-hidden="true"><div class="row"><span class="row-main"><span class="bar w1"></span><span class="bar w2"></span></span><span class="row-side"><span class="bar w3"></span></span></div></li>
+    </ul>
     <div id="listState" class="state" hidden></div>
     <button id="more" class="btn gray more" type="button" hidden></button>
     <p id="basisShort" class="basis-short"></p>

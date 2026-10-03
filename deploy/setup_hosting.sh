@@ -47,6 +47,11 @@ $DOMAIN {
 		X-Content-Type-Options "nosniff"
 		Referrer-Policy "strict-origin-when-cross-origin"
 		X-Frame-Options "DENY"
+		Cache-Control "no-cache"
+		Strict-Transport-Security "max-age=31536000"
+		Permissions-Policy "camera=(), microphone=(), geolocation=(), payment=(), usb=()"
+		# 첫 화면 인라인 스크립트(index.html)의 sha256. 그 스크립트를 고치면 이 값도 바꾼다(tests/test_rules.py가 확인)
+		Content-Security-Policy "default-src 'self'; script-src 'self' 'sha256-7cgxCLWHt73okq5+sMXnMpoAG02H7vgddqV5XiVu2XY='; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; font-src 'self' https://cdn.jsdelivr.net; img-src 'self' data:; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'"
 	}
 }
 EOF
