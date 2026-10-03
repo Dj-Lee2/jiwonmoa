@@ -1627,7 +1627,7 @@
 
   /* 많이 찾는 지원사업: 공공서비스는 미리 뽑아 둔 순위(META.topServices, id 목록 + items), 모집 공고는 기업마당 조회수.
    * 둘 다 20개까지 */
-  var popKind = "s", POP_MAX = 20;
+  var popKind = "n", POP_MAX = 20; // 단추 순서·처음 고른 것: 모집 공고 → 공공서비스(다른 카드 전환 단추와 같게)
   function renderPopular(live) {
     var items;
     if (popKind === "s") {
