@@ -1338,7 +1338,11 @@
   }
 
   function switchTab(tab) {
-    if (tab === state.tab) return;
+    if (tab === state.tab) {
+      // 홈에서 홈을 다시 누르면 맨 위로(내려가 있던 자리에서 위로 미끄러지듯, '움직임 줄이기'면 바로)
+      if (tab === "home") window.scrollTo({ top: 0, behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
+      return;
+    }
     state = Object.assign({}, state, { tab: tab, st: [], src: [], sp: [], cg: [], soon: false, nw: false, td: false, due: "", om: "", id: "" });
     state.sort = defaultSort(state);
     applyView();
@@ -1347,6 +1351,7 @@
       renderHome();
       renderDetail();
       writeHash(false);
+      window.scrollTo(0, 0); // 다른 곳에 있다가 홈을 누르면 늘 맨 위에서 시작(목록에서 내려가 있던 자리를 이어 받지 않게)
       return;
     }
     setupFilters();
