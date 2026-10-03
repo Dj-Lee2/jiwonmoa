@@ -1509,7 +1509,7 @@
 
   /* 홈 목록: 처음 5개, 바닥 '더 보기'를 누를 때마다 10개씩(곧 열릴 수 있는 공모와 같게) */
   var HOME_FIRST = 5, HOME_STEP = 10;
-  var homeShown = { soon: HOME_FIRST, fresh: HOME_FIRST, pop: HOME_FIRST };
+  var homeShown = { soon: HOME_FIRST, fresh: HOME_FIRST, starts: HOME_FIRST, pop: HOME_FIRST };
   function homeList(key, box, moreBtn, items, makeRow, emptyText) {
     fillList(box, items.slice(0, homeShown[key]).map(function (n) { return makeRow(n); }), emptyText);
     var rest = items.length - homeShown[key];
@@ -1561,6 +1561,12 @@
     $("#homeNewCount").textContent = fmtN(fresh.length);
     homeList("fresh", $("#homeNew"), $("#homeNewMore"), fresh, function (n) { return row(n, fmtDate(n.pd) + " 등록", true); },
       "최근 " + RECENT_DAYS + "일 동안 새로 올라온 공고가 없습니다.");
+
+    // 곧 접수가 시작되는 공고: 접수 예정 중 7일 안에 시작하는 모집 공고, 시작이 빠른 순(새로 올라온 공고 오른쪽)
+    var starts = live.filter(startsSoon).sort(function (a, b) { return a.s.localeCompare(b.s) || a.t.localeCompare(b.t, "ko"); });
+    $("#homeStartsCount").textContent = fmtN(starts.length);
+    homeList("starts", $("#homeStarts"), $("#homeStartsMore"), starts, function (n) { return row(n, null, true); },
+      SOON_DAYS + "일 안에 접수를 시작하는 공고가 없습니다.");
 
     renderPopular(live);
   }
@@ -2891,8 +2897,8 @@
     return card;
   }
 
-  /* 홈 맨 아래 목록 카드(곧 접수가 시작되는 공고·새로 생긴 상시 제도). 처음 5개, '더 보기'로 10개씩 */
-  var bottomShown = { starts: HOME_FIRST, newsvc: HOME_FIRST };
+  /* 홈 맨 아래 목록 카드(새로 생긴 상시 제도). 처음 5개, '더 보기'로 10개씩 */
+  var bottomShown = { newsvc: HOME_FIRST };
   function bottomListCard(key, title, sub, items, makeRow, emptyText, allBtn) {
     var list = el("ul", { className: "results bottom-list", dataset: { list: key } });
     fillList(list, items.slice(0, bottomShown[key]).map(makeRow), emptyText);
@@ -2912,16 +2918,6 @@
     card.classList.add("list-card");
     card._expandable = items.length > HOME_FIRST;
     return card;
-  }
-
-  // 곧 접수가 시작되는 공고: 접수 예정 중 7일 안에 시작하는 모집 공고, 시작이 빠른 순(지역 반영)
-  function startsSoonCard(live) {
-    var items = live.filter(startsSoon).sort(function (a, b) { return a.s.localeCompare(b.s) || a.t.localeCompare(b.t, "ko"); });
-    var all = el("button", { type: "button", className: "more-link" }, "전체 보기", icon("arrow-right"));
-    all.addEventListener("click", function () { goTo({ tab: "open", starts: "soon" }); });
-    return bottomListCard("starts", "곧 접수가 시작되는 공고",
-      SOON_DAYS + "일 안에 신청을 받기 시작하는 모집 공고 " + fmtN(items.length) + "건",
-      items, function (n) { return row(n, null, true); }, SOON_DAYS + "일 안에 접수를 시작하는 공고가 없습니다.", items.length ? all : null);
   }
 
   // 새로 생긴 상시 제도: 보조금24에 새로 등록돼 최근 30일 안에 처음 보인 제도(META.newServices, build_site.py가 미리 뽑음)
@@ -2947,17 +2943,20 @@
     var fields = noticeFieldCard(live);
     fields.querySelector(".viz-body").classList.add("top");
     var upcoming = upcomingCard(), region = regionCard();
-    var starts = startsSoonCard(live), newsvc = newServicesCard();
+    var newsvc = newServicesCard();
     // 순서: 무엇을 지원하나요(공고·제도 도넛) → 누구를·어느 지역 → 마감·올라오는 달.
-    // 홈 맨 아래(목록 3개 다음, #homeUpcoming)에는 앞으로 올 것·새것 카드 셋: 곧 올라올 수 있는 공고 · 곧 접수가 시작되는 공고 · 새로 생긴 상시 제도
-    var cards = [fields, support, persona, region, due, months, upcoming, starts, newsvc];
-    ["nf", "svc", "persona", "map", "due", "months", "upcoming", "starts", "newsvc"].forEach(function (k, i) { cards[i].dataset.key = k; });
+    // 홈 맨 아래(#homeUpcoming): 많이 찾는 지원사업(index.html에 고정) · 곧 올라올 수 있는 공고 · 새로 생긴 상시 제도
+    var cards = [fields, support, persona, region, due, months, upcoming, newsvc];
+    ["nf", "svc", "persona", "map", "due", "months", "upcoming", "newsvc"].forEach(function (k, i) { cards[i].dataset.key = k; });
     // 그래프를 누르면 요약이 뜬다는 안내(휴대폰은 가리키기가 없어 단서가 필요하다)
     var hint = el("p", { className: "charts-hint" }, icon("hand-tap"), "그래프의 막대·칸·지역을 누르면 요약을 볼 수 있어요");
     $("#homeCharts").replaceChildren.apply($("#homeCharts"), [hint].concat(cards.slice(0, 6)));
-    $("#homeUpcoming").replaceChildren(upcoming, starts, newsvc);
-    // 넓은 화면(목록 셋이 나란히)에서는 세 카드 목록을 처음 5줄 높이로 맞추고 더 붙은 줄은 칸 안에서 스크롤
-    [upcoming, starts, newsvc].forEach(function (c) { fitListHeight(c.querySelector(".results"), c._expandable, WIDE_LISTS); }); // 막대 채우기보다 먼저
+    // 많이 찾는 지원사업 칸은 그대로 두고(옮기면 초점·알약 자리가 흔들림) 그 뒤 그래프 쪽 카드만 바꾼다
+    var bottom = $("#homeUpcoming");
+    Array.prototype.forEach.call(bottom.querySelectorAll(":scope > .viz-card"), function (c) { c.remove(); });
+    bottom.append(upcoming, newsvc);
+    // 넓은 화면(셋이 나란히)에서는 목록을 처음 5줄 높이로 맞추고 더 붙은 줄은 칸 안에서 스크롤
+    [upcoming, newsvc].forEach(function (c) { fitListHeight(c.querySelector(".results"), c._expandable, WIDE_LISTS); }); // 막대 채우기보다 먼저
     [persona, months].forEach(fillCard);
     setupMotion(cards);
     placeSegGliders(); // 글꼴이 온 뒤 그래프만 다시 그릴 때도 전환 단추 알약을 맞춘다
@@ -3138,20 +3137,22 @@
       state.nat = e.target.checked; animScope = "all"; renderHome(); writeHash(false);
     });
     $("#homeSoonAll").addEventListener("click", function () { goTo({ tab: "open" }); });
-    ["#homeFav", "#homeSoon", "#homeNew", "#homePop"].forEach(function (sel) {
+    $("#homeStartsAll").addEventListener("click", function () { goTo({ tab: "open", starts: "soon" }); });
+    ["#homeFav", "#homeSoon", "#homeNew", "#homeStarts", "#homePop"].forEach(function (sel) {
       $(sel).addEventListener("click", function (e) {
         var b = e.target.closest(".row[data-id]");
         if (b) goTo({ tab: /^gov24:/.test(b.dataset.id) ? "services" : "open", id: b.dataset.id });
       });
     });
     $("#homeUpcoming").addEventListener("click", function (e) {
-      var b = e.target.closest(".bottom-list .row[data-id]");
+      var b = e.target.closest(".bottom-list .row[data-id]"); // 많이 찾는 지원사업(#homePop)은 아래 목록 처리에서
       if (b) goTo({ tab: /^gov24:/.test(b.dataset.id) ? "services" : "open", id: b.dataset.id });
     });
     $("#homeNewAll").addEventListener("click", function () { goTo({ tab: "open", nw: true, sort: "posted" }); });
     $("#homeTodayNew").addEventListener("click", function () { goTo({ tab: "open", td: true, sort: "posted" }); });
     $("#homeTodayDue").addEventListener("click", function () { goTo({ tab: "open", due: today + "~" + today }); });
-    [["#homeSoonMore", "soon", "#homeSoon"], ["#homeNewMore", "fresh", "#homeNew"], ["#homePopMore", "pop", "#homePop"]]
+    [["#homeSoonMore", "soon", "#homeSoon"], ["#homeNewMore", "fresh", "#homeNew"], ["#homeStartsMore", "starts", "#homeStarts"],
+      ["#homePopMore", "pop", "#homePop"]]
       .forEach(function (m) {
         $(m[0]).addEventListener("click", function () {
           var ul = $(m[2]), prev = homeShown[m[1]], top = ul.scrollTop;

@@ -400,10 +400,10 @@ select { appearance: none; background-image: linear-gradient(45deg, transparent 
 
 .home-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; }
 /* 목록 3개(마감이 가까운 공고·새로 올라온 공고·많이 찾는 지원사업)도 그래프 카드와 같은 카드 경계(둥근 모서리·옅은 그림자) */
-.home-grid .home-block { border-radius: 24px; padding: 24px; background: var(--canvas); box-shadow: var(--shadow-border); min-width: 0; }
-.home-grid .results { border-top-width: 1px; }
-.home-grid .row { padding: 12px 4px; }
-/* 홈 맨 아래 카드 셋(곧 올라올 수 있는 공고 · 곧 접수가 시작되는 공고 · 새로 생긴 상시 제도): 넓은 화면은 나란히,
+:is(.home-grid, .home-upcoming) .home-block { border-radius: 24px; padding: 24px; background: var(--canvas); box-shadow: var(--shadow-border); min-width: 0; }
+:is(.home-grid, .home-upcoming) .home-block .results { border-top-width: 1px; }
+:is(.home-grid, .home-upcoming) .home-block .row { padding: 12px 4px; }
+/* 홈 맨 아래 카드 셋(많이 찾는 지원사업 · 곧 올라올 수 있는 공고 · 새로 생긴 상시 제도): 넓은 화면은 나란히,
  * 목록 3개(.home-grid)와 같은 틀 — 세 칸 높이를 같게, '더 보기'는 바닥에 */
 .home-upcoming { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; margin-top: 16px; }
 .home-upcoming:empty { display: none; }
@@ -431,10 +431,10 @@ select { appearance: none; background-image: linear-gradient(45deg, transparent 
 /* 넓은 화면에서 '더 보기'로 늘어난 목록은 칸 안에서 스크롤(높이는 app.js fitListHeight가 정함) */
 .scroll-list { overflow-y: auto; scrollbar-width: thin; scrollbar-color: var(--gray-300) transparent; }
 /* 홈 목록 줄 높이를 고르게: 제목 2줄, 보조 정보 1줄까지 */
-.home-grid .row-title, .list-card .row-title { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow: hidden; }
-.home-grid .row-meta, .list-card .row-meta { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+:is(.home-grid, .home-upcoming) .row-title, .list-card .row-title { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow: hidden; }
+:is(.home-grid, .home-upcoming) .row-meta, .list-card .row-meta { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 /* 가리킬 때만 보이는 화살표가 줄을 넘겨 빈칸을 만들지 않게: 홈 목록과 터치 화면에서는 뺀다 */
-.home-grid .row-arrow { display: none; }
+:is(.home-grid, .home-upcoming) .row-arrow { display: none; }
 @media (hover: none) { .row-arrow { display: none; } }
 /* 많이 찾는 지원사업의 제도/공고 전환 */
 .seg-mini { position: relative; display: inline-flex; gap: 2px; padding: 3px; border-radius: 999px; background: var(--surface); }
@@ -750,10 +750,10 @@ select { appearance: none; background-image: linear-gradient(45deg, transparent 
   .layout { grid-template-columns: 264px minmax(0, 1fr) minmax(360px, 440px); gap: 32px; align-items: start; }
   /* 홈 목록 셋을 나란히. 세 칸 높이를 같게 하고 '더 보기'는 바닥에, 줄 높이도 같게(제목 2줄 + 보조 1줄) */
   .home-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
-  .home-grid .home-block { display: flex; flex-direction: column; }
-  .home-grid .results { flex: 1 0 auto; margin-bottom: 16px; }
-  .home-grid .block-head { min-height: 37px; }
-  .home-grid .btn.more { margin-top: auto; }
+  :is(.home-grid, .home-upcoming) .home-block { display: flex; flex-direction: column; }
+  :is(.home-grid, .home-upcoming) .home-block .results { flex: 1 0 auto; margin-bottom: 16px; }
+  :is(.home-grid, .home-upcoming) .block-head { min-height: 37px; }
+  :is(.home-grid, .home-upcoming) .home-block .btn.more { margin-top: auto; }
   .home-grid .row-main { min-height: 4.85rem; }
   .filters, .detail { display: block; position: sticky; top: 72px; max-height: calc(100vh - 88px); overflow-y: auto; }
   .filters { padding: 0 4px 0 0; }

@@ -158,6 +158,19 @@
       <ul id="homeNew" class="results"></ul>
       <button type="button" class="btn gray more" id="homeNewMore" hidden></button>
     </section>
+    <section class="home-block" aria-labelledby="homeStartsTitle">
+      <div class="block-head">
+        <h3 id="homeStartsTitle">곧 접수가 시작되는 공고 <span class="head-count" id="homeStartsCount"></span></h3>
+        <button type="button" class="more-link" id="homeStartsAll">전체 보기<i class="ph ph-arrow-right" aria-hidden="true"></i></button>
+      </div>
+      <ul id="homeStarts" class="results"></ul>
+      <button type="button" class="btn gray more" id="homeStartsMore" hidden></button>
+    </section>
+  </div>
+
+  <!-- 홈 맨 아래 카드 셋: 많이 찾는 지원사업 · 곧 올라올 수 있는 공고 · 새로 생긴 상시 제도.
+       많이 찾는 지원사업은 여기 고정, 나머지 둘은 app.js renderCharts가 그 뒤에 넣는다 -->
+  <div class="home-upcoming" id="homeUpcoming">
     <section class="home-block" aria-labelledby="homePopTitle">
       <div class="block-head">
         <h3 id="homePopTitle">많이 찾는 지원사업</h3>
@@ -170,9 +183,6 @@
       <button type="button" class="btn gray more" id="homePopMore" hidden></button>
     </section>
   </div>
-
-  <!-- 홈 맨 아래 카드 셋: 곧 올라올 수 있는 공고 · 곧 접수가 시작되는 공고 · 새로 생긴 상시 제도. app.js renderCharts가 넣는다 -->
-  <div class="home-upcoming" id="homeUpcoming"></div>
 </main>
 
 <div class="wrap layout" id="listLayout">
