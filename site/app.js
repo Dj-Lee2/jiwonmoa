@@ -1798,13 +1798,19 @@
     var r = peekAnchor.getBoundingClientRect(), w = peekBox.offsetWidth, h = peekBox.offsetHeight, gap = 10;
     var vw = document.documentElement.clientWidth, vh = window.innerHeight;
     var left = Math.max(12, Math.min(vw - w - 12, r.left + r.width / 2 - w / 2)), top;
+    // 오른쪽 열 카드(카드 오른쪽에 창 자리가 없음 — 지도·달 막대·공공서비스 도넛)는 아래·위에 둘 때도 카드 왼쪽 끝을 넘지 않게(왼쪽 카드를 덮지 않게)
+    var card = (peekAnchor.closest(".viz-card") || peekAnchor).getBoundingClientRect();
+    if (card.right + gap + w > vw - 12 && card.width >= w) left = Math.max(left, card.left);
     if (r.bottom + gap + h <= vh - 8) top = r.bottom + gap;          // 아래에 자리가 있으면 아래
     else if (r.top - gap - h >= 8) top = r.top - gap - h;            // 아니면 위
     else {
-      // 키 큰 표시(달 막대 칸 등)는 위아래 어디에도 안 들어가므로 카드 옆(그래프를 가리지 않게)에 두고 화면 안에 세로로 맞춘다
-      var c = (peekAnchor.closest(".viz-card") || peekAnchor).getBoundingClientRect();
-      left = c.right + gap + w <= vw - 12 ? c.right + gap : c.left - gap - w >= 12 ? c.left - gap - w :
-        r.right + gap + w <= vw - 12 ? r.right + gap : Math.max(12, r.left - gap - w);
+      // 키 큰 표시(도넛 조각·달력 칸·지도 지역·달 막대)는 위아래 어디에도 안 들어가므로 옆에 두고 화면 안에 세로로 맞춘다.
+      // 어느 카드든 '누른 것의 오른쪽'이 먼저: 카드 바로 오른쪽 → (오른쪽 열 카드라 카드 밖에 자리가 없으면) 누른 것 바로 오른쪽
+      // → 그래도 모자라면 누른 것 왼쪽(같은 카드 안에 들어갈 때만) → 아니면 화면 오른쪽 끝에 붙인다(옆 카드로 넘어가지 않게).
+      // 예전에는 오른쪽 열 카드(지도·달 막대)의 창이 왼쪽 열 카드 위로 넘어가 뜨는 쪽이 달랐다(형님 시안 A)
+      var c = card;
+      left = c.right + gap + w <= vw - 12 ? c.right + gap : r.right + gap + w <= vw - 12 ? r.right + gap :
+        r.left - gap - w >= Math.max(12, c.left) ? r.left - gap - w : Math.max(12, vw - w - 12);
       top = Math.max(8, Math.min(vh - h - 8, r.top + r.height / 2 - h / 2));
     }
     peekBox.style.left = Math.round(left + window.scrollX) + "px";
