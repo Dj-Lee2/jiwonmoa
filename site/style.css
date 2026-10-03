@@ -207,6 +207,8 @@ button, input, select { font: inherit; color: inherit; letter-spacing: inherit; 
 .badge.new { background: var(--kind-open-weak); color: var(--kind-open-text); }
 .badge.line { background: transparent; box-shadow: inset 0 0 0 1px var(--line); color: var(--fg); }
 .badge.soft { background: var(--surface); color: var(--muted); font-weight: 600; }
+/* 공고와 공공서비스가 섞인 목록(마감이 가까운 지원사업·마감 달력 요약)에서 공공서비스 표시: 초록 = 공공서비스 */
+.badge.svc { background: var(--green-50); color: var(--green-600); }
 
 /* ---------- 조건 ---------- */
 .sheet-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
@@ -478,6 +480,8 @@ select { appearance: none; background-image: linear-gradient(45deg, transparent 
 .viz .mark:focus-visible .hit { stroke: var(--fg-strong); stroke-width: 2; }
 /* 두 계열 이상 그래프의 범례, 카드 제목 옆 전환 단추 */
 .viz-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 12px; }
+/* 제목 옆 전환 단추가 둘일 때(마감 달력: 공고|공공서비스 + 달) — 좁으면 아래로 접힌다 */
+.viz-tools { display: flex; flex-wrap: wrap; gap: 8px; }
 .viz-fig { width: 100%; }
 .viz-legend { display: flex; flex-wrap: wrap; gap: 4px 16px; margin: 0 0 10px; font-size: .875rem; font-weight: 600; color: var(--fg-strong); }
 .viz-legend span { display: inline-flex; align-items: center; gap: 6px; }
@@ -1216,6 +1220,14 @@ body.peek-lock .to-top, body.detail-open .to-top, body.filters-open .to-top, bod
 }
 
 /* ---------- 자료 일부를 못 받았을 때의 안내 줄(app.js loadNote): 빨강 = 오류 ---------- */
+/* 마감 조건 목록에서 같은 조건의 다른 쪽(모집 공고 ↔ 공공서비스)으로 잇는 한 줄(app.js dueCrossNote) */
+.cross-note { display: flex; align-items: center; gap: 8px; width: 100%; min-height: 44px; margin: 0 0 16px; padding: 10px 14px; border: 0; border-radius: 16px;
+  background: var(--surface); color: var(--fg); font: inherit; font-size: .9375rem; text-align: left; cursor: pointer; }
+.cross-note:hover { background: var(--surface-hover); }
+.cross-note strong { color: var(--fg-strong); }
+.cross-note .ph-arrow-right { margin-left: auto; color: var(--muted); }
+.kind-dot { width: 8px; height: 8px; border-radius: 50%; flex: none; background: var(--kind-open); }
+.kind-dot.svc { background: var(--kind-svc); }
 .load-note { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 10px; margin: 0 0 16px; padding: 10px 12px 10px 14px; border-radius: 16px;
   background: var(--red-50); color: var(--fg-strong); font-size: .875rem; font-weight: 600; }
 .load-note .ph { font-size: 1.125rem; color: var(--warn-text); }

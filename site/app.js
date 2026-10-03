@@ -465,7 +465,8 @@
   /* ---------- 주소(#)에 상태 담기: 공유 링크와 뒤로 가기 ---------- */
 
   function defaultSort(s) {
-    return s.tab === "services" ? "name" : "deadline";
+    // 공공서비스는 이름순, 다만 마감 조건(7일 안에 마감·마감 달력의 날)으로 볼 때는 마감 임박순
+    return s.tab === "services" && !s.soon && !s.due ? "name" : "deadline";
   }
 
   function agriSelected() { return state.au.indexOf("농업인") >= 0; }
@@ -595,7 +596,7 @@
     if (!state.pv && item.p) return false;
     if (agriSelected() && state.tp.length &&
         !(item.tp || []).some(function (t) { return state.tp.indexOf(t) >= 0; })) return false;
-    if (!skipSoon && state.soon && isNoticeView() && !isSoon(item)) return false;
+    if (!skipSoon && state.soon && !isSoon(item)) return false; // 마감일 있는 공공서비스(1~2%)도 같은 조건으로
     if (state.nw && isNoticeView() && !postedWithin(item, RECENT_DAYS)) return false;
     if (state.td && isNoticeView() && !isTodayNew(item)) return false;
     if (state.starts && isNoticeView() && (statusOf(item) !== "접수 예정" || startsSoon(item) !== (state.starts === "soon"))) return false;
@@ -603,7 +604,7 @@
         !(item.sp || []).some(function (x) { return state.sp.indexOf(x) >= 0; })) return false;
     if (state.cg.length && state.cg.indexOf(fieldOf(item)) < 0) return false;
     if (state.om && isNoticeView() && (item.s || item.e || "").slice(0, 7) !== state.om) return false;
-    if (state.due && isNoticeView()) {
+    if (state.due) {
       var range = state.due.split("~");
       if (statusOf(item) !== "접수 중" || !item.e || item.e < range[0] || item.e > range[1]) return false;
     }
@@ -681,7 +682,8 @@
 
   /* compact: 홈 목록용. 배지 줄과 기간 줄을 빼고 '민간 주관'은 기관 앞 글자로 붙여 줄 높이를 고르게 한다.
    * extra(올라온 날·조회수)는 기관·지역 줄 끝에 붙인다. 줄이 길면 기관 쪽이 줄고 extra는 늘 보인다 */
-  function row(item, extra, compact) {
+  /* mixed: 공고와 공공서비스가 섞인 목록이면 공공서비스에 초록 '서비스' 표시를 붙인다 */
+  function row(item, extra, compact, mixed) {
     var meta = [compact && item.p ? "민간 주관" : null, item.ag, regionText(item)].filter(Boolean).join(" · ");
     var metaLine = extra ? el("span", { className: "row-meta row-line" },
       meta ? el("span", { className: "row-line-main", text: meta }) : null,
@@ -698,6 +700,7 @@
         !compact && !sideDate && item.pt && SHOW_PERIOD_TEXT.indexOf(statusOf(item)) >= 0
           ? el("span", { className: "row-meta", text: periodText(item) }) : null),
       el("span", { className: "row-side" },
+        mixed && item.k === "s" ? badge("서비스", "svc") : null,
         statusBadge(item),
         sideDate ? el("span", { className: "row-date", text: sideDate }) : null,
         el("span", { className: "row-src", text: SRC_NAME[item.src] })));
@@ -777,10 +780,11 @@
     }
     var hits = sortItems(data.filter(function (it) { return matches(it, terms); }));
     var listNote = $("#listNote"), textMissing = noticeTextFailed && terms.length > 0 && state.tab !== "services";
-    listNote.hidden = !textMissing;
+    var cross = textMissing ? null : dueCrossNote(terms);
+    listNote.hidden = !textMissing && !cross;
     listNote.replaceChildren(textMissing ? loadNote("공고 본문을 불러오지 못해 제목·기관 이름에서만 찾았습니다.", function () {
       retryNoticeText().then(function () { renderList(); renderDetail(); });
-    }) : "");
+    }) : cross || "");
     renderSoon(terms);
     $("#resultCount").textContent = fmtN(hits.length) + "건";
     $("#filterDone").textContent = "결과 " + fmtN(hits.length) + "건 보기";
@@ -791,11 +795,40 @@
     updateFilterBadge();
   }
 
+  /* 마감 조건(7일 안에 마감·마감 달력의 날)으로 한쪽 탭을 볼 때, 같은 조건의 다른 쪽(모집 공고 ↔ 공공서비스)이
+   * 있으면 목록 위에 한 줄로 알리고 누르면 그쪽 목록으로 간다. 홈 마감 숫자·목록·달력이 둘을 함께 세기 때문.
+   * 공공서비스 쪽 수는 META.dueServices(짧은 값만)로 세므로 지역·검색어(제목·기관)만 맞춰 보고, 다른 조건이 있으면 알리지 않는다 */
+  function dueCrossNote(terms) {
+    if (!state.soon && !state.due) return null;
+    if (state.au.length || state.st.length || state.src.length || state.cg.length || state.sp.length || state.tp.length ||
+        state.ag || state.ic || state.sx || !state.pv) return null;
+    var toSvc = isNoticeView();
+    var pool = toSvc ? dueServices() : NOTICES;
+    var saved = state.tab;
+    state.tab = toSvc ? "services" : "open"; // matches가 탭에 따라 거르는 것(분야 등)을 그쪽 기준으로
+    var n = pool.filter(function (it) {
+      if (toSvc && terms.length) {
+        var h = [it.t, it.ag].join(" ").toLowerCase();
+        if (terms.some(function (t) { return h.indexOf(t) < 0; })) return false;
+      }
+      return (toSvc || it.k === "n") && matches(it, toSvc ? [] : terms);
+    }).length;
+    state.tab = saved;
+    if (!n) return null;
+    var what = toSvc ? "공공서비스" : "모집 공고";
+    var b = el("button", { type: "button", className: "cross-note" }, el("span", { className: "kind-dot " + (toSvc ? "svc" : "open"), "aria-hidden": "true" }),
+      "같은 마감 조건의 " + what + "도 ", el("strong", { text: fmtN(n) + "건" }), " 있어요", icon("arrow-right"));
+    b.addEventListener("click", function () {
+      goTo({ tab: toSvc ? "services" : "open", q: state.q, soon: state.soon, due: state.due, sort: "deadline" });
+    });
+    return b;
+  }
+
   /* '7일 안에 마감' 건수는 지금 고른 다른 조건(검색어·지역 등) 안에서 센다 */
   function renderSoon(terms) {
     var btn = $("#soonToggle");
     var data = dataset();
-    if (!isNoticeView() || !data || !terms) { btn.hidden = true; return; }
+    if (!data || !terms) { btn.hidden = true; return; }
     var n = data.filter(function (i) { return isSoon(i) && matches(i, terms, true); }).length;
     btn.querySelector(".n").textContent = fmtN(n);
     btn.setAttribute("aria-pressed", String(state.soon));
@@ -810,8 +843,8 @@
     if (state.q) add("‘" + state.q + "’ 검색", function () { state.q = ""; });
     if (state.r) add(state.r + (state.nat ? " + 전국" : " 한정"), function () { state.r = ""; });
     if (state.ag || state.ic || state.sx) add("내 조건: " + meLabel(), function () { state.ag = state.ic = state.sx = ""; saveMe(); });
-    if (state.soon && isNoticeView()) add("7일 안에 마감", function () { state.soon = false; });
-    if (state.due && isNoticeView()) add(dueLabel(state.due), function () { state.due = ""; });
+    if (state.soon) add("7일 안에 마감", function () { state.soon = false; });
+    if (state.due) add(dueLabel(state.due), function () { state.due = ""; });
     if (state.om && isNoticeView()) add((+state.om.slice(5)) + "월 접수 시작", function () { state.om = ""; });
     if (state.nw && isNoticeView()) add("최근 " + RECENT_DAYS + "일 새 공고", function () { state.nw = false; });
     if (state.td && isNoticeView()) add(newDayLabel() + " 올라온 공고", function () { state.td = false; });
@@ -1417,7 +1450,7 @@
 
   /* 숫자 타일 아래 눈금 막대: 전체(of) 가운데 이 숫자가 차지하는 몫을 40칸 중 칠한 칸으로 보인다.
    * 막대는 홈을 처음 그릴 때만 자라난다(지역을 바꿔 다시 그릴 때는 칸 수만 바뀐다) */
-  var STAT_TICKS = 40, statsGrown = false;
+  var STAT_TICKS = 40, statsGrown = false, todayDueTab = "open";
   function statTile(num, label, iconName, onClick, tone, of, ofLabel) {
     var mark = icon(iconName);
     mark.classList.add("tone-" + tone);
@@ -1466,14 +1499,19 @@
     var tn = $("#homeTodayNew");
     todayButton(tn, todayN, el("span", { className: "badge new", text: "NEW" }), newDayLabel() + " 올라온 공고 ");
     // 오늘 마감: 접수 중이고 마감일이 오늘인 공고(고른 지역 기준). 목록 조건은 마감 달력과 같은 due=오늘~오늘
-    var dueN = live.filter(function (n) { return statusOf(n) === "접수 중" && n.e === today; }).length;
-    todayButton($("#homeTodayDue"), dueN, el("span", { className: "badge urgent", text: "D-DAY" }), "오늘 마감인 공고 ");
+    // 마감일 있는 공공서비스도 함께 센다. 누르면 더 많은 쪽 목록으로, 다른 쪽은 목록 위 한 줄 안내(dueCrossNote)로 잇는다
+    var dueSvc = homeDueSvc();
+    var dueToday = live.concat(dueSvc).filter(function (n) { return statusOf(n) === "접수 중" && n.e === today; });
+    todayDueTab = dueTab(dueToday);
+    todayButton($("#homeTodayDue"), dueToday.length, el("span", { className: "badge urgent", text: "D-DAY" }), "오늘 마감인 지원사업 ");
     $("#homeTodayRow").hidden = false;
 
     var svcN = svcCount("all");
+    // 7일 안에 마감: 모집 공고 + 마감일 있는 공공서비스. 눈금은 '마감일 있는 지원사업' 가운데 몫
+    var withDue = live.filter(hasDue).concat(dueSvc.filter(hasDue)), soonAll = withDue.filter(isSoon);
     $("#homeStats").replaceChildren(
-      statTile(live.filter(isSoon).length, "7일 안에 마감", "clock",
-        function () { goTo({ tab: "open", soon: true }); }, "red", live.length, "모집 공고"),
+      statTile(soonAll.length, "7일 안에 마감", "clock",
+        function () { goTo({ tab: dueTab(soonAll), soon: true, sort: "deadline" }); }, "red", withDue.length, "마감일 있는 지원사업"),
       // 접수 예정: 7일 안에 시작하는 공고는 홈 맨 아래 '곧 접수가 시작되는 공고'에서 보이므로 그 뒤에 시작하는 것만
       statTile(live.filter(function (n) { return statusOf(n) === "접수 예정" && !startsSoon(n); }).length, "접수 예정", "calendar-check",
         function () { goTo({ tab: "open", starts: "later", sort: "deadline" }); }, "blue", live.length, "모집 공고"),
@@ -1552,11 +1590,25 @@
     return NOTICES.filter(function (n) { return statusOf(n) !== "마감" && inRegion(n); });
   }
 
+  /* 마감일이 있는 공공서비스(보조금24 원문에 접수 기간이 적힌 것, META.dueServices — build_site.py due_services).
+   * 홈의 마감 숫자·마감이 가까운 지원사업·오늘 마감·마감 달력에 모집 공고와 함께 넣는다 */
+  function dueServices() {
+    return (META.dueServices || []).filter(function (s) { return statusOf(s) !== "마감"; });
+  }
+  function homeDueSvc() { return dueServices().filter(inRegion); }
+  function hasDue(it) { return statusOf(it) === "접수 중" && it.e; }
+  /* 공고와 공공서비스가 섞인 목록·달력에서 누를 때 갈 탭: 건수가 더 많은 쪽(같으면 공고) */
+  function dueTab(items) {
+    var s = items.filter(function (i) { return i.k === "s"; }).length;
+    return s > items.length - s ? "services" : "open";
+  }
+
   function renderHomeLists(live) {
-    var soon = live.filter(function (n) { return statusOf(n) === "접수 중" && n.e; })
+    // 마감이 가까운 지원사업: 접수 중이고 마감일이 있는 모집 공고 + 공공서비스, 마감 빠른 순. 공공서비스는 초록 '서비스' 표시
+    var soon = live.filter(hasDue).concat(homeDueSvc().filter(hasDue))
       .sort(function (a, b) { return a.e.localeCompare(b.e) || a.t.localeCompare(b.t, "ko"); });
-    homeList("soon", $("#homeSoon"), $("#homeSoonMore"), soon, function (n) { return row(n, null, true); },
-      "지금 접수 중인 마감일 있는 공고가 없습니다.");
+    homeList("soon", $("#homeSoon"), $("#homeSoonMore"), soon, function (n) { return row(n, null, true, true); },
+      "지금 접수 중인 마감일 있는 지원사업이 없습니다.");
 
     var fresh = live.filter(function (n) { return postedWithin(n, RECENT_DAYS); })
       .sort(function (a, b) { return b.pd.localeCompare(a.pd) || a.t.localeCompare(b.t, "ko"); });
@@ -1760,7 +1812,7 @@
       var ul = el("ul");
       items.forEach(function (it) {
         var ch = changeOf(it.id);
-        var side = it.k === "s" ? null : ch ? badge(ch.text, ch.tone) : statusBadge(it);
+        var side = it.k === "s" ? (it.e ? statusBadge(it) : null) : ch ? badge(ch.text, ch.tone) : statusBadge(it);
         var b = el("button", { type: "button", className: "peek-item" },
           el("span", { className: "peek-item-main" },
             el("span", { className: "peek-item-title", text: it.t }),
@@ -1859,11 +1911,16 @@
     { key: "nf", label: "분야", of: function (i) { return i.nf; } },
     { key: "pp", label: "대상", of: function (i) { return i.pp; } },
     { key: "rg", label: "지역", of: function (i) { return i.rg; } }];
-  function noticePeek(items, title, sub, more, flag, flagTone, skip) {
+  // 마감일 있는 공공서비스 요약(마감 달력 '공공서비스'): META.dueServices의 분야(cat)·대상(pp)·지역
+  var DUE_SVC_GROUPS = [
+    { key: "cat", label: "분야", of: function (i) { return i.cat; } },
+    { key: "pp", label: "대상", of: function (i) { return i.pp; } },
+    { key: "rg", label: "지역", of: function (i) { return i.rg; } }];
+  function noticePeek(items, title, sub, more, flag, flagTone, skip, svc) {
     var soon = items.filter(isSoon).length;
-    return { title: title, sub: sub, n: items.length, kind: "open",
+    return { title: title, sub: sub, n: items.length, kind: svc ? "svc" : "open", itemsLabel: svc ? "많이 본 서비스" : null,
       flag: flag !== undefined ? flag : (soon ? "7일 안 마감 " + fmtN(soon) + "건" : null), flagTone: flagTone || "soon",
-      groups: NOTICE_GROUPS.filter(function (g) { return g.key !== skip; }).map(function (g) {
+      groups: (svc ? DUE_SVC_GROUPS : NOTICE_GROUPS).filter(function (g) { return g.key !== skip; }).map(function (g) {
         return { label: g.label, rows: topN(countBy(items, g.of)) };
       }),
       items: peekItems(items), more: more };
@@ -1921,7 +1978,8 @@
   }
 
   /* 카드 제목 옆 전환 단추. 바꾸면 홈을 다시 그리고 초점을 새로 눌린 단추에 둔다 */
-  function segToggle(name, label, options, current, onPick) {
+  /* scope: 바꾼 뒤 다시 움직일 카드 이름표(없으면 name). 한 카드에 전환 단추가 둘이면 name은 다르게, scope는 카드 이름표로 */
+  function segToggle(name, label, options, current, onPick, scope) {
     var box = el("div", { className: "seg-mini", role: "group", "aria-label": label, dataset: { seg: name } });
     options.forEach(function (o) {
       var b = el("button", { type: "button", "aria-pressed": String(o.value === current), text: o.label });
@@ -1931,7 +1989,7 @@
         var from = box.querySelector('[aria-pressed="true"]');
         segFrom[name] = from ? { left: from.offsetLeft, width: from.offsetWidth } : null;
         onPick(o.value);
-        animScope = name; // 카드 이름표(map·svc)와 같다
+        animScope = scope || name; // 카드 이름표(map·svc·due)
         renderHome();
         var again = document.querySelector('[data-seg="' + name + '"] [aria-pressed="true"]');
         if (again) again.focus();
@@ -2303,6 +2361,8 @@
    * 석 달 뒤에 마감하는 공고는 아래 '이후 마감' 단추로 모아 본다.
    * 색 4단계 경계는 석 달 동안 마감이 있는 날들의 분포(33·66·90%)로 정한다(달을 바꿔도 같은 색 = 같은 양) */
   var DUE_MONTHS = 3, dueMonth = 0;
+  /* 마감 달력에 보일 자료: 모집 공고(파랑) | 공공서비스(초록, 마감일 있는 것만 — META.dueServices). 지도 카드 전환 단추와 같은 모양 */
+  var dueKind = "n";
   var DUE_SHADES = MAP_SHADES.slice(0, 4); // 지도 파랑 단계와 같은 색
 
   function monthStart(iso, add) {
@@ -2316,14 +2376,17 @@
     for (var m = 0; m < DUE_MONTHS; m++) months.push(monthStart(today, m));
     var last = addDays(monthStart(today, DUE_MONTHS), -1);
     var perDay = {}, later = 0;
-    live.forEach(function (it) {
+    var svcView = dueKind === "s", what = svcView ? "공공서비스" : "모집 공고", tab = svcView ? "services" : "open";
+    var shades = svcView ? MAP_SHADES_GREEN.slice(0, 4) : DUE_SHADES;
+    var dueAll = svcView ? homeDueSvc() : live;
+    dueAll.forEach(function (it) {
       if (statusOf(it) !== "접수 중" || !it.e || it.e < today) return;
       if (it.e > last) later++;
       else perDay[it.e] = (perDay[it.e] || 0) + 1;
     });
-    // 내 달력: 지역 조건과 상관없이 넣은 것은 다 보인다(접수 예정 공고도)
+    // 내 달력: 지역 조건과 상관없이 넣은 것은 다 보인다(접수 예정도). 지금 고른 자료 종류(공고/공공서비스)만
     var mineByDay = {}, mineLater = 0;
-    calItems().forEach(function (it) {
+    calItems().filter(function (it) { return (it.k === "s") === svcView; }).forEach(function (it) {
       if (it.e > last) mineLater++;
       else (mineByDay[it.e] = mineByDay[it.e] || []).push(it);
     });
@@ -2344,7 +2407,7 @@
     var gridW = 7 * cw + 6 * gap;
     var H = top + 6 * ch + 5 * gap + 1;
     var root = svgEl("svg", { viewBox: "-0.5 -0.5 " + (gridW + 1) + " " + H, role: "group", "class": "duecal",
-      "aria-label": (+ym.slice(5)) + "월 날짜별 마감 공고 수 달력", style: "max-width:" + (gridW + 1) + "px" });
+      "aria-label": (+ym.slice(5)) + "월 날짜별 마감 " + what + " 수 달력", style: "max-width:" + (gridW + 1) + "px" });
     // 지난날 칸의 빗금 무늬(style.css .duecal .past .cell)
     var defs = svgEl("defs", {});
     var hatch = svgEl("pattern", { id: "duecal-past", width: 6, height: 6, patternUnits: "userSpaceOnUse",
@@ -2377,7 +2440,7 @@
       var g = svgEl("g", { "class": "day" + (n || mine.length ? " mark" : "") + (past ? " past" : "") + (iso === today ? " today" : "") +
         (lvl === 4 ? " deep" : "") + (mine.length ? " mine" : ""), style: "--i:" + i });
       g.append(svgEl("rect", { x: x, y: y, width: cw, height: ch, rx: rx,
-        "class": "cell", style: lvl ? "fill:" + DUE_SHADES[lvl - 1] : "" }));
+        "class": "cell", style: lvl ? "fill:" + shades[lvl - 1] : "" }));
       g.append(svgText(x + (big ? 6 : 4), y + (big ? 15 : 12), String(+iso.slice(8)), "dnum", "start"));
       if (n && big) {
         var cntText = svgText(x + cw - 6, y + ch - 7, fmtN(n), "dcnt", "end");
@@ -2397,14 +2460,15 @@
       }
       if (n || mine.length) {
         (function (day, cnt, mineItems) {
-          activate(g, fmtDate(day, true) + " 마감 " + cnt + "건" + (mineItems.length ? ", 내 달력 " + mineItems.length + "건" : "") +
+          activate(g, fmtDate(day, true) + " 마감 " + what + " " + cnt + "건" + (mineItems.length ? ", 내 달력 " + mineItems.length + "건" : "") +
             ". 누르면 요약을 봅니다", function (node) {
             openPeek("due:" + day, node, function () {
-              var items = live.filter(function (it) { return statusOf(it) === "접수 중" && it.e === day; });
+              var items = dueAll.filter(function (it) { return statusOf(it) === "접수 중" && it.e === day; });
               var d = daysBetween(today, day);
-              var spec = noticePeek(items, regionPrefix() + fmtDate(day) + " 마감 모집 공고", "이날까지 신청해야 하는 공고",
-                { label: fmtN(items.length) + "건 모두 보기", go: function () { goTo({ tab: "open", due: day + "~" + day }); } },
-                d === 0 ? "오늘 마감" : "D-" + d, d <= 3 ? "urgent" : d <= SOON_DAYS ? "soon" : "line");
+              var spec = noticePeek(items, regionPrefix() + fmtDate(day) + " 마감 " + what,
+                svcView ? "이날까지 신청해야 하는 공공서비스" : "이날까지 신청해야 하는 공고",
+                { label: fmtN(items.length) + "건 모두 보기", go: function () { goTo({ tab: tab, due: day + "~" + day, sort: "deadline" }); } },
+                d === 0 ? "오늘 마감" : "D-" + d, d <= 3 ? "urgent" : d <= SOON_DAYS ? "soon" : "line", null, svcView);
               spec.pinned = mineItems;
               return spec;
             });
@@ -2422,10 +2486,10 @@
     var inShown = Object.keys(perDay).filter(function (k) { return k.slice(0, 7) === ym; });
     var total = inShown.reduce(function (a, k) { return a + perDay[k]; }, 0);
     var busiest = inShown.sort(function (a, b) { return perDay[b] - perDay[a] || a.localeCompare(b); }).slice(0, 3);
-    var sub = (+ym.slice(5)) + "월 마감 " + fmtN(total) + "건" + (busiest.length ?
+    var sub = (+ym.slice(5)) + "월 마감 " + what + " " + fmtN(total) + "건" + (busiest.length ?
       " · 몰린 날 " + busiest.map(function (k) { return fmtDate(k) + " " + fmtN(perDay[k]) + "건"; }).join(", ") : "");
     var scale = el("div", { className: "scale duecal-scale", "aria-hidden": "true" }, "적음");
-    DUE_SHADES.forEach(function (color) { scale.append(el("i", { style: "background:" + color })); });
+    shades.forEach(function (color) { scale.append(el("i", { style: "background:" + color })); });
     scale.append("많음");
     var myShown = Object.keys(mineByDay).filter(function (k) { return k.slice(0, 7) === ym; })
       .reduce(function (t, k) { return t + mineByDay[k].length; }, 0);
@@ -2438,13 +2502,17 @@
       laterBtn = el("button", { type: "button", className: "more-link duecal-later" },
         fmtDate(after) + " 이후 마감 " + fmtN(later) + "건" + (mineLater ? " (내 달력 " + mineLater + ")" : ""),
         el("i", { className: "ph ph-arrow-right", "aria-hidden": "true" }));
-      laterBtn.addEventListener("click", function () { goTo({ tab: "open", due: after + "~9999-12-31" }); });
+      laterBtn.addEventListener("click", function () { goTo({ tab: tab, due: after + "~9999-12-31", sort: "deadline" }); });
     }
-    return vizCard("언제 마감되나요?", sub,
-      el("div", { className: "viz-fig duecal-fig" }, root, el("div", { className: "duecal-foot" }, scale, laterBtn)), null,
+    // 제목 옆 전환 단추 둘: 자료 종류(공고 | 공공서비스, '어느 지역에 많나요?' 지도 카드와 같은 모양)와 달
+    var tools = el("div", { className: "viz-tools" },
+      segToggle("duek", "달력에 보일 자료", [{ value: "n", label: "모집 공고" }, { value: "s", label: "공공서비스" }], dueKind,
+        function (v) { dueKind = v; }, "due"),
       segToggle("due", "달력에 보일 달", months.map(function (monthIso, k) {
         return { value: k, label: (+monthIso.slice(5, 7)) + "월" };
       }), dueMonth, function (v) { dueMonth = v; }));
+    return vizCard("언제 마감되나요?", sub,
+      el("div", { className: "viz-fig duecal-fig" }, root, el("div", { className: "duecal-foot" }, scale, laterBtn)), null, tools);
   }
 
   /* 실제 지도(vendor/korea-map.js, svg-maps CC BY 4.0). 작은 광역시는 지도 위 숫자가 가려지므로
@@ -3138,7 +3206,7 @@
     $("#homeNat").addEventListener("change", function (e) {
       state.nat = e.target.checked; animScope = "all"; renderHome(); writeHash(false);
     });
-    $("#homeSoonAll").addEventListener("click", function () { goTo({ tab: "open" }); });
+    $("#homeSoonAll").addEventListener("click", function () { goTo({ tab: "open", sort: "deadline" }); });
     $("#homeStartsAll").addEventListener("click", function () { goTo({ tab: "open", starts: "soon" }); });
     ["#homeFav", "#homeSoon", "#homeNew", "#homeStarts", "#homePop"].forEach(function (sel) {
       $(sel).addEventListener("click", function (e) {
@@ -3152,7 +3220,7 @@
     });
     $("#homeNewAll").addEventListener("click", function () { goTo({ tab: "open", nw: true, sort: "posted" }); });
     $("#homeTodayNew").addEventListener("click", function () { goTo({ tab: "open", td: true, sort: "posted" }); });
-    $("#homeTodayDue").addEventListener("click", function () { goTo({ tab: "open", due: today + "~" + today }); });
+    $("#homeTodayDue").addEventListener("click", function () { goTo({ tab: todayDueTab, due: today + "~" + today, sort: "deadline" }); });
     [["#homeSoonMore", "soon", "#homeSoon"], ["#homeNewMore", "fresh", "#homeNew"], ["#homeStartsMore", "starts", "#homeStarts"],
       ["#homePopMore", "pop", "#homePop"]]
       .forEach(function (m) {

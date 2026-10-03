@@ -317,6 +317,26 @@ class NewServicesTest(unittest.TestCase):
         self.assertEqual(out[0]["fs"], "2026-10-03")
 
 
+class DueServicesTest(unittest.TestCase):
+    """홈 마감 숫자·목록·달력에 함께 넣는 '마감일 있는 공공서비스': 기간형이고 마감이 오늘 이후인 것만, 마감 빠른 순."""
+
+    def test_due_services(self):
+        import datetime
+        s = [
+            {"id": "gov24:1", "src": "gov24", "k": "s", "t": "늦게", "py": "기간", "s": "2026-09-01", "e": "2026-11-30", "rg": ["서울"]},
+            {"id": "gov24:2", "src": "gov24", "k": "s", "t": "지남", "py": "기간", "e": "2026-10-02"},
+            {"id": "gov24:3", "src": "gov24", "k": "s", "t": "상시", "py": "상시"},
+            {"id": "gov24:4", "src": "gov24", "k": "s", "t": "오늘", "py": "기간", "e": "2026-10-03", "cd": [["나이", "만 19세"]],
+             "cat": "보육·교육", "pp": ["청년"]},
+            {"id": "gov24:5", "src": "gov24", "k": "s", "t": "날짜 없음", "py": "기간"},
+        ]
+        out = build_site.due_services(s, datetime.date(2026, 10, 3))
+        self.assertEqual([i["t"] for i in out], ["오늘", "늦게"])
+        self.assertNotIn("cd", out[0])  # 홈에 필요한 짧은 값만(요약 창용 분야·대상은 남김)
+        self.assertEqual((out[0]["cat"], out[0]["pp"]), ("보육·교육", ["청년"]))
+        self.assertEqual(out[1]["rg"], ["서울"])
+
+
 class SecurityHeaderTest(unittest.TestCase):
     """첫 화면 인라인 스크립트를 고치면 CSP의 sha256도 함께 바꿔야 한다(안 그러면 운영에서 스크립트가 막힌다)."""
 

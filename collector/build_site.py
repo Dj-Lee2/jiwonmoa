@@ -353,6 +353,19 @@ def new_services(services, first_day, today):
     return [dict({k: i[k] for k in TOP_KEYS if k in i}, fs=i["fs"]) for i in picked[:NEW_SERVICE_MAX]]
 
 
+def due_services(services, today):
+    """마감일이 있는 공공서비스(보조금24 원문에 접수 기간이 적힌 것, 1~2%). 홈의 마감 숫자·목록·달력에 모집 공고와
+    함께 넣으려고 미리 뽑는다(홈에서 큰 목록 services.js를 읽지 않으려고). 마감이 오늘 이후인 것만, 마감이 빠른 순.
+    반환: [{id, src, k, t, ag, py, s, e, rg, vw, cat, pp}, …] (기간 원문 pt는 목록에 안 쓰여 뺀다 — 첫 화면 meta.js를 가볍게.
+    분야 cat·대상 pp는 마감 달력 '공공서비스' 요약 창이 쓴다)
+    """
+    day = today.isoformat()
+    picked = [i for i in services if i.get("py") == "기간" and i.get("e") and i["e"] >= day]
+    picked.sort(key=lambda i: (i["e"], i["t"], i["id"]))
+    keys = [k for k in TOP_KEYS if k != "pt"] + ["cat", "pp"]
+    return [{k: i[k] for k in keys if k in i} for i in picked]
+
+
 PEEK_TOP = 3
 
 
@@ -517,6 +530,7 @@ def main():
         "topServices": top_services(services),
         "upcoming": upcoming_calls(rows, datetime.date.today()),
         "newServices": new_services(services, first_day, datetime.date.today()),
+        "dueServices": due_services(services, datetime.date.today()),
         "personas": PERSONAS,
         "supports": SUPPORTS,
         "serviceCats": service_cats(services),

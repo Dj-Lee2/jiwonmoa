@@ -90,7 +90,7 @@
   <section class="home-hero">
     <h2 id="homeTitle" class="hero-title">지금 신청할 수 있는 모집 공고 <span class="sk-num" aria-hidden="true"></span></h2>
     <p id="homeSub" class="hero-sub">자료를 불러오는 중…</p>
-    <!-- 오늘 새 공고(파랑) · 오늘 마감(빨강). 해당 건이 없는 단추는 숨는다 -->
+    <!-- 오늘 새 공고(파랑) · 오늘 마감인 지원사업(빨강, 마감일 있는 공공서비스 포함). 0건이면 회색 -->
     <div class="today-row" id="homeTodayRow">
       <span class="today-sk sk-only" aria-hidden="true"></span>
       <button type="button" class="today-new" id="homeTodayNew" hidden></button>
@@ -144,7 +144,7 @@
   <div class="home-grid">
     <section class="home-block" aria-labelledby="homeSoonTitle">
       <div class="block-head">
-        <h3 id="homeSoonTitle">마감이 가까운 공고</h3>
+        <h3 id="homeSoonTitle">마감이 가까운 지원사업</h3>
         <button type="button" class="more-link" id="homeSoonAll">전체 보기<i class="ph ph-arrow-right" aria-hidden="true"></i></button>
       </div>
       <ul id="homeSoon" class="results"></ul>
