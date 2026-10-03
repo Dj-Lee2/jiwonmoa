@@ -13,7 +13,7 @@
  *  검정   고른 것(탭·조건 칩·전환 단추)과 두 번째 행동 단추
  *  노랑   화면마다 하나뿐인 주요 행동(찾기·원문 보기)
  *  파랑   모집 공고 — 그래프·지도·달력·숫자 타일·탭 표시·신규 배지
- *  초록   상시 제도 — 그래프·지도·도넛·숫자 타일·탭 표시
+ *  초록   공공서비스 — 그래프·지도·도넛·숫자 타일·탭 표시
  *  빨강   마감 임박(오늘~D-3)과 오류
  *  주황   7일 안 마감(빨강 다음 단계)
  * 색마다 단계: 50(옅은 면) · 100~400(그래프 단계) · 500(그래프 대표) · 600(글자·배지, 흰 바탕 4.5:1 이상) · 700~900(진한 단계)
@@ -40,7 +40,7 @@
   --blue-600: #256abf;
   --blue-700: #1c5cab;
   --blue-900: #0d366b;
-  /* 초록 = 상시 제도 */
+  /* 초록 = 공공서비스 */
   --green-50: #eef8ee;
   --green-100: #d3efd3;
   --green-300: #8fd08f;
@@ -78,7 +78,7 @@
   --kind-open: var(--blue-500);      /* 모집 공고 */
   --kind-open-text: var(--blue-600);
   --kind-open-weak: var(--blue-50);
-  --kind-svc: var(--green-500);      /* 상시 제도 */
+  --kind-svc: var(--green-500);      /* 공공서비스 */
   --urgent: var(--red-500);          /* 오늘~D-3 마감 (흰 글자 4.8:1) */
   --warn-text: var(--red-600);       /* 오류 글자 */
   --soon: var(--orange-600);         /* 7일 안 마감 글자 (연주황 면 위 5.1:1) */
@@ -147,7 +147,7 @@ button, input, select { font: inherit; color: inherit; letter-spacing: inherit; 
 .tabs [role="tab"]:hover, .tabs [role="tab"]:active { background: var(--surface-hover); }
 .tabs [role="tab"][aria-selected="true"] { background: var(--dark); color: var(--on-dark); font-weight: 700; box-shadow: inset 0 0 0 2px var(--dark-edge); }
 .tab-count { font-size: .8125rem; font-weight: 400; opacity: .7; }
-/* 탭 앞 종류 점: 파랑 = 모집 공고, 초록 = 상시 제도(그래프·지도 색과 같다) */
+/* 탭 앞 종류 점: 파랑 = 모집 공고, 초록 = 공공서비스(그래프·지도 색과 같다) */
 .tabs [data-tab="open"]::before, .tabs [data-tab="services"]::before { content: ""; width: 8px; height: 8px; border-radius: 50%; flex: none; margin-right: 6px; background: var(--kind-open); }
 .tabs [data-tab="services"]::before { background: var(--kind-svc); }
 
@@ -403,7 +403,7 @@ select { appearance: none; background-image: linear-gradient(45deg, transparent 
 :is(.home-grid, .home-upcoming) .home-block { border-radius: 24px; padding: 24px; background: var(--canvas); box-shadow: var(--shadow-border); min-width: 0; }
 :is(.home-grid, .home-upcoming) .home-block .results { border-top-width: 1px; }
 :is(.home-grid, .home-upcoming) .home-block .row { padding: 12px 4px; }
-/* 홈 맨 아래 카드 셋(많이 찾는 지원사업 · 곧 올라올 수 있는 공고 · 새로 생긴 상시 제도): 넓은 화면은 나란히,
+/* 홈 맨 아래 카드 셋(많이 찾는 지원사업 · 곧 올라올 수 있는 공고 · 새로 생긴 공공서비스): 넓은 화면은 나란히,
  * 목록 3개(.home-grid)와 같은 틀 — 세 칸 높이를 같게, '더 보기'는 바닥에 */
 .home-upcoming { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; margin-top: 16px; }
 .home-upcoming:empty { display: none; }
@@ -436,7 +436,7 @@ select { appearance: none; background-image: linear-gradient(45deg, transparent 
 /* 가리킬 때만 보이는 화살표가 줄을 넘겨 빈칸을 만들지 않게: 홈 목록과 터치 화면에서는 뺀다 */
 :is(.home-grid, .home-upcoming) .row-arrow { display: none; }
 @media (hover: none) { .row-arrow { display: none; } }
-/* 많이 찾는 지원사업의 제도/공고 전환 */
+/* 많이 찾는 지원사업의 공공서비스/공고 전환 */
 .seg-mini { position: relative; display: inline-flex; gap: 2px; padding: 3px; border-radius: 999px; background: var(--surface); }
 .seg-mini button { position: relative; z-index: 1; border: 0; background: none; height: 30px; padding: 0 12px; border-radius: 999px; cursor: pointer; font-size: .8125rem; font-weight: 700; color: var(--fg); transition: color .2s ease; }
 .seg-mini button[aria-pressed="true"] { background: var(--dark); color: var(--on-dark); }
@@ -494,7 +494,7 @@ select { appearance: none; background-image: linear-gradient(45deg, transparent 
 .viz .hover-dot { opacity: 0; stroke: var(--canvas); stroke-width: 2; }
 .viz .mark:hover .hover-dot, .viz .mark:focus-visible .hover-dot { opacity: 1; }
 .viz .halo { paint-order: stroke; stroke: var(--canvas); stroke-width: 4px; stroke-linejoin: round; }
-/* 공모 그래프(app.js monthBars·monthCum): 이번 달 띠, 진행 중인 달 막대, 누적 면 */
+/* 달별 공고 그래프(app.js monthBars·monthCum): 이번 달 띠, 진행 중인 달 막대, 누적 면 */
 .viz .now-band { fill: var(--surface-hover); }
 .viz .now-t { fill: var(--muted); font-size: 11px; font-weight: 700; }
 .viz .bar.partial { fill-opacity: .4; stroke-width: 1.5; stroke-dasharray: 3 2; }
@@ -503,7 +503,7 @@ select { appearance: none; background-image: linear-gradient(45deg, transparent 
 .viz .area.last { fill: var(--gray-500); opacity: .12; }
 .viz .area.cur { fill: var(--kind-open); opacity: .14; }
 .viz .cat.muted { fill: var(--muted); }
-/* 목록형 카드(곧 열릴 수 있는 공모): 가운데 정렬 대신 위에서부터 */
+/* 목록형 카드(곧 올라올 수 있는 공고): 가운데 정렬 대신 위에서부터 */
 .viz-card.list-card .viz-body { display: block; }
 .viz-card.list-card .results { border-top-width: 1px; }
 .viz-card.list-card .row { padding: 12px 4px; }
@@ -590,7 +590,7 @@ select { appearance: none; background-image: linear-gradient(45deg, transparent 
   .viz-card:is(.play, .replay) .duecal .day { animation: fade-in .4s ease-out both; animation-delay: calc(var(--d0, 0ms) + var(--i, 0) * 6ms); }
 }
 
-/* 상시 제도 도넛(app.js supportCard): 조각 사이 흰 틈, 가리키면 나머지가 옅어진다. 목록과 가리키기가 이어진다 */
+/* 공공서비스 도넛(app.js supportCard): 조각 사이 흰 틈, 가리키면 나머지가 옅어진다. 목록과 가리키기가 이어진다 */
 .donut-wrap { display: grid; justify-items: center; gap: 20px; width: 100%; }
 /* 넓은 카드: 도넛 왼쪽, 범례 오른쪽(한 줄에 하나, 범례 높이 = 도넛 높이) */
 .donut-wrap.side { grid-template-columns: auto var(--legend); justify-content: center; align-items: center; column-gap: var(--gapx, 40px); }
@@ -912,7 +912,7 @@ html[data-boot="home"] #listLayout { display: none !important; }
 html[data-boot="home"] #homePane[hidden] { display: block !important; }
 html[data-boot="list"] #homePane { display: none !important; }
 
-/* 숫자 타일 눈금 막대(app.js statTile): 40칸 중 칠한 칸 = 전체 가운데 몫. 색은 아이콘과 같게, 상시 제도는 그래프와 같은 초록 */
+/* 숫자 타일 눈금 막대(app.js statTile): 40칸 중 칠한 칸 = 전체 가운데 몫. 색은 아이콘과 같게, 공공서비스는 그래프와 같은 초록 */
 .stat-label .tone-green { color: var(--kind-svc); }
 .stat { width: 100%; }
 .stat-of { display: flex; justify-content: space-between; gap: 8px; width: 100%; margin-top: 10px; font-size: .75rem; line-height: 1.4; color: var(--muted); font-variant-numeric: tabular-nums; }
@@ -1169,7 +1169,7 @@ body.peek-lock .to-top, body.detail-open .to-top, body.filters-open .to-top, bod
 }
 @media print { .top-hint { display: none !important; } }
 
-/* 휴대폰: 카드 전환 단추(분야/지원 방식, 10월/11월, 달별/누적, 모집 공고/상시 제도)와 탭의 누름 칸을 44px 이상으로.
+/* 휴대폰: 카드 전환 단추(분야/지원 방식, 10월/11월, 달별/누적, 모집 공고/공공서비스)와 탭의 누름 칸을 44px 이상으로.
  * 보이는 알약은 그대로 두고, 위아래로 보이지 않는 여백을 늘린다 */
 @media (pointer: coarse), (max-width: 639px) {
   .seg-mini button::before { content: ""; position: absolute; left: 0; right: 0; top: -7px; bottom: -7px; }
@@ -1177,7 +1177,7 @@ body.peek-lock .to-top, body.detail-open .to-top, body.filters-open .to-top, bod
 }
 
 /* ---------- 탭 줄이 좁을 때 단계별로 줄이기(app.js fitTabs) ----------
- * 1 탭 건수 숨김 → 2 탭 줄로 옮겨 온 소리·글자 단추를 아이콘만 → 3 탭 앞 색 점 숨김 → 4 탭 이름 '공고'·'제도'(화면 읽기는 '모집 공고' 그대로) */
+ * 1 탭 건수 숨김 → 2 탭 줄로 옮겨 온 소리·글자 단추를 아이콘만 → 3 탭 앞 색 점 숨김 → 4 탭 이름 '공고'·'서비스'(화면 읽기는 '모집 공고' 그대로) */
 .tab-short { display: none; }
 .tabs.fit-1 .tab-count { display: none; }
 .tabs.fit-2 .tabs-dock .iconbtn { padding: 0; min-width: 44px; justify-content: center; }

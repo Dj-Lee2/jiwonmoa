@@ -71,7 +71,7 @@ def build(rows, runs, today):
           "",
           "- 기업마당: 현재 게시 중인 공고만 제공됩니다(마감 공고 없음).",
           "- K-Startup: 모집 중인 공고만 받았습니다. `민간` 주관 공고가 섞여 있습니다.",
-          "- 보조금24: 모집 공고가 아니라 상시 제도 안내 성격입니다.",
+          "- 보조금24: 모집 공고가 아니라 공공서비스 안내 성격입니다.",
           "- 국고보조금 공모: 올해 게시된 공모 공고 전체(마감 포함)입니다. 수행기관별 행을 공고 단위로 묶었습니다.",
           "",
           "## 2. 신청 상태"]
@@ -113,7 +113,7 @@ def build(rows, runs, today):
 
     ag_open = [r for r in open_rows if r["agri"] == 2 and r["kind"] == "공고"]
     ag_open.sort(key=lambda r: (r["apply_end"] or "9999", r["title"]))
-    md.append(f"### 지금 신청 가능한 농업 공고 ({len(ag_open)}건, 보조금24 상시 제도 제외)")
+    md.append(f"### 지금 신청 가능한 농업 공고 ({len(ag_open)}건, 보조금24 공공서비스 제외)")
     md.append(table(["마감", "상태", "출처", "지역", "제목", "판정 근거"],
                     [[r["apply_end"] or "-", r["status"], SOURCE_NAMES[r["source"]], region_text(r["regions"]),
                       r["title"][:60].replace("|", "/"), r["agri_basis"][:40]] for r in ag_open]))

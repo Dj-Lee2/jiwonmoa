@@ -162,7 +162,7 @@ def compact(r):
     }
     if r["kind"] == "공고":
         out["nf"] = notice_field(r["source"], r["category"])
-    # 처음 수집한 날: 상시 제도 '신규' 배지, 모집 공고 '오늘 새 공고'(게시일 pd는 출처마다 늦게 올라오기도 해서 따로 둔다)
+    # 처음 수집한 날: 공공서비스 '신규' 배지, 모집 공고 '오늘 새 공고'(게시일 pd는 출처마다 늦게 올라오기도 해서 따로 둔다)
     out["fs"] = (r["first_seen"] or "")[:10]
     if out["a"]:
         out["tp"] = agri_topics(r)
@@ -217,7 +217,7 @@ def service_counts(services):
 
 
 def service_cats(services):
-    """상시 제도 분야(보조금24 서비스분야) 목록. 많은 순."""
+    """공공서비스 분야(보조금24 서비스분야) 목록. 많은 순."""
     count = {}
     for item in services:
         if item.get("cat"):
@@ -315,7 +315,7 @@ TOP_MAX = 20  # 홈 '많이 찾는 지원사업': 처음 5개, 더 보기로 20�
 
 
 def top_services(services, n=TOP_MAX):
-    """홈 '많이 찾는 지원사업'의 상시 제도 순위(누적 조회수). 홈에서 큰 목록을 읽지 않으려고 미리 뽑는다.
+    """홈 '많이 찾는 지원사업'의 공공서비스 순위(누적 조회수). 홈에서 큰 목록을 읽지 않으려고 미리 뽑는다.
 
     지역을 고르면 '그 지역만'과 '그 지역 + 전국' 두 가지가 필요하다(전국 대상 포함 설정).
     같은 제도가 여러 목록에 겹치므로 항목은 items에 한 번만 두고 목록에는 id만 둔다.
@@ -337,12 +337,12 @@ def top_services(services, n=TOP_MAX):
     return out
 
 
-NEW_SERVICE_DAYS = 30  # 홈 '새로 생긴 상시 제도': 최근 30일 안에 처음 보인 제도
+NEW_SERVICE_DAYS = 30  # 홈 '새로 생긴 공공서비스': 최근 30일 안에 처음 보인 제도
 NEW_SERVICE_MAX = 40
 
 
 def new_services(services, first_day, today):
-    """홈 '새로 생긴 상시 제도': 보조금24에 새로 등록돼 이 사이트가 처음 본 날(fs)이 최근 30일 안인 제도, 새것부터.
+    """홈 '새로 생긴 공공서비스': 보조금24에 새로 등록돼 이 사이트가 처음 본 날(fs)이 최근 30일 안인 제도, 새것부터.
 
     첫 수집 날(first_day)은 모두가 처음이라 빼고 센다. 홈에서 큰 목록(services.js)을 읽지 않으려고 미리 뽑는다.
     반환: [{id, src, k, t, ag, py, pt, s, e, rg, vw, fs}, …]
@@ -357,7 +357,7 @@ PEEK_TOP = 3
 
 
 def service_peek(services):
-    """홈 그래프 요약 창(app.js openPeek)용 상시 제도 요약. 홈에서 큰 목록(services.js)을 읽지 않으려고 미리 센다.
+    """홈 그래프 요약 창(app.js openPeek)용 공공서비스 요약. 홈에서 큰 목록(services.js)을 읽지 않으려고 미리 센다.
 
     반환: {"total"|"national": 칸, "region": {지역: 칸}, "items": {id: 짧은 항목}}.
     칸 = {열쇠: {"cat": {분야: 건수}, "sp": {지원 방식: 건수}, "pp": {대상: 건수}, "top": [조회수 상위 id 3개]}}.

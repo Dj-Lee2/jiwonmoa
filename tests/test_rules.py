@@ -235,7 +235,7 @@ class NoticeTextSplitTest(unittest.TestCase):
 
 
 class ServicePeekTest(unittest.TestCase):
-    """홈 요약 창의 상시 제도 대상 요약: 전체·지역·전국 칸, 분야·방식 건수, 조회수 상위 3개"""
+    """홈 요약 창의 공공서비스 대상 요약: 전체·지역·전국 칸, 분야·방식 건수, 조회수 상위 3개"""
 
     def test_cells(self):
         def svc(i, pp, rg, cat, sp, vw):
@@ -301,7 +301,7 @@ if __name__ == "__main__":
 
 
 class NewServicesTest(unittest.TestCase):
-    """홈 '새로 생긴 상시 제도': 첫 수집 날 것은 빼고, 최근 30일 안에 처음 보인 제도를 새것부터."""
+    """홈 '새로 생긴 공공서비스': 첫 수집 날 것은 빼고, 최근 30일 안에 처음 보인 제도를 새것부터."""
 
     def test_pick_and_order(self):
         import datetime
@@ -337,3 +337,13 @@ class SecurityHeaderTest(unittest.TestCase):
         app = (ROOT / "site" / "app.js").read_text(encoding="utf-8")
         self.assertNotRegex(html, r"\son[a-z]+\s*=")
         self.assertNotIn("javascript:", html + app)
+
+    def test_terms(self):
+        # 용어(docs/DEVELOPMENT.md): 지원사업 = 모집 공고 + 공공서비스. 옛 이름·헷갈리는 말은 화면 글에 쓰지 않는다
+        # (공공데이터 이름 「국고보조금 공모사업 상세」 같은 고유 이름만 예외)
+        for name in ("site/app.js", "site/index.html", "site/style.css", "README.md"):
+            text = (ROOT / name).read_text(encoding="utf-8")
+            bads = ("상시 제도", "상시 지원제도", "지금 모집 중") + (() if name == "README.md" else ("공모",))
+            for bad in bads:
+                n = text.replace("공모사업 상세", "").count(bad)
+                self.assertEqual(n, 0, name + ": '" + bad + "' " + str(n) + "곳")

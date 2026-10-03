@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>지원모아</title>
-<meta name="description" content="정부·지자체·공공기관의 지원사업(모집 공고와 상시 제도)을 지역·대상별로 한곳에서 찾아보는 개인 학습용 사이트(정부 공식 사이트 아님). 청년·시니어·농업인·소상공인·중소기업 지원사업을 하루 두 번 새로 모읍니다.">
+<meta name="description" content="정부·지자체·공공기관의 지원사업(모집 공고와 공공서비스)을 지역·대상별로 한곳에서 찾아보는 개인 학습용 사이트(정부 공식 사이트 아님). 청년·시니어·농업인·소상공인·중소기업 지원사업을 하루 두 번 새로 모읍니다.">
 <link rel="canonical" href="https://jiwonmoa.orfa.shop/">
 <meta name="robots" content="index, follow">
 <meta name="color-scheme" content="only light">
@@ -13,14 +13,14 @@
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="지원모아">
 <meta property="og:title" content="지원모아 | 정부·지자체 지원사업을 한곳에서">
-<meta property="og:description" content="모집 공고와 상시 제도를 지역·대상별로 찾아보세요. 하루 두 번 새로 모읍니다.">
+<meta property="og:description" content="모집 공고와 공공서비스를 지역·대상별로 찾아보세요. 하루 두 번 새로 모읍니다.">
 <meta property="og:url" content="https://jiwonmoa.orfa.shop/">
 <meta property="og:image" content="https://jiwonmoa.orfa.shop/img/og.png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
 <meta property="og:locale" content="ko_KR">
 <meta name="twitter:card" content="summary_large_image">
-<script type="application/ld+json">{"@context":"https://schema.org","@type":"WebSite","name":"지원모아","url":"https://jiwonmoa.orfa.shop/","inLanguage":"ko","description":"정부·지자체·공공기관의 지원사업(모집 공고와 상시 제도)을 지역·대상별로 한곳에서 찾아보는 개인 학습용 사이트(정부 공식 사이트 아님)"}</script>
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"WebSite","name":"지원모아","url":"https://jiwonmoa.orfa.shop/","inLanguage":"ko","description":"정부·지자체·공공기관의 지원사업(모집 공고와 공공서비스)을 지역·대상별로 한곳에서 찾아보는 개인 학습용 사이트(정부 공식 사이트 아님)"}</script>
 <link rel="icon" type="image/png" href="img/favicon.png">
 <link rel="apple-touch-icon" href="img/apple-touch-icon.png">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
@@ -65,7 +65,7 @@
   <div class="wrap tabs-inner" role="tablist">
     <button role="tab" id="tab-home" data-tab="home" aria-controls="homePane">홈</button>
     <button role="tab" id="tab-open" data-tab="open" aria-controls="listPane"><span class="tab-name">모집 공고</span><span class="tab-short" aria-hidden="true">공고</span> <span class="tab-count"></span></button>
-    <button role="tab" id="tab-services" data-tab="services" aria-controls="listPane"><span class="tab-name">상시 제도</span><span class="tab-short" aria-hidden="true">제도</span> <span class="tab-count"></span></button>
+    <button role="tab" id="tab-services" data-tab="services" aria-controls="listPane"><span class="tab-name">공공서비스</span><span class="tab-short" aria-hidden="true">서비스</span> <span class="tab-count"></span></button>
   </div>
   <!-- 머리가 스크롤로 가려지면 머리의 소리·글자 크게 단추를 이 자리(탭 줄 오른쪽)로 옮긴다(app.js dockTopActions) -->
   <div class="tabs-dock" id="tabsDock"></div>
@@ -168,14 +168,14 @@
     </section>
   </div>
 
-  <!-- 홈 맨 아래 카드 셋: 많이 찾는 지원사업 · 곧 올라올 수 있는 공고 · 새로 생긴 상시 제도.
+  <!-- 홈 맨 아래 카드 셋: 많이 찾는 지원사업 · 곧 올라올 수 있는 공고 · 새로 생긴 공공서비스.
        많이 찾는 지원사업은 여기 고정, 나머지 둘은 app.js renderCharts가 그 뒤에 넣는다 -->
   <div class="home-upcoming" id="homeUpcoming">
     <section class="home-block" aria-labelledby="homePopTitle">
       <div class="block-head">
         <h3 id="homePopTitle">많이 찾는 지원사업</h3>
         <div class="seg-mini" id="homePopKind" role="group" aria-label="자료 종류" data-seg="pop">
-          <button type="button" data-pop="s" aria-pressed="true">상시 제도</button>
+          <button type="button" data-pop="s" aria-pressed="true">공공서비스</button>
           <button type="button" data-pop="n" aria-pressed="false">모집 공고</button>
         </div>
       </div>

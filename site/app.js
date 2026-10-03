@@ -1,7 +1,7 @@
 /* 지원모아: 화면 동작
  * 데이터: data/meta.js, data/notices.js(공고 목록, 긴 글 제외), data/notices-text.js(공고 개요·신청 방법 등 긴 글,
- *         첫 화면 뒤에 읽음), data/services.js(상시 제도, 필요할 때 읽음), data/sd/NN.js(상시 제도 상세 글·공고 첨부 파일,
- *         열 때 읽음), data/peek.js(그래프 요약 창의 상시 제도 요약). collector/build_site.py가 만든다.
+ *         첫 화면 뒤에 읽음), data/services.js(공공서비스, 필요할 때 읽음), data/sd/NN.js(공공서비스 상세 글·공고 첨부 파일,
+ *         열 때 읽음), data/peek.js(그래프 요약 창의 공공서비스 요약). collector/build_site.py가 만든다.
  */
 (function () {
   "use strict";
@@ -37,7 +37,7 @@
   var DEFAULT = { tab: "open", q: "", r: "", nat: true, au: [], st: [], src: [], pv: true,
     tp: [], sp: [], cg: [], soon: false, nw: false, td: false, due: "", om: "", starts: "", ag: "", ic: "", sx: "", sort: "", id: "" };
 
-  /* 내 조건(나이·소득·성별): 상시 제도 대부분과 일부 공고가 가진 나이(na)·중위소득(ic)·성별(sx) 조건으로 거른다.
+  /* 내 조건(나이·소득·성별): 공공서비스 대부분과 일부 공고가 가진 나이(na)·중위소득(ic)·성별(sx) 조건으로 거른다.
    * 조건이 없는 사업은 늘 남긴다. 이 기기 localStorage "hub-me"에 기억해 다음에 열어도 그대로 쓴다(서버로 보내지 않음).
    * 소득은 구간으로 고른다: 값 = 구간 끝(50·75·100·200), 201 = 200% 초과 */
   var ME_KEY = "hub-me";
@@ -452,7 +452,7 @@
     return ensureFiles(item);
   }
   function ensureFiles(item) {
-    // 상세 버킷에 든 것: 보조금24 제도의 상세 글, 공고문·첨부 파일이 있는 공고(fc)의 파일 목록
+    // 상세 버킷에 든 것: 보조금24 공공서비스의 상세 글, 공고문·첨부 파일이 있는 공고(fc)의 파일 목록
     if ((item.k !== "s" && !item.fc) || item._d) return Promise.resolve();
     var b = bucketOf(item.id);
     return loadScript("data/sd/" + (b < 10 ? "0" : "") + b + ".js").then(function () {
@@ -546,7 +546,7 @@
     return statusOf(item) !== "마감";
   }
 
-  /* 분야: 상시 제도는 보조금24 서비스분야(cat), 모집 공고는 출처 분류를 맞춘 분야(nf, build_site.py NOTICE_FIELDS) */
+  /* 분야: 공공서비스는 보조금24 서비스분야(cat), 모집 공고는 출처 분류를 맞춘 분야(nf, build_site.py NOTICE_FIELDS) */
   function fieldOf(item) { return item.k === "s" ? item.cat : item.nf; }
 
   function haystack(item) {
@@ -1079,7 +1079,7 @@
     if (dday !== null) period += dday === 0 ? ", 오늘 마감" : ", 마감까지 " + dday + "일";
     fact("신청기간", period || "원문 확인",
       item.py === "기간" && item.pt && !/^\d/.test(item.pt) ? "원문 표기: " + item.pt : null);
-    // 국고보조금 공모의 지역은 수행기관 주소라 실제 신청 지역과 다를 수 있다
+    // 국고보조금 공고의 지역은 수행기관 주소라 실제 신청 지역과 다를 수 있다
     fact("지역", regionText(item, true), item.rb === "수행기관 소재지" ? "수행기관 소재지 기준" : null);
     fact("대상", ((item.pp && item.pp.length ? item.pp : item.au) || []).join(", "));
     fact("소관", item.ag);
@@ -1175,8 +1175,8 @@
     openOverlay();
   }
 
-  /* 비슷한 지원사업 3건: 같은 종류(공고/제도)에서 분야 같음 +3, 겹치는 대상마다 +2, 같은 지방 지역 +3(전국은 +1),
-   * 제도는 지원 방식 겹치면 +1, 공고는 날짜 있는 접수 중·예정이면 +1(기간 확인 필요는 -1).
+  /* 비슷한 지원사업 3건: 같은 종류(공고/공공서비스)에서 분야 같음 +3, 겹치는 대상마다 +2, 같은 지방 지역 +3(전국은 +1),
+   * 공공서비스는 지원 방식 겹치면 +1, 공고는 날짜 있는 접수 중·예정이면 +1(기간 확인 필요는 -1).
    * 지금 신청할 수 있는 것만, 제목이 같은 것(다른 지역 재게시 등)은 하나만. 같은 점수면 조회수 */
   function similarItems(item, n) {
     var pool = item.k === "s" ? (services || []) : NOTICES;
@@ -1221,7 +1221,7 @@
       if (b) { lastRowFocus = null; state.id = b.dataset.id; writeHash(true); renderDetail(); }
     });
     return el("section", { className: "similar-box" },
-      el("h3", { text: item.k === "s" ? "비슷한 상시 제도" : "비슷한 모집 공고" }), ul);
+      el("h3", { text: item.k === "s" ? "비슷한 공공서비스" : "비슷한 모집 공고" }), ul);
   }
 
   function narrow() { return window.matchMedia("(max-width: 1099px)").matches; }
@@ -1273,9 +1273,11 @@
       var counts = META.counts || {};
       var open = NOTICES.filter(function (n) { return statusOf(n) !== "마감"; }).length;
       return [
-        ["무엇을 모으나요", "기업마당·K-Startup·국고보조금(보조금 통합포털)의 모집 공고와 보조금24의 상시 제도를 매일 오전 9시와 오후 4시에 공공데이터포털 API로 모읍니다. 지금 모집 공고 " +
-          fmtN(open) + "건, 상시 제도 " + fmtN(counts.services || 0) + "건이 있습니다."],
-        ["모집 공고와 상시 제도", "모집 공고는 신청 기간이 정해진 공고, 상시 제도는 언제든 신청할 수 있는 보조금24의 제도입니다. 둘을 합쳐 '지원사업'이라고 부릅니다."],
+        ["무엇을 모으나요", "기업마당·K-Startup·국고보조금(보조금 통합포털)의 모집 공고와 보조금24의 공공서비스를 매일 오전 9시와 오후 4시에 공공데이터포털 API로 모읍니다. 지금 모집 공고 " +
+          fmtN(open) + "건, 공공서비스 " + fmtN(counts.services || 0) + "건이 있습니다."],
+        ["모집 공고와 공공서비스", "모집 공고는 기관이 지원받을 사람·기업을 뽑으려고 낸 공고입니다(접수 기간이 정해진 것, 예산 소진 시까지, 수시 접수 포함). " +
+          "공공서비스는 보조금24에 등록된 정부·지자체·공공기관의 서비스(수당·감면·이용권·상담 등)입니다. 언제든 신청하는 것도, 해마다 정해진 때 신청하는 것도, " +
+          "신청 없이 받는 것도 있어 신청 시기는 각 상세에서 확인하세요. 둘을 합쳐 '지원사업'이라고 부릅니다."],
         ["찾는 방법", "홈에서 지역·대상을 고르거나 검색하세요. 목록의 '조건'에서 대상·분야·신청 상태·내 조건(나이·소득·성별)으로 좁힐 수 있습니다. 홈 그래프의 막대·칸·지역을 누르면 요약이 먼저 뜹니다."],
         ["챙겨 두기", "상세 화면의 '관심 담기'는 홈 맨 위에, '마감일 달력에 추가'는 홈 마감 달력에 표시됩니다. 담은 뒤 마감일이 바뀌면 알려 드립니다."],
         ["꼭 확인하세요", "화면의 글은 원문 일부를 옮긴 것입니다. 신청 자격·기간·서류는 반드시 각 기관의 원문 공고에서 확인하세요."]
@@ -1406,7 +1408,7 @@
     return rg.indexOf(state.r) >= 0 || (state.nat && rg[0] === "전국");
   }
 
-  /* 상시 제도 건수는 build_site.py가 미리 센 값을 쓴다(홈에서 큰 목록을 읽지 않으려고) */
+  /* 공공서비스 건수는 build_site.py가 미리 센 값을 쓴다(홈에서 큰 목록을 읽지 않으려고) */
   function svcCount(key) {
     var svc = META.svc;
     if (!state.r) return svc.total[key];
@@ -1457,7 +1459,7 @@
     $("#homeTitle").replaceChildren((state.r ? state.r + "에서 " : "") + "지금 신청할 수 있는 모집 공고 ",
       el("strong", { text: fmtN(live.length) }), "건");
     $("#homeSub").textContent = NOTICES_MISSING ? "모집 공고 자료를 불러오지 못했습니다. 새로 고침해 주세요."
-      : fmtStamp(at) + " 수집 · 상시 제도는 따로 셈";
+      : fmtStamp(at) + " 수집 · 공공서비스는 따로 셈";
     document.querySelectorAll("#homePane .sk-only").forEach(function (e) { e.remove(); }); // 첫 화면 자리 잡기(index.html)
     // 오늘 올라온 공고·오늘 마감인 공고: 0건이어도 늘 보인다(형님 지시). 0건이면 회색으로, 눌러도 빈 목록으로 가지 않게 막는다
     var todayN = live.filter(isTodayNew).length;
@@ -1477,7 +1479,7 @@
         function () { goTo({ tab: "open", starts: "later", sort: "deadline" }); }, "blue", live.length, "모집 공고"),
       statTile(byStatus["소진 시까지"] || 0, "예산 소진 시까지", "hourglass-medium",
         function () { goTo({ tab: "open", st: ["소진 시까지"] }); }, "blue", live.length, "모집 공고"),
-      statTile(svcN, "상시 제도", "hand-heart",
+      statTile(svcN, "공공서비스", "hand-heart",
         function () { goTo({ tab: "services" }); }, "green", live.length + svcN, "전체 지원사업"));
     if (!statsGrown) { $("#homeStats").classList.add("grow"); statsGrown = true; }
     else $("#homeStats").classList.remove("grow");
@@ -1487,7 +1489,7 @@
 
     renderCharts(live);
 
-    // 대상을 누르면 그 대상 사업이 더 많은 쪽(모집 공고/상시 제도) 목록으로 간다. 대상 조건은 탭을 옮겨도 남는다
+    // 대상을 누르면 그 대상 사업이 더 많은 쪽(모집 공고/공공서비스) 목록으로 간다. 대상 조건은 탭을 옮겨도 남는다
     var ppN = countBy(live, function (i) { return i.pp; });
     var who = $("#homeWho");
     who.replaceChildren.apply(who, META.personas.map(function (p) {
@@ -1507,7 +1509,7 @@
     else box.replaceChildren(el("li", { className: "list-empty", text: emptyText }));
   }
 
-  /* 홈 목록: 처음 5개, 바닥 '더 보기'를 누를 때마다 10개씩(곧 열릴 수 있는 공모와 같게) */
+  /* 홈 목록: 처음 5개, 바닥 '더 보기'를 누를 때마다 10개씩(곧 올라올 수 있는 공고와 같게) */
   var HOME_FIRST = 5, HOME_STEP = 10;
   var homeShown = { soon: HOME_FIRST, fresh: HOME_FIRST, starts: HOME_FIRST, pop: HOME_FIRST };
   function homeList(key, box, moreBtn, items, makeRow, emptyText) {
@@ -1571,7 +1573,7 @@
     renderPopular(live);
   }
 
-  /* 많이 찾는 지원사업: 상시 제도는 미리 뽑아 둔 순위(META.topServices, id 목록 + items), 모집 공고는 기업마당 조회수.
+  /* 많이 찾는 지원사업: 공공서비스는 미리 뽑아 둔 순위(META.topServices, id 목록 + items), 모집 공고는 기업마당 조회수.
    * 둘 다 20개까지 */
   var popKind = "s", POP_MAX = 20;
   function renderPopular(live) {
@@ -1597,14 +1599,14 @@
    * 툴팁은 가리키기와 키보드 초점에서 같은 내용을 보여 준다.
    */
   var SVGNS = "http://www.w3.org/2000/svg";
-  // 색은 자료 종류에 붙인다: 파랑 = 모집 공고, 초록 = 상시 제도, 회색 = 비교 대상·나머지(style.css 색 체계 변수).
+  // 색은 자료 종류에 붙인다: 파랑 = 모집 공고, 초록 = 공공서비스, 회색 = 비교 대상·나머지(style.css 색 체계 변수).
   // 파랑·초록 짝은 dataviz validate_palette.js 통과(색각 이상 포함). 값·이름 글자는 늘 글자색으로 쓴다
   var SERIES_BLUE = "var(--kind-open)", SERIES_GREEN = "var(--kind-svc)", SERIES_GRAY = "var(--gray-500)";
   var LAST_YEAR_BAR = "var(--gray-200)"; // 겹친 막대의 작년(뒤) 막대
-  // 지역 지도 5단계(많을수록 진함): 모집 공고는 파랑, 상시 제도는 초록
+  // 지역 지도 5단계(많을수록 진함): 모집 공고는 파랑, 공공서비스는 초록
   var MAP_SHADES = ["var(--blue-100)", "var(--blue-300)", "var(--blue-400)", "var(--blue-700)", "var(--blue-900)"];
   var MAP_SHADES_GREEN = ["var(--green-100)", "var(--green-300)", "var(--green-400)", "var(--green-700)", "var(--green-900)"];
-  var mapKind = "n", MAP_WHAT = { n: "모집 공고", s: "상시 제도" };
+  var mapKind = "n", MAP_WHAT = { n: "모집 공고", s: "공공서비스" };
   function mapShades() { return mapKind === "s" ? MAP_SHADES_GREEN : MAP_SHADES; }
 
   /* 카드 안쪽 실제 폭(px). 이 폭으로 좌표를 잡아야 휴대폰에서 글자가 작아지지 않는다 */
@@ -1672,7 +1674,7 @@
    * 같은 표시를 다시 누르거나, 바깥을 누르거나, Esc·닫기로 닫는다. 다른 표시를 누르면 내용만 바뀐다.
    * 넓은 화면은 누른 곳 옆에 뜨는 창(페이지와 함께 스크롤), 휴대폰(639px 이하)은 아래에서 올라오는 시트.
    * 창은 카드 밖(body)에 떠서 카드 크기·배치를 바꾸지 않는다. 맨 아래 단추로 전체 목록에 간다.
-   * 상시 제도 요약은 data/peek.js(build_site.py service_peek)를 처음 열 때 읽는다 */
+   * 공공서비스 요약은 data/peek.js(build_site.py service_peek)를 처음 열 때 읽는다 */
   var peekKey = null, peekAnchor = null, peekBox = null, peekShade = null;
   function peekSheet() { return window.matchMedia("(max-width: 639px)").matches; }
 
@@ -1875,7 +1877,7 @@
     return seen.concat(rest).slice(0, 3);
   }
 
-  /* 상시 제도 대상 요약: peek.js의 칸(전체 / 지역 / 지역 + 전국 대상)을 더한다 */
+  /* 공공서비스 대상 요약: peek.js의 칸(전체 / 지역 / 지역 + 전국 대상)을 더한다 */
   var svcPeekData = null;
   function ensureSvcPeek() {
     if (svcPeekData) return Promise.resolve(svcPeekData);
@@ -1902,8 +1904,8 @@
       if (kind !== "cat") groups.push({ label: "분야", rows: topN(sums.cat) });
       if (kind === "cat" || kind === "sp:" || key === "all") groups.push({ label: "대상", rows: topN(sums.pp) });
       if (kind !== "sp:") groups.push({ label: "방식", rows: topN(sums.sp) });
-      return { title: o.title, sub: o.sub || "언제든 신청할 수 있는 제도", n: o.n, kind: "svc", groups: groups,
-        items: items, itemsLabel: "많이 본 제도",
+      return { title: o.title, sub: o.sub || "보조금24 공공서비스", n: o.n, kind: "svc", groups: groups,
+        items: items, itemsLabel: "많이 본 서비스",
         more: { label: fmtN(o.n) + "건 모두 보기", go: function () { goTo(Object.assign({ tab: "services" }, o.more)); } },
         more2: o.more2 };
     });
@@ -1971,7 +1973,7 @@
   }
 
   /* ---------- 젤리 탭(Jelly Radio) ----------
-   * 맨 위 탭(홈·모집 공고·상시 제도)만: 고른 탭이 젤리처럼 살짝 부풀고 옆 탭이 비켜 섰다 돌아온다.
+   * 맨 위 탭(홈·모집 공고·공공서비스)만: 고른 탭이 젤리처럼 살짝 부풀고 옆 탭이 비켜 섰다 돌아온다.
    * 다른 단추와 그래프 카드 안의 전환 단추는 그대로(형님 지시).
    * Adapted from React Bits "Jelly Radio" by David Haz (https://reactbits.dev/c/micro/jelly-radio,
    * MIT + Commons Clause). motion 라이브러리 대신 같은 스프링 식(강성·질량·감쇠 = 2√(km)(1−bounce))을 rAF로 푼다.
@@ -2112,7 +2114,7 @@
 
 
 
-  /* 나비 그래프: 가운데에 이름, 왼쪽으로 첫 계열(모집 공고), 오른쪽으로 둘째 계열(상시 제도).
+  /* 나비 그래프: 가운데에 이름, 왼쪽으로 첫 계열(모집 공고), 오른쪽으로 둘째 계열(공공서비스).
    * 양쪽 막대 길이는 각 계열 안에서 가장 많은 값 기준(두 계열 수가 열 배 가까이 달라 한 눈금이면 공고 막대가 안 보인다).
    * 길이는 제곱근 눈금: 한 대상(중소기업)에 몰려 나머지 막대가 안 보이지 않게 차이를 줄인다. 정확한 수는 막대 끝 숫자.
    * fitH를 주면 그 높이를 채우도록 줄 간격(24~36px)을 키운다 */
@@ -2164,7 +2166,7 @@
 
   function ptStr(p) { return p[0].toFixed(1) + " " + p[1].toFixed(1); }
 
-  /* 공모 그래프 공통 틀: 1~12월 칸, 옅은 눈금 3줄, 이번 달(자료를 모은 마지막 달) 자리에 옅은 띠.
+  /* 달별 공고 그래프 공통 틀: 1~12월 칸, 옅은 눈금 3줄, 이번 달(자료를 모은 마지막 달) 자리에 옅은 띠.
    * fitH를 주면 카드 남는 높이를 채운다(옆 카드가 길 때 제목과 그래프 사이가 비지 않게, 최대 440px) */
   function monthFrame(W, fitH, max, right) {
     var H = fitH ? Math.max(chartHeight(W) - 4, Math.min(440, Math.floor(fitH))) : chartHeight(W) - 4;
@@ -2266,18 +2268,18 @@
 
   function chartHeight(W) { return Math.max(236, Math.min(290, Math.round(W * 0.4))); }
 
-  /* 누구를 위한 지원이 많나요?: 대상별 모집 공고(파랑, 왼쪽)와 상시 제도(초록, 오른쪽) 수를 나비 그래프로.
-   * 두 수를 더한 순. 한 사업이 여러 대상일 수 있다. 상시 제도 수는 META.svc에 미리 센 값 */
+  /* 누구를 위한 지원이 많나요?: 대상별 모집 공고(파랑, 왼쪽)와 공공서비스(초록, 오른쪽) 수를 나비 그래프로.
+   * 두 수를 더한 순. 한 사업이 여러 대상일 수 있다. 공공서비스 수는 META.svc에 미리 센 값 */
   function personaCard(live) {
     var ppN = countBy(live, function (i) { return i.pp; });
-    var series = [{ name: "모집 공고", color: SERIES_BLUE }, { name: "상시 제도", color: SERIES_GREEN }];
-    // 막대를 누르면 그 대상 요약 창(모집 공고는 바로 계산, 상시 제도는 peek.js)
+    var series = [{ name: "모집 공고", color: SERIES_BLUE }, { name: "공공서비스", color: SERIES_GREEN }];
+    // 막대를 누르면 그 대상 요약 창(모집 공고는 바로 계산, 공공서비스는 peek.js)
     function bar(p, n, kind, tab) {
       return { n: n, tipValue: fmtN(n) + "건", tipLabel: p + " 대상 " + kind,
         aria: p + " 대상 " + kind + " " + n + "건" + (n ? ". 누르면 요약을 봅니다" : ""),
         onPick: n ? function (node) {
           openPeek("persona:" + tab + ":" + p, node, function () {
-            if (tab === "services") return servicePeek(p, { title: regionPrefix() + p + " 대상 상시 제도", n: n, more: { au: [p] } });
+            if (tab === "services") return servicePeek(p, { title: regionPrefix() + p + " 대상 공공서비스", n: n, more: { au: [p] } });
             var items = live.filter(function (i) { return (i.pp || []).indexOf(p) >= 0; });
             return noticePeek(items, regionPrefix() + p + " 대상 모집 공고", "지금 신청할 수 있는 것",
               { label: fmtN(items.length) + "건 모두 보기", go: function () { goTo({ tab: "open", au: [p] }); } });
@@ -2287,9 +2289,9 @@
     var data = META.personas.map(function (p) { return { label: p, a: ppN[p] || 0, b: svcCount(p) || 0 }; })
       .sort(function (x, y) { return (y.a + y.b) - (x.a + x.b) || x.label.localeCompare(y.label, "ko"); })
       .map(function (d) {
-        return { label: d.label, values: [bar(d.label, d.a, "모집 공고", "open"), bar(d.label, d.b, "상시 제도", "services")] };
+        return { label: d.label, values: [bar(d.label, d.a, "모집 공고", "open"), bar(d.label, d.b, "공공서비스", "services")] };
       });
-    function draw(fitH) { return butterflyBars(data, series, "대상별 모집 공고와 상시 제도 나비 그래프", chartWidth(), fitH); }
+    function draw(fitH) { return butterflyBars(data, series, "대상별 모집 공고와 공공서비스 나비 그래프", chartWidth(), fitH); }
     var card = vizCard("누구를 위한 지원이 많나요?", "많은 순 · 적은 수도 보이게 막대 차이를 줄여 그림(정확한 수는 숫자)", draw(), null);
     card._redraw = draw;
     return card;
@@ -2546,7 +2548,7 @@
       var regionBtn = { label: state.r === name ? "지역 선택 풀기" : "홈 화면을 " + name + " 기준으로 보기", go: function () { pick(name); } };
       openPeek("map:" + mapKind + ":" + name, node, function () {
         if (mapKind === "s") {
-          return servicePeek("all", { title: name + " 한정 상시 제도", sub: "전국 대상 제도는 빼고 셈", n: counts[name] || 0,
+          return servicePeek("all", { title: name + " 한정 공공서비스", sub: "전국 대상 서비스는 빼고 셈", n: counts[name] || 0,
             region: name, more: { r: name, nat: false }, more2: regionBtn });
         }
         var items = NOTICES.filter(function (n) { return statusOf(n) !== "마감" && (n.rg || []).indexOf(name) >= 0 && (n.rg || [])[0] !== "전국"; });
@@ -2558,7 +2560,7 @@
     }
     var body = koreaMap(counts, bin, pick, scale, peek);
     var card = vizCard("어느 지역에 많나요?", "전국 대상 " + fmtN(national) + "건 제외", body, null,
-      segToggle("map", "지도에 보일 자료", [{ value: "n", label: "모집 공고" }, { value: "s", label: "상시 제도" }], mapKind,
+      segToggle("map", "지도에 보일 자료", [{ value: "n", label: "모집 공고" }, { value: "s", label: "공공서비스" }], mapKind,
         function (v) { mapKind = v; }));
     // 고른 지역은 같은 지역을 다시 누르거나, 카드의 빈 곳을 누르거나, Esc로 푼다
     card.addEventListener("click", function (e) {
@@ -2653,10 +2655,10 @@
     }, 200);
   });
 
-  /* 상시 제도 분야(무엇을)·지원 방식(어떻게) 도넛. 지역별 건수는 META.svc에 미리 셈("cat:", "sp:", "all").
-   * 조각 크기 = 그 분야(방식)의 제도 수. 한 제도가 여러 지원 방식일 수 있어 방식별 합은 가운데 전체보다 크다.
+  /* 공공서비스 분야(무엇을)·지원 방식(어떻게) 도넛. 지역별 건수는 META.svc에 미리 셈("cat:", "sp:", "all").
+   * 조각 크기 = 그 분야(방식)의 서비스 수. 한 서비스가 여러 지원 방식일 수 있어 방식별 합은 가운데 전체보다 크다.
    * 색은 한 계열(초록) 진하기로, 큰 조각일수록 진하다. '기타'는 회색. 오른쪽(좁으면 아래) 목록과
-   * 가리키기가 서로 이어지고, 조각이나 목록을 누르면 그 조건의 상시 제도 목록으로 간다 */
+   * 가리키기가 서로 이어지고, 조각이나 목록을 누르면 그 조건의 공공서비스 목록으로 간다 */
   var svcKind = "cat";
   var DONUT_GREENS = ["#0c440c", "#155c15", "#1d721d", "#2b8a2b", "#3fa33f", "#62b862", "#8fd08f", "#addfad", "#c4e9c4", "#d9f2d9"]; // --green-900 → --green-100 사이를 10단계로
   var DONUT_BLUES = ["#0d366b", "#164a8c", "#1c5cab", "#2a6fc6", "#3987e5", "#5c9ce9", "#86b6ef", "#a9cbf4", "#cde2fb"]; // --blue-900 → --blue-100
@@ -2674,11 +2676,11 @@
    *  - 조각이나 범례를 가리키면(또는 눌러 요약 창을 열면) 그 조각이 바깥으로 8px 나오고 나머지는 옅어지며,
    *    가운데 숫자가 그 조각의 건수·이름으로 바뀐다(숫자는 짧게 굴러간다). 범례도 그 칸만 진하게.
    *  - 크기는 자료와 상관없이 같다: 도넛 180px, 범례는 가장 긴 목록(rowsMax개)이 들어갈 줄 수만큼 자리를 늘 차지한다
-   *    (분야 ↔ 지원 방식을 바꿔도, 나란한 공고·제도 두 카드도 크기가 그대로) */
+   *    (분야 ↔ 지원 방식을 바꿔도, 나란한 공고·공공서비스 두 카드도 크기가 그대로) */
   // 도넛 크기: 카드 폭(W)으로만 정한다. 넓으면 범례를 오른쪽 한 줄씩(도넛 최대 280px), 좁으면(휴대폰) 범례를 아래 두 칸.
   // 안쪽 구멍은 Bklit 모양 비율(55/180) 그대로
   var DONUT_MAX = 360, DONUT_INNER_K = 55 / 180, DONUT_OFFSET = 8, DONUT_SIDE_MIN = 360;
-  /* 오른쪽 범례 칸 폭: 세 목록(제도 분야·지원 방식·공고 분야) 중 가장 긴 이름 + 점·안쪽 여백(42px).
+  /* 오른쪽 범례 칸 폭: 세 목록(공공서비스 분야·지원 방식·공고 분야) 중 가장 긴 이름 + 점·안쪽 여백(42px).
    * 세 도넛이 같은 폭을 써야 전환해도 크기가 그대로다 */
   function donutLegendWidth() {
     var names = [].concat(META.serviceCats || [], META.supports || [], META.noticeFields || []);
@@ -2810,7 +2812,7 @@
     var keys = byCat ? (META.serviceCats || []) : META.supports;
     var all = svcCount("all") || 0;
     var data = donutData(keys.map(function (x) { return { key: x, n: svcCount((byCat ? "cat:" : "sp:") + x) || 0 }; }),
-      DONUT_GREENS, all, function (k) { return byCat ? k + " 분야 상시 제도" : k + " 방식으로 지원하는 상시 제도"; });
+      DONUT_GREENS, all, function (k) { return byCat ? k + " 분야 공공서비스" : k + " 방식으로 지원하는 공공서비스"; });
     function go(d) { goTo(byCat ? { tab: "services", cg: [d.key] } : { tab: "services", sp: [d.key] }); }
     function peek(d, node, pair) {
       var key = (byCat ? "cat:" : "sp:") + d.key;
@@ -2819,12 +2821,12 @@
       }, [pair]);
     }
     function draw() {
-      return donutFigure(data, all, "상시 제도", byCat ? "분야별 상시 제도 수" : "지원 방식별 상시 제도 수", go, peek);
+      return donutFigure(data, all, "공공서비스", byCat ? "분야별 공공서비스 수" : "지원 방식별 공공서비스 수", go, peek);
     }
     // 제목은 두 보기에 같게 둔다(더 긴 제목이 좁은 화면에서 두 줄이 되면 카드 높이가 바뀐다)
-    var card = vizCard("제도는 무엇을 지원하나요?",
-      byCat ? "상시 제도 기준 · 분야별" : "상시 제도 기준 · 지원 방식별(여러 방식이면 겹쳐 셈)", draw(), null,
-      segToggle("svc", "상시 제도 나누는 기준", [{ value: "cat", label: "분야" }, { value: "sp", label: "지원 방식" }], svcKind,
+    var card = vizCard("공공서비스는 무엇을 지원하나요?",
+      byCat ? "공공서비스 기준 · 분야별" : "공공서비스 기준 · 지원 방식별(여러 방식이면 겹쳐 셈)", draw(), null,
+      segToggle("svc", "공공서비스 나누는 기준", [{ value: "cat", label: "분야" }, { value: "sp", label: "지원 방식" }], svcKind,
         function (v) { svcKind = v; }));
     return card;
   }
@@ -2897,7 +2899,7 @@
     return card;
   }
 
-  /* 홈 맨 아래 목록 카드(새로 생긴 상시 제도). 처음 5개, '더 보기'로 10개씩 */
+  /* 홈 맨 아래 목록 카드(새로 생긴 공공서비스). 처음 5개, '더 보기'로 10개씩 */
   var bottomShown = { newsvc: HOME_FIRST };
   function bottomListCard(key, title, sub, items, makeRow, emptyText, allBtn) {
     var list = el("ul", { className: "results bottom-list", dataset: { list: key } });
@@ -2920,13 +2922,13 @@
     return card;
   }
 
-  // 새로 생긴 상시 제도: 보조금24에 새로 등록돼 최근 30일 안에 처음 보인 제도(META.newServices, build_site.py가 미리 뽑음)
+  // 새로 생긴 공공서비스: 보조금24에 새로 등록돼 최근 30일 안에 처음 보인 서비스(META.newServices, build_site.py가 미리 뽑음)
   function newServicesCard() {
     var items = (META.newServices || []).filter(inRegion);
     var since = META.firstDay ? " · " + fmtDate(META.firstDay) + "부터 모음" : "";
-    return bottomListCard("newsvc", "새로 생긴 상시 제도",
-      "보조금24에 최근 30일 안에 새로 생긴 제도 " + fmtN(items.length) + "개" + since,
-      items, function (s) { return row(s, fmtDate(s.fs) + " 추가", true); }, "최근 30일 동안 새로 생긴 제도가 없습니다.");
+    return bottomListCard("newsvc", "새로 생긴 공공서비스",
+      "보조금24에 최근 30일 안에 새로 생긴 서비스 " + fmtN(items.length) + "개" + since,
+      items, function (s) { return row(s, fmtDate(s.fs) + " 추가", true); }, "최근 30일 동안 새로 생긴 공공서비스가 없습니다.");
   }
 
   function renderCharts(live) {
@@ -2944,8 +2946,8 @@
     fields.querySelector(".viz-body").classList.add("top");
     var upcoming = upcomingCard(), region = regionCard();
     var newsvc = newServicesCard();
-    // 순서: 무엇을 지원하나요(공고·제도 도넛) → 누구를·어느 지역 → 마감·올라오는 달.
-    // 홈 맨 아래(#homeUpcoming): 많이 찾는 지원사업(index.html에 고정) · 곧 올라올 수 있는 공고 · 새로 생긴 상시 제도
+    // 순서: 무엇을 지원하나요(공고·공공서비스 도넛) → 누구를·어느 지역 → 마감·올라오는 달.
+    // 홈 맨 아래(#homeUpcoming): 많이 찾는 지원사업(index.html에 고정) · 곧 올라올 수 있는 공고 · 새로 생긴 공공서비스
     var cards = [fields, support, persona, region, due, months, upcoming, newsvc];
     ["nf", "svc", "persona", "map", "due", "months", "upcoming", "newsvc"].forEach(function (k, i) { cards[i].dataset.key = k; });
     // 그래프를 누르면 요약이 뜬다는 안내(휴대폰은 가리키기가 없어 단서가 필요하다)
@@ -3065,7 +3067,7 @@
 
   /* 탭 줄이 좁을 때(태블릿 세로 640~830px, 360px 이하 휴대폰, 글자 크게) 탭 줄로 옮겨 온 단추가 탭을 가리지 않게
    * 1 탭 건수 숨김 → 2 탭 줄의 소리·글자 단추를 아이콘만(이름은 화면 읽기에 남김) → 3 탭 앞 색 점 숨김
-   * → 4 탭 이름을 '공고'·'제도'로 줄인다 → 5 탭 안쪽 여백을 줄인다(320px에 글자 크게처럼 아주 좁을 때).
+   * → 4 탭 이름을 '공고'·'서비스'로 줄인다 → 5 탭 안쪽 여백을 줄인다(320px에 글자 크게처럼 아주 좁을 때).
    * 고른 탭이 젤리로 커지고 옆 탭이 비켜 서는 자리(jellyReach)까지 비워 둔다.
    * 단추가 아직 머리에 있어도 '탭 줄로 옮겼을 때'로 재서 정하므로 스크롤해도 탭 모양은 그대로다 */
   var FIT_STEPS = ["fit-1", "fit-2", "fit-3", "fit-4", "fit-5"];
