@@ -157,12 +157,13 @@
     return daysBetween(item.pd, today) <= days;
   }
 
-  /* '오늘 올라온 공고': 마지막 수집일(매일 09:00·16:00 수집)에 처음 들어온 모집 공고(fs = 처음 수집한 날).
-   * 첫 수집 날(META.firstDay)은 모두가 처음이라 세지 않는다. 오늘 첫 수집 전(자정~9:00)에는 어제 수집분을 '어제 새 공고'로 */
-  // 기준일 = 마지막 수집일(화면 자료를 손으로 다시 만든 날이 아니라). 수집 기록이 없으면 자료 만든 날
+  /* '오늘 올라온 공고': 출처에 게시된 날(pd = 기업마당·K-Startup·국고보조금의 등록일)이 그날인 모집 공고.
+   * 예전에는 '이 사이트가 처음 모은 날(fs)'로 세어, 전날 저녁에 올라와 오늘 아침 수집에 들어온 공고까지 '오늘'로 셌다
+   * (10-03 토요일: 게시일이 오늘인 공고 0건인데 57건으로 보임 — 형님 지적).
+   * 기준일 = 마지막 수집일. 오늘 첫 수집 전(자정~9:00)에는 아직 오늘 자료가 없으므로 '어제 올라온 공고'를 센다 */
   var NEW_DAY = ((META.runs || []).map(function (r) { return r.at; }).sort().pop() || META.builtAt || "").slice(0, 10);
   function isTodayNew(item) {
-    return item.k === "n" && item.fs === NEW_DAY && NEW_DAY !== META.firstDay;
+    return item.k === "n" && item.pd === NEW_DAY;
   }
   function newDayLabel() {
     if (NEW_DAY === today) return "오늘";
@@ -1422,6 +1423,14 @@
     return b;
   }
 
+  function todayButton(b, n, badgeEl, label) {
+    b.hidden = false;
+    b.disabled = !n;
+    b.classList.toggle("zero", !n);
+    b.replaceChildren(badgeEl, label, el("strong", { text: fmtN(n) + "건" }));
+    if (n) b.append(icon("arrow-right"));
+  }
+
   function goChip(label, n, partial) {
     var b = el("button", { type: "button", className: "chip" }, label,
       n === null ? null : el("span", { className: "n", text: fmtN(n) }));
@@ -1440,18 +1449,14 @@
     $("#homeSub").textContent = NOTICES_MISSING ? "모집 공고 자료를 불러오지 못했습니다. 새로 고침해 주세요."
       : fmtStamp(at) + " 수집 · 상시 제도는 따로 셈";
     document.querySelectorAll("#homePane .sk-only").forEach(function (e) { e.remove(); }); // 첫 화면 자리 잡기(index.html)
+    // 오늘 올라온 공고·오늘 마감인 공고: 0건이어도 늘 보인다(형님 지시). 0건이면 회색으로, 눌러도 빈 목록으로 가지 않게 막는다
     var todayN = live.filter(isTodayNew).length;
     var tn = $("#homeTodayNew");
-    tn.hidden = !todayN;
-    tn.replaceChildren(el("span", { className: "badge new", text: "NEW" }),
-      newDayLabel() + " 올라온 공고 ", el("strong", { text: fmtN(todayN) + "건" }), icon("arrow-right"));
+    todayButton(tn, todayN, el("span", { className: "badge new", text: "NEW" }), newDayLabel() + " 올라온 공고 ");
     // 오늘 마감: 접수 중이고 마감일이 오늘인 공고(고른 지역 기준). 목록 조건은 마감 달력과 같은 due=오늘~오늘
     var dueN = live.filter(function (n) { return statusOf(n) === "접수 중" && n.e === today; }).length;
-    var td = $("#homeTodayDue");
-    td.hidden = !dueN;
-    td.replaceChildren(el("span", { className: "badge urgent", text: "D-DAY" }),
-      "오늘 마감인 공고 ", el("strong", { text: fmtN(dueN) + "건" }), icon("arrow-right"));
-    $("#homeTodayRow").hidden = !todayN && !dueN;
+    todayButton($("#homeTodayDue"), dueN, el("span", { className: "badge urgent", text: "D-DAY" }), "오늘 마감인 공고 ");
+    $("#homeTodayRow").hidden = false;
 
     var svcN = svcCount("all");
     $("#homeStats").replaceChildren(

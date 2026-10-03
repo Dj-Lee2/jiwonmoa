@@ -376,6 +376,11 @@ select { appearance: none; background-image: linear-gradient(45deg, transparent 
 .today-new.due:hover { background: color-mix(in srgb, var(--red-50), var(--red-500) 10%); }
 .today-new.due strong { color: var(--red-600); }
 .today-new.due .badge { background: var(--urgent); }
+/* 0건: 회색(빨강·파랑은 할 일이 있을 때만), 눌러도 빈 목록으로 가지 않는다(app.js todayButton) */
+.today-new.zero, .today-new.zero:hover { background: var(--surface-hover); color: var(--fg); cursor: default; }
+.today-new.zero strong { color: var(--fg-strong); }
+.today-new.zero .badge { background: var(--gray-600); } /* 흰 글자 5.7:1 */
+.today-new.zero:active { scale: 1; }
 .hero-search { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px 16px; align-items: end; }
 .hero-search .field { margin: 0; min-width: 0; }
 .hero-go { min-height: 48px; padding: 0 36px; font-size: 1rem; }
