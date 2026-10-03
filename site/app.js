@@ -67,7 +67,7 @@
     var home = $("#homePane"), list = $("#listLayout");
     if (home) home.hidden = false;
     if (list) list.hidden = true;
-    document.querySelectorAll("#homePane .sk-only, #homeStats, #homeCharts, .who-card, .home-grid, #homeSearch")
+    document.querySelectorAll("#homePane .sk-only, #homeStats, #homeCharts, .who-card, .home-grid, #homeUpcoming, #homeSearch")
       .forEach(function (e) { e.remove(); });
     var t = $("#homeTitle"), s = $("#homeSub");
     if (t) t.textContent = "자료를 불러오지 못했습니다";
@@ -2855,7 +2855,7 @@
         var prev = upcomingShown, top = list.scrollTop;
         upcomingShown += HOME_STEP;
         renderHome();
-        var ul = document.querySelector("#homeCharts .results.upcoming");
+        var ul = document.querySelector("#homeUpcoming .results.upcoming");
         if (ul) revealNew(ul, prev, top, ul.closest(".viz-card").querySelector(".more"));
       });
       foot = el("div", null, more);
@@ -2884,12 +2884,14 @@
     var fields = noticeFieldCard(live);
     fields.querySelector(".viz-body").classList.add("top");
     var upcoming = upcomingCard(), region = regionCard();
-    // 순서: 무엇을 지원하나요(공고·제도 도넛) → 누구를·어느 지역 → 마감·올라오는 달 → 곧 올라올 공고
+    // 순서: 무엇을 지원하나요(공고·제도 도넛) → 누구를·어느 지역 → 마감·올라오는 달.
+    // 곧 올라올 수 있는 공고는 그래프 묶음이 아니라 홈 맨 아래(목록 3개 다음, #homeUpcoming)에 둔다(형님 지시)
     var cards = [fields, support, persona, region, due, months, upcoming];
     ["nf", "svc", "persona", "map", "due", "months", "upcoming"].forEach(function (k, i) { cards[i].dataset.key = k; });
     // 그래프를 누르면 요약이 뜬다는 안내(휴대폰은 가리키기가 없어 단서가 필요하다)
     var hint = el("p", { className: "charts-hint" }, icon("hand-tap"), "그래프의 막대·칸·지역을 누르면 요약을 볼 수 있어요");
-    $("#homeCharts").replaceChildren.apply($("#homeCharts"), [hint].concat(cards));
+    $("#homeCharts").replaceChildren.apply($("#homeCharts"), [hint].concat(cards.slice(0, -1)));
+    $("#homeUpcoming").replaceChildren(upcoming);
     fitListHeight(upcoming.querySelector(".results"), upcoming._expandable, WIDE_CHARTS); // 막대 채우기보다 먼저
     [persona, months].forEach(fillCard);
     setupMotion(cards);

@@ -394,6 +394,9 @@ select { appearance: none; background-image: linear-gradient(45deg, transparent 
 .stat-label .tone-orange { color: var(--soon-icon); }
 
 .home-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 44px; }
+/* 곧 올라올 수 있는 공고: 홈 맨 아래(목록 3개 다음), 한 줄 전체 */
+.home-upcoming { margin-top: 44px; }
+.home-upcoming:empty { display: none; }
 .block-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 16px; }
 .block-head h3 { display: flex; align-items: center; gap: 8px; margin: 0; font-size: 1.25rem; font-weight: 700; color: var(--fg-strong); }
 .more-link { display: inline-flex; align-items: center; gap: 4px; border: 0; background: none; padding: 6px 4px; cursor: pointer; font-weight: 700; color: var(--fg-strong); }
