@@ -1157,13 +1157,13 @@ body.peek-lock .to-top, body.detail-open .to-top, body.filters-open .to-top, bod
 }
 
 /* ---------- 탭 줄이 좁을 때 단계별로 줄이기(app.js fitTabs) ----------
- * 1 탭 건수 숨김 → 2 탭 줄로 옮겨 온 소리·글자 단추를 아이콘만 → 3 탭 이름 '공고'·'제도'(화면 읽기는 '모집 공고' 그대로) */
+ * 1 탭 건수 숨김 → 2 탭 줄로 옮겨 온 소리·글자 단추를 아이콘만 → 3 탭 앞 색 점 숨김 → 4 탭 이름 '공고'·'제도'(화면 읽기는 '모집 공고' 그대로) */
 .tab-short { display: none; }
 .tabs.fit-1 .tab-count { display: none; }
 .tabs.fit-2 .tabs-dock .iconbtn { padding: 0; min-width: 44px; justify-content: center; }
 .tabs.fit-2 .tabs-dock .iconbtn span,
-.tabs.fit-3 .tab-name { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
-.tabs.fit-3 .tab-short { display: inline; }
+.tabs.fit-4 .tab-name { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.tabs.fit-4 .tab-short { display: inline; }
 
 /* ---------- 손가락으로 누르는 화면: 작은 글자 단추·링크도 누름 칸 44px 이상 ---------- */
 @media (pointer: coarse), (max-width: 639px) {
@@ -1202,3 +1202,13 @@ body.peek-lock .to-top, body.detail-open .to-top, body.filters-open .to-top, bod
 .load-note span { flex: 1 1 200px; }
 .load-note .btn { min-height: 44px; padding: 0 16px; font-size: .8125rem; background: var(--canvas); }
 @media print { .load-note { display: none !important; } }
+
+/* ---------- 젤리 탭(app.js jellyGroup) ----------
+ * 맨 위 탭만: 고른 탭이 1.08배로 살짝 부풀고 옆 탭이 비켜 섰다 돌아온다(움직임은 JS가 transform으로).
+ * Adapted from React Bits "Jelly Radio" by David Haz — MIT + Commons Clause. 다른 단추·그래프 카드의 전환 단추는 그대로.
+ * 오른쪽 끝은 fitTabs가 부푼 탭과 소리·글자 단추 사이 자리를 비워 둔다 */
+.jelly [role="tab"] { position: relative; transform-origin: 50% 50%; touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
+.jelly [role="tab"][aria-selected="true"] { z-index: 2; }
+/* 탭 줄 맞추기 3단계: 탭 앞 색 점 숨김, 5단계: 탭 안쪽 여백 4px(누름 칸은 min-width 44px 그대로)(app.js fitTabs) */
+.tabs.fit-3 [data-tab]::before { display: none; }
+.tabs.fit-5 [role="tab"] { padding: 0 4px; }

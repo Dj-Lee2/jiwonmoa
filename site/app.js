@@ -1943,6 +1943,123 @@
     });
   }
 
+  /* ---------- 젤리 탭(Jelly Radio) ----------
+   * 맨 위 탭(홈·모집 공고·상시 제도)만: 고른 탭이 젤리처럼 살짝 부풀고 옆 탭이 비켜 섰다 돌아온다.
+   * 다른 단추와 그래프 카드 안의 전환 단추는 그대로(형님 지시).
+   * Adapted from React Bits "Jelly Radio" by David Haz (https://reactbits.dev/c/micro/jelly-radio,
+   * MIT + Commons Clause). motion 라이브러리 대신 같은 스프링 식(강성·질량·감쇠 = 2√(km)(1−bounce))을 rAF로 푼다.
+   * 크기는 원본(1.2배·비켜 서기 6px·줄어듦 .05)이 너무 커서 1.08배·3px·.02로 낮췄다(형님 지시).
+   * 탄력·시간은 원본 그대로: jelly 1 · bounce .25 · stagger 22ms · stiffness 580.
+   * 원본처럼 마우스·손가락으로 고르면 움직이고, 키보드·뒤로 가기처럼 밖에서 바뀌면 바로 그 자리로 간다 */
+  var JELLY = { swell: 0.08, barge: 3, shrink: 0.02, jelly: 1, bounce: 0.25, stagger: 22, stiffness: 580 };
+  var jellyCalm = window.matchMedia("(prefers-reduced-motion: reduce)");
+
+  function JellySpring(v) { this.v = v; this.vel = 0; this.to = v; this.k = 0; this.c = 0; this.m = 1; this.wait = 0; }
+  JellySpring.prototype.go = function (to, k, m, bounce, delay) {
+    this.to = to; this.k = k; this.m = m; this.c = 2 * Math.sqrt(k * m) * (1 - bounce); this.wait = delay;
+  };
+  JellySpring.prototype.jump = function (v) { this.v = this.to = v; this.vel = 0; this.wait = 0; };
+  JellySpring.prototype.moving = function () { return this.wait > 0 || this.vel !== 0 || this.v !== this.to; };
+  JellySpring.prototype.step = function (dt) {
+    if (this.wait > 0) { this.wait -= dt; return true; }
+    if (this.v === this.to && this.vel === 0) return false;
+    for (var i = 0, h = dt / 8; i < 8; i++) { // 나눠 풀어 강성 580에서도 안정적으로
+      this.vel += ((-this.k * (this.v - this.to) - this.c * this.vel) / this.m) * h;
+      this.v += this.vel * h;
+    }
+    if (Math.abs(this.v - this.to) < 0.0004 && Math.abs(this.vel) < 0.004) { this.v = this.to; this.vel = 0; return false; }
+    return true;
+  };
+
+  // 한 단추 줄(box) 안의 단추(chipSel)를 젤리로 움직인다. 고른 것은 isOn(단추)으로 안다
+  function jellyGroup(box, chipSel, isOn) {
+    if (!box || box._jelly) return box && box._jelly;
+    var g = { chips: [], springs: [], at: -2, raf: 0, last: 0, sig: "", poke: 0 };
+    box.classList.add("jelly");
+    box._jelly = g;
+    function draw() {
+      g.chips.forEach(function (c, i) {
+        var s = g.springs[i];
+        c.style.transform = s.x.v === 0 && s.sx.v === 1 && s.sy.v === 1 ? "" :
+          "translateX(" + s.x.v.toFixed(2) + "px) scale(" + s.sx.v.toFixed(4) + ", " + s.sy.v.toFixed(4) + ")";
+      });
+    }
+    function tick(t) {
+      var dt = g.last ? Math.min(0.034, (t - g.last) / 1000) : 1 / 60;
+      g.last = t;
+      var busy = false;
+      g.springs.forEach(function (s) { busy = s.x.step(dt) | s.sx.step(dt) | s.sy.step(dt) || busy; });
+      draw();
+      if (busy) g.raf = requestAnimationFrame(tick); else { g.raf = 0; g.last = 0; }
+    }
+    // 원본 apply(): 고른 단추는 1+swell 배, 나머지는 1−shrink 배. 옆 단추들은 (고른 폭×swell/2 + barge)만큼 비켜 서고,
+    // 멀수록 조금 늦게(stagger)·조금 부드럽게 움직인다. 고른 게 없으면(성별 해제) 모두 제자리
+    function apply(sel, instant) {
+      var C = JELLY, rtl = getComputedStyle(box).direction === "rtl";
+      var push = sel >= 0 ? (g.chips[sel].offsetWidth * C.swell) / 2 + C.barge : 0;
+      var calm = instant || jellyCalm.matches;
+      g.chips.forEach(function (c, i) {
+        var s = g.springs[i], on = i === sel, far = Math.abs(i - sel);
+        var x = sel >= 0 ? Math.sign(i - sel) * (rtl ? -1 : 1) * push : 0;
+        var sc = sel < 0 ? 1 : on ? 1 + C.swell : 1 - C.shrink;
+        if (calm) { s.x.jump(x); s.sx.jump(sc); s.sy.jump(sc); return; }
+        var k = C.stiffness * (1 - 0.12 * Math.min(sel >= 0 ? far : 0, 3)), j = C.jelly;
+        var delay = s.x.moving() || s.sx.moving() || s.sy.moving() || sel < 0 ? 0 : (far * C.stagger) / 1000;
+        s.x.go(x, k, 0.9, C.bounce, delay);
+        s.sx.go(sc, k * (1 + 0.24 * j), 0.9 - 0.1 * j, Math.min(0.85, C.bounce + 0.3 * j), delay);
+        s.sy.go(sc, k * (1 - 0.14 * j), 0.9 + 0.05 * j, C.bounce, delay + 0.05 * j);
+      });
+      if (calm) { draw(); return; }
+      if (!g.raf) { g.last = 0; g.raf = requestAnimationFrame(tick); }
+    }
+    g.refresh = function (instant) {
+      var now = Array.prototype.slice.call(box.querySelectorAll(chipSel));
+      if (now.length !== g.chips.length || now.some(function (c, i) { return c !== g.chips[i]; })) {
+        g.chips = now;
+        g.springs = now.map(function () { return { x: new JellySpring(0), sx: new JellySpring(1), sy: new JellySpring(1) }; });
+        g.at = -2; instant = true;
+      }
+      var sel = -1;
+      g.chips.forEach(function (c, i) { if (isOn(c)) sel = i; });
+      var sig = g.chips.map(function (c) { return c.offsetWidth; }).join(",");
+      if (sel === g.at && sig === g.sig) return;
+      if (sig !== g.sig) jellyRoom(box, g.chips);
+      var moved = sel !== g.at;
+      g.at = sel; g.sig = sig;
+      // 방금 이 줄을 마우스·손가락으로 눌렀을 때만 움직인다(원본: 키보드·밖에서 바뀐 값은 바로 그 자리로)
+      apply(sel, instant || !moved || Date.now() - g.poke > 600);
+    };
+    box.addEventListener("click", function (e) { if (e.detail > 0 && e.target.closest(chipSel)) g.poke = Date.now(); }, true);
+    if (window.MutationObserver) {
+      new MutationObserver(function () { g.refresh(); })
+        .observe(box, { attributes: true, subtree: true, attributeFilter: ["aria-selected", "aria-pressed", "class", "hidden"] });
+    }
+    if (window.ResizeObserver) new ResizeObserver(function () { g.refresh(true); }).observe(box);
+    g.refresh(true);
+    return g;
+  }
+
+  // 줄 양끝에서 젤리가 밖으로 나가는 거리: 끝 단추를 고르면 그 단추가 커지는 만큼,
+  // 다른 단추를 고르면 끝 단추가 밀려나는 만큼 중 큰 값(원본은 이만큼 줄에 안쪽 여백 --jr-pad-x를 둔다).
+  // ghost: 고르지 않은 단추에 바탕이 없으면(탭) 밀려나도 글자만 보이므로 글자 안쪽 여백만큼 덜 잡는다
+  function jellyReach(widths, ghost) {
+    var C = JELLY, n = widths.length, last = widths[n - 1] || 0, first = widths[0] || 0;
+    if (!n) return { left: 0, right: 0 };
+    var pushMax = Math.max.apply(null, widths.map(function (w) { return (w * C.swell) / 2 + C.barge; }));
+    return {
+      right: Math.max((last * C.swell) / 2, pushMax - (last * C.shrink) / 2 - (ghost || 0)),
+      left: Math.max((first * C.swell) / 2, pushMax - (first * C.shrink) / 2 - (ghost || 0))
+    };
+  }
+  // 그 거리를 CSS 변수(--jelly-l·--jelly-r)로 남겨 줄 양끝 여백을 정한다(style.css '젤리 단추')
+  function jellyRoom(box, buttons) {
+    var ghost = box.classList.contains("tabs-inner") && buttons.length ? parseFloat(getComputedStyle(buttons[0]).paddingRight) || 0 : 0;
+    var reach = jellyReach(buttons.map(function (c) { return c.offsetWidth; }), ghost);
+    box.style.setProperty("--jelly-l", Math.ceil(reach.left) + "px");
+    box.style.setProperty("--jelly-r", Math.ceil(reach.right) + "px");
+    return reach;
+  }
+
   /* 두 계열 이상일 때만 쓰는 범례(색 네모 + 이름) */
   function legend(series) {
     var box = el("div", { className: "viz-legend" });
@@ -2880,10 +2997,13 @@
     fitTabs();
   }
 
-  /* 탭 줄이 좁을 때(태블릿 세로 640~830px, 320px 휴대폰, 글자 크게) 탭 줄로 옮겨 온 단추가 탭을 가리지 않게
-   * 1 탭 건수 숨김 → 2 탭 줄의 소리·글자 단추를 아이콘만(이름은 화면 읽기에 남김) → 3 탭 이름을 '공고'·'제도'로 줄인다.
+  /* 탭 줄이 좁을 때(태블릿 세로 640~830px, 360px 이하 휴대폰, 글자 크게) 탭 줄로 옮겨 온 단추가 탭을 가리지 않게
+   * 1 탭 건수 숨김 → 2 탭 줄의 소리·글자 단추를 아이콘만(이름은 화면 읽기에 남김) → 3 탭 앞 색 점 숨김
+   * → 4 탭 이름을 '공고'·'제도'로 줄인다 → 5 탭 안쪽 여백을 줄인다(320px에 글자 크게처럼 아주 좁을 때).
+   * 고른 탭이 젤리로 커지고 옆 탭이 비켜 서는 자리(jellyReach)까지 비워 둔다.
    * 단추가 아직 머리에 있어도 '탭 줄로 옮겼을 때'로 재서 정하므로 스크롤해도 탭 모양은 그대로다 */
-  var FIT_STEPS = ["fit-1", "fit-2", "fit-3"];
+  var FIT_STEPS = ["fit-1", "fit-2", "fit-3", "fit-4", "fit-5"];
+  var tabsJelly = null;
   function fitTabs() {
     var nav = document.querySelector(".tabs"), dock = $("#tabsDock"), actions = document.querySelector(".top-actions");
     var tabs = nav ? nav.querySelectorAll("[role=tab]") : [];
@@ -2899,16 +3019,27 @@
       box = probe;
       nav.classList.add("docked");
     }
-    // 기기에서 직접 재므로 여백은 붙지 않을 만큼만(2px). 360px 휴대폰은 '모집 공고'가 그대로 들어간다
-    function fits() { return tabs[tabs.length - 1].getBoundingClientRect().right + 2 <= box.getBoundingClientRect().left; }
+    // 젤리로 움직인 자리가 아니라 제자리에서 잰다(재는 동안만 움직임을 떼었다 붙임 — 같은 함수 안이라 화면에 안 그려짐)
+    var held = Array.prototype.map.call(tabs, function (t) { var v = t.style.transform; t.style.transform = "none"; return v; });
+    var inner = nav.querySelector(".tabs-inner");
+    function fits() {
+      var reach = jellyRoom(inner, Array.prototype.slice.call(tabs)).right; // 왼쪽 자리(--jelly-l)도 함께 정해 둔다
+      return tabs[tabs.length - 1].getBoundingClientRect().right + reach + 6 <= box.getBoundingClientRect().left; // 부푼 탭과 단추 사이 6px
+    }
     FIT_STEPS.forEach(function (c) { nav.classList.remove(c); });
     for (var i = 0; i < FIT_STEPS.length && !fits(); i++) nav.classList.add(FIT_STEPS[i]);
+    Array.prototype.forEach.call(tabs, function (t, k) { t.style.transform = held[k]; });
     if (probe) { probe.remove(); nav.classList.remove("docked"); }
     else document.documentElement.style.setProperty("--dock-w", Math.round(dock.getBoundingClientRect().width) + "px");
+    // 탭 폭이 바뀌었으면 젤리 자리도 다시. 고른 탭이 바뀐 때(탭을 누름 → applyView → 여기)는 refresh가 알아서 움직인다
+    if (tabsJelly) tabsJelly.refresh();
   }
 
   function bind() {
     dockTopActions();
+    // 젤리 탭: 맨 위 탭에만(다른 단추·그래프 카드의 전환 단추는 그대로)
+    tabsJelly = jellyGroup(document.querySelector(".tabs-inner"), "[role=tab]", function (t) { return t.getAttribute("aria-selected") === "true"; });
+    fitTabs();
     // 본문으로 건너뛰기: 주소(#)를 바꾸지 않고 본문으로 초점만 옮긴다(주소가 바뀌면 조건 주소로 읽혀 화면이 바뀐다)
     document.querySelector(".skip").addEventListener("click", function (e) {
       e.preventDefault();
@@ -3107,13 +3238,13 @@
       document.documentElement.dataset.size = large ? "large" : "";
       fontBtn.setAttribute("aria-pressed", String(large));
       fontBtn.querySelector("span").textContent = large ? "글자 보통" : "글자 크게";
+      fitTabs(); // 기억해 둔 '글자 크게'로 시작할 때도 탭 줄을 큰 글자 기준으로 다시 맞춘다
     }
     try { applyFont(localStorage.getItem("hub-size") === "large"); } catch (e) { applyFont(false); }
     fontBtn.addEventListener("click", function () {
       var large = fontBtn.getAttribute("aria-pressed") !== "true";
       applyFont(large);
       try { localStorage.setItem("hub-size", large ? "large" : ""); } catch (e) { /* 저장 못 해도 동작 */ }
-      fitTabs();
       if (state.tab === "home") renderHome();
     });
   }

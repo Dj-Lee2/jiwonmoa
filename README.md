@@ -263,6 +263,7 @@ python -m unittest discover -s tests -v
 
 - 💻 **코드**: [MIT](LICENSE)
 - 🗺️ **지도**: [svg-maps South Korea](https://github.com/VictorCazanave/svg-maps/tree/master/packages/south-korea) (Victor Cazanave, 원본 [MapSVG](https://mapsvg.com/maps/south-korea)), [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/). 광주·전남을 한 지역으로 합쳐 표시합니다.
+- 🍮 **젤리 탭**: 맨 위 탭(홈·모집 공고·상시 제도)의 움직임은 [React Bits "Jelly Radio"](https://reactbits.dev/c/micro/jelly-radio)(David Haz, MIT + Commons Clause)를 이 사이트에 맞게 옮겨 썼습니다.
 - 🎨 **화면 일부 무늬**: 배경 무늬·그래프 말풍선 꼬리·전환 단추 알약·체크 상자·불러오기 막대(`site/style.css`)는 [Uiverse.io](https://uiverse.io) 패턴
   (BadlyWrittenStylesheet, AspenBranch, johnliter, Pradeepsaranbishnoi, DaniloMGutavo, Nawsome)을 고쳐 썼습니다 — MIT License, © 2023 Uiverse.io. 출처는 각 규칙 주석에 적었습니다.
 - 🗂️ **수집 자료**: 각 출처의 이용 조건을 따릅니다(기업마당은 공공누리 제3유형: 출처 표시·변경 금지).
