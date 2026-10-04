@@ -1201,6 +1201,10 @@ body.peek-lock .to-top, body.detail-open .to-top, body.filters-open .to-top, bod
   .top-actions { margin-left: auto; }
 }
 @media print { #soundToggle { display: none; } }
+/* 공부 모드 단추는 PC(마우스가 있고 넓은 화면)에서만 */
+#studyToggle { display: none; }
+@media (min-width: 1100px) and (hover: hover) and (pointer: fine) { #studyToggle { display: inline-flex; } }
+@media print { #studyToggle { display: none !important; } }
 .top-hint { display: inline-flex; align-items: center; gap: 8px; margin: 0 8px 0 0; font-size: .9375rem; color: var(--muted); white-space: nowrap; }
 .top-hint[hidden] { display: none; }
 .top-hint .th-short { display: none; }

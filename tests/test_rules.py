@@ -380,7 +380,7 @@ class SecurityHeaderTest(unittest.TestCase):
     def test_terms(self):
         # 용어(docs/DEVELOPMENT.md): 지원사업 = 모집 공고 + 공공서비스. 옛 이름·헷갈리는 말은 화면 글에 쓰지 않는다
         # (공공데이터 이름 「국고보조금 공모사업 상세」 같은 고유 이름만 예외)
-        for name in ("site/app.js", "site/index.html", "site/style.css", "README.md"):
+        for name in ("site/app.js", "site/index.html", "site/style.css", "site/study.js", "README.md"):
             text = (ROOT / name).read_text(encoding="utf-8")
             bads = ("상시 제도", "상시 지원제도", "지금 모집 중") + (() if name == "README.md" else ("공모",))
             for bad in bads:

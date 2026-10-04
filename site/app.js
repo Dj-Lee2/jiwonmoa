@@ -3613,6 +3613,28 @@
       try { localStorage.setItem("hub-size", large ? "large" : ""); } catch (e) { /* 저장 못 해도 동작 */ }
       if (state.tab === "home") renderHome();
     });
+
+    // 공부 모드(PC만): 화면 각 영역의 이름·하는 일·코드 이름을 툴팁으로. study.js·study.css는 처음 켤 때만 읽는다(첫 화면 무게 그대로).
+    // 기억하지 않는다(다시 열면 꺼진 채). 화면이 좁아지면(태블릿·휴대폰 폭) 저절로 끈다
+    var studyBtn = $("#studyToggle"), studyPc = window.matchMedia("(min-width: 1100px) and (hover: hover) and (pointer: fine)");
+    function paintStudy(on) {
+      studyBtn.setAttribute("aria-pressed", String(on));
+      studyBtn.querySelector("span").textContent = on ? "공부 모드 끄기" : "공부 모드";
+      fitTabs();
+    }
+    function setStudy(on) {
+      if (!on) { if (window.HUB_STUDY) window.HUB_STUDY.stop(); paintStudy(false); return; }
+      studyBtn.disabled = true;
+      loadScript("study.js?v=1").then(function () {
+        studyBtn.disabled = false;
+        window.HUB_STUDY.onchange = function (v) { paintStudy(v); };
+        window.HUB_STUDY.start();
+        paintStudy(true);
+      }, function () { studyBtn.disabled = false; toast("공부 모드를 불러오지 못했습니다"); });
+    }
+    studyBtn.addEventListener("click", function () { setStudy(studyBtn.getAttribute("aria-pressed") !== "true"); });
+    var studyOff = function () { if (!studyPc.matches && studyBtn.getAttribute("aria-pressed") === "true") setStudy(false); };
+    if (studyPc.addEventListener) studyPc.addEventListener("change", studyOff); else if (studyPc.addListener) studyPc.addListener(studyOff);
   }
 
   function init() {

@@ -1,0 +1,43 @@
+/* 지원모아 공부 모드(study.js, PC만) — 머리 단추로 켤 때만 읽는다. 사이트 색 변수와 따로 둔 도구 색(분홍 테두리·검은 설명) */
+.st-box { position: fixed; z-index: 2147483000; display: none; pointer-events: none; border: 2px solid #ff3d71; border-radius: 10px;
+  background: rgba(255, 61, 113, .08); box-shadow: 0 0 0 9999px rgba(0, 0, 0, .0); transition: all .08s; }
+.st-box.flash { animation: st-flash 1.2s ease-out 2; }
+@keyframes st-flash { 0%, 100% { background: rgba(255, 61, 113, .08); } 40% { background: rgba(255, 61, 113, .35); } }
+.st-tip { position: fixed; z-index: 2147483001; display: none; max-width: min(380px, calc(100vw - 16px)); padding: 12px 14px; border-radius: 14px;
+  background: #111827; color: #fff; box-shadow: 0 10px 30px rgba(0, 0, 0, .3); pointer-events: none; font: 14px/1.55 "Pretendard Variable", Pretendard, sans-serif; }
+.st-tip p { margin: 0; }
+.st-path { font-size: 12px; color: #9ca3af; margin-bottom: 4px !important; }
+.st-name { font-size: 16px; font-weight: 800; color: #ffd84d; margin-bottom: 4px !important; }
+.st-desc { color: #f3f4f6; }
+.st-code { margin-top: 8px !important; font: 12px/1.4 ui-monospace, Menlo, Consolas, monospace; color: #93c5fd; word-break: break-all; }
+
+.st-badges { position: fixed; inset: 0; z-index: 2147482999; pointer-events: none; }
+.st-frame { position: fixed; border: 2px dashed rgba(255, 61, 113, .85); border-radius: 12px; }
+.st-badge { position: absolute; left: 6px; top: -11px; max-width: calc(100% - 12px); overflow: hidden; text-overflow: ellipsis; padding: 2px 8px; border-radius: 999px; background: #ff3d71; color: #fff; white-space: nowrap;
+  font: 700 12px/1.6 "Pretendard Variable", Pretendard, sans-serif; box-shadow: 0 2px 6px rgba(0, 0, 0, .2); }
+
+.st-bar { position: fixed; z-index: 2147483002; left: 50%; bottom: 14px; translate: -50% 0; display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
+  justify-content: center; max-width: calc(100vw - 16px); padding: 7px 8px; border-radius: 999px; background: #111827; color: #fff;
+  box-shadow: 0 8px 26px rgba(0, 0, 0, .3); font: 13px/1.2 "Pretendard Variable", Pretendard, sans-serif; }
+.st-bar strong { padding: 0 6px; white-space: nowrap; }
+.st-btn { border: 0; border-radius: 999px; padding: 8px 12px; min-height: 36px; background: rgba(255, 255, 255, .12); color: #fff; font: inherit; cursor: pointer; white-space: nowrap; }
+.st-btn:hover { background: rgba(255, 255, 255, .22); }
+
+.st-panel { position: fixed; z-index: 2147483003; top: 12px; right: 12px; bottom: 76px; width: min(400px, calc(100vw - 24px)); overflow-y: auto;
+  padding: 14px; border-radius: 18px; background: #fff; color: #111; box-shadow: 0 12px 40px rgba(0, 0, 0, .25); font: 14px/1.5 "Pretendard Variable", Pretendard, sans-serif; }
+.st-panel[hidden] { display: none; }
+.st-phead { position: sticky; top: -14px; display: flex; justify-content: space-between; align-items: center; margin: -14px -14px 6px; padding: 14px; background: #fff; border-bottom: 1px solid #eee; }
+.st-phead .st-btn { background: #f3f4f6; color: #111; }
+.st-pnote { margin: 0 0 8px; font-size: 12px; color: #6b7280; }
+.st-gname { margin: 14px 0 6px; font-weight: 800; font-size: 15px; color: #111; }
+.st-item { display: grid; gap: 2px; width: 100%; padding: 8px 10px; margin: 0 0 4px; border: 0; border-radius: 10px; background: #f6f7f9; text-align: left; cursor: pointer; font: inherit; color: inherit; }
+.st-item:hover { background: #ffe4ec; }
+.st-iname { font-weight: 700; }
+.st-idesc { font-size: 12px; color: #4b5563; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
+.st-item.absent { opacity: .5; }
+.st-badge.inside { top: 2px; }
+.st-bar[hidden], .st-note[hidden] { display: none; }
+.st-btn[aria-pressed="true"] { background: #ffd84d; color: #111; font-weight: 700; }
+.st-note { position: fixed; z-index: 2147483002; left: 50%; bottom: 74px; translate: -50% 0; max-width: min(520px, calc(100vw - 32px)); padding: 10px 14px; border-radius: 12px;
+  background: #111827; color: #fff; font: 14px/1.5 "Pretendard Variable", Pretendard, sans-serif; box-shadow: 0 8px 26px rgba(0, 0, 0, .3); }
+@media print { .st-ui { display: none !important; } }
