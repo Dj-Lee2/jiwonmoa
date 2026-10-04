@@ -1458,8 +1458,19 @@
   var STAT_TICKS = 40, statsGrown = false, todayDueTab = "open";
   // 타일 이름이 칸보다 길 때(320px 휴대폰·글자 크게) 쓸 줄인 이름. 화면 읽기는 늘 전체 이름(aria-label)
   var STAT_SHORT = { "7일 안에 마감": "7일 안 마감", "예산 소진 시까지": "예산 소진", "내 조건에 맞음": "내 조건", "공공서비스": "서비스" };
+  // 타일 아래 '무엇 N건 중'의 줄인 이름(넓은 화면 6칸·휴대폰). 늘 무엇 중인지 보이게(형님 지적: '901건 중'만 보이면 헷갈림)
+  var OF_SHORT = { "마감일 있는 지원사업": "마감일 있는", "모집 공고": "공고", "전체 지원사업": "전체", "조건 있는 지원사업": "조건 있는" };
   /* 타일 이름이 한 줄에 다 들지 않으면 줄인 이름으로(.squeeze). 홈을 그린 뒤·글자 크기·창 크기가 바뀔 때 */
   function fitStatLabels() {
+    // 아래 줄 '무엇 N건 중 · %': 무엇 중인지는 늘 보인다(형님 지적: '901건 중'만 보이면 헷갈림).
+    // 칸이 모자라면 타일 모두 같은 단계로 1 줄인 이름(.of-tight) → 2 % 숨김(막대가 몫을 보여 줌, .of-nopct) → 3 두 줄(.of-wrap)
+    var ofs = [].slice.call(document.querySelectorAll("#homeStats .stat-of")).filter(function (o) { return o.children.length > 1; });
+    var steps = ["of-tight", "of-nopct", "of-wrap"];
+    ofs.forEach(function (o) { steps.forEach(function (c) { o.classList.remove(c); }); });
+    function overflowing() {
+      return ofs.some(function (o) { var f = o.firstElementChild; return o.clientWidth && f.scrollWidth > f.clientWidth + 1; });
+    }
+    for (var k = 0; k < steps.length && overflowing(); k++) ofs.forEach(function (o) { o.classList.add(steps[k]); });
     document.querySelectorAll("#homeStats .stat-label").forEach(function (l) {
       var tile = l.closest(".stat"), cs = getComputedStyle(tile);
       var room = tile.clientWidth - (parseFloat(cs.paddingLeft) || 0) - (parseFloat(cs.paddingRight) || 0);
@@ -1485,7 +1496,11 @@
         STAT_SHORT[label] ? el("span", { className: "stat-full", text: label }) : label,
         STAT_SHORT[label] ? el("span", { className: "stat-short", "aria-hidden": "true", text: STAT_SHORT[label] }) : null,
         icon("arrow-right")),
-      el("span", { className: "stat-of" }, el("span", null, el("span", { className: "of-what", text: ofLabel + " " }), fmtN(of) + "건 중"), el("span", { text: pct })),
+      // 무엇 중인지(기준)는 늘 보인다: 칸이 좁으면 줄인 이름(OF_SHORT), 그래도 모자라면(320px·글자 크게) 숫자만 — fitStatLabels
+      el("span", { className: "stat-of" }, el("span", null,
+        el("span", { className: "of-what", text: ofLabel + " " }),
+        OF_SHORT[ofLabel] ? el("span", { className: "of-short", "aria-hidden": "true", text: OF_SHORT[ofLabel] + " " }) : null,
+        fmtN(of) + "건 중"), el("span", { text: pct })),
       ticks);
     // 누르면 바로 목록으로 가지 않고 화면 가운데 요약 창(openPeek "modal", 뒤는 어둡게)을 연다. 목록은 창의 '모두 보기'로.
     // 휴대폰은 다른 요약과 같은 아래 시트
@@ -1542,8 +1557,6 @@
       return mePairSpec(nFit, sFit);
     }, "dark", withCond, "조건 있는 지원사업");
     b.setAttribute("aria-label", b.getAttribute("aria-label").replace("내 조건에 맞음", "내 조건(" + meLabel() + ")에 맞는 지원사업"));
-    b.querySelector(".stat-of span").replaceChildren(el("span", { className: "of-what", text: meLabel() + " · " }),
-      fmtN(withCond) + "건 중");
     return b;
   }
   /* 내 조건이 있을 때 요약: 모집 공고 | 공공서비스 두 장 + '조건 바꾸기' */
