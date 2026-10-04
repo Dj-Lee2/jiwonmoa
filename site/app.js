@@ -1825,7 +1825,7 @@
         .sort(function (a, b) { return b.vw - a.vw; }).slice(0, POP_MAX);
     }
     // 제목 아래 한 줄 설명(옆 카드들처럼 — 없으면 목록 시작 높이가 옆 카드와 어긋남)
-    $("#homePopSub").textContent = popKind === "s" ? "보조금24 공공서비스를 누적 조회수가 많은 순으로" : "기업마당 공고를 누적 조회수가 많은 순으로";
+    $("#homePopSub").textContent = popKind === "s" ? "보조금24 공공서비스 누적 조회수 기준" : "기업마당 공고 누적 조회수 기준";
     homeList("pop", $("#homePop"), $("#homePopMore"), items, function (n) { return row(n, "누적 조회 " + fmtViews(n.vw) + "회", true); },
       "조회수 자료가 없습니다.");
     document.querySelectorAll("#homePopKind button").forEach(function (b) {
