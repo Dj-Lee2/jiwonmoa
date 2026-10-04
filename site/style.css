@@ -466,6 +466,16 @@ select { appearance: none; background-image: linear-gradient(45deg, transparent 
 .viz-card { border: 1px solid var(--line); border-radius: 24px; padding: 24px; background: var(--canvas); min-width: 0; display: flex; flex-direction: column; }
 .viz-card h3 { margin: 0; font-size: 1.25rem; line-height: 1.4; color: var(--fg-strong); }
 .viz-sub { margin: 4px 0 12px; color: var(--muted); font-size: .8125rem; line-height: 1.5; }
+/* 많이 찾는 지원사업 제목 아래 한 줄(옆 그래프·목록 카드의 부제와 같은 모양) */
+.block-head:has(+ .block-sub) { margin-bottom: 0; }
+/* 넓은 화면 맨 아래 줄은 세 카드가 나란히: 알약 단추 때문에 머리 줄이 9px 높아 부제·목록이 내려가므로 그만큼 당겨 옆 카드와 맞춘다 */
+@media (min-width: 1100px) { .home-upcoming .block-sub { margin-top: -5px; } }
+/* 1100~1239px는 세 칸이 좁아 제목이 두 줄로 접히며 목록이 내려간다 → 제목은 한 줄, 알약 단추 안쪽 여백만 줄인다 */
+@media (min-width: 1100px) and (max-width: 1239px) {
+  .home-upcoming .block-head { gap: 8px; }
+  .home-upcoming .block-head h3 { white-space: nowrap; }
+  .home-upcoming #homePopKind button { padding: 0 6px; }
+}
 .viz-card h3 + .viz-body, .viz-head + .viz-body { margin-top: 14px; }
 .viz-body { flex: 1; display: flex; align-items: center; justify-content: center; min-height: 0; }
 .viz-body svg { display: block; width: 100%; height: auto; max-height: 340px; overflow: visible; }

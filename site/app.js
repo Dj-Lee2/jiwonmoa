@@ -1824,6 +1824,8 @@
       items = live.filter(function (n) { return n.vw; })
         .sort(function (a, b) { return b.vw - a.vw; }).slice(0, POP_MAX);
     }
+    // 제목 아래 한 줄 설명(옆 카드들처럼 — 없으면 목록 시작 높이가 옆 카드와 어긋남)
+    $("#homePopSub").textContent = popKind === "s" ? "보조금24 공공서비스를 누적 조회수가 많은 순으로" : "기업마당 공고를 누적 조회수가 많은 순으로";
     homeList("pop", $("#homePop"), $("#homePopMore"), items, function (n) { return row(n, "누적 조회 " + fmtViews(n.vw) + "회", true); },
       "조회수 자료가 없습니다.");
     document.querySelectorAll("#homePopKind button").forEach(function (b) {
@@ -3208,9 +3210,7 @@
   // 새로 생긴 공공서비스: 보조금24에 새로 등록돼 최근 30일 안에 처음 보인 서비스(META.newServices, build_site.py가 미리 뽑음)
   function newServicesCard() {
     var items = (META.newServices || []).filter(inRegion);
-    var since = META.firstDay ? " · " + fmtDate(META.firstDay) + "부터 모음" : "";
-    return bottomListCard("newsvc", "새로 생긴 공공서비스",
-      "보조금24에 최근 30일 안에 새로 생긴 서비스 " + fmtN(items.length) + "개" + since,
+    return bottomListCard("newsvc", "새로 생긴 공공서비스", "보조금24에 최근 30일 안에 새로 생긴 서비스",
       items, function (s) { return row(s, fmtDate(s.fs) + " 추가", true); }, "최근 30일 동안 새로 생긴 공공서비스가 없습니다.");
   }
 
