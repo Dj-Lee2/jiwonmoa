@@ -133,7 +133,7 @@ def run_checks(now, slot):
         facts["notices"] = len(notices)
         facts["services"] = (meta.get("counts") or {}).get("services", 0)
         if not notices or not facts["services"]:
-            problems.append("공고 또는 제도가 0건")
+            problems.append("공고 또는 공공서비스가 0건")
     except Exception as e:  # 파일이 깨졌거나 없음
         problems.append(f"화면 자료를 읽지 못함: {str(e)[:80]}")
         facts.setdefault("notices", 0)
@@ -159,7 +159,7 @@ def run_checks(now, slot):
 
 def record(now, slot, problems, facts):
     result = "정상" if not problems else "이상"
-    body = (f"공고 {facts['notices']:,} · 제도 {facts['services']:,} · 수집 {facts['runs']} 성공 · 테스트 {facts['tests']}건 통과"
+    body = (f"공고 {facts['notices']:,} · 공공서비스 {facts['services']:,} · 수집 {facts['runs']} 성공 · 테스트 {facts['tests']}건 통과"
             if not problems else " / ".join(problems))
     row = f"| {stamp(now)} | {slot:%H:%M} 수집 | {result} | {body} |"
     path = ROOT / "status" / "checks.md"
@@ -221,6 +221,11 @@ def main():
         if push_error:
             lines.append(f"- {push_error}")
         print("\n".join(lines))
+    elif os.environ.get("CHECK_REPORT"):
+        # 예약 작업(Hermes cron)이 CHECK_REPORT=1로 부르면 정상일 때도 한 줄 결과를 알린다(형님 요청 10-04)
+        print(f"✅ 지원모아 점검 {stamp(now)} ({slot:%H:%M} 수집 기준) 정상\n"
+              f"- 모집 공고 {facts['notices']:,} · 공공서비스 {facts['services']:,} · 수집 {facts['runs']} 성공 · 테스트 {facts['tests']}건 통과\n"
+              f"- 기록: status/checks.md · https://jiwonmoa.orfa.shop")
 
 
 if __name__ == "__main__":
