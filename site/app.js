@@ -17,6 +17,12 @@
   var GOV24_URL = "https://www.gov.kr/portal/rcvfvrSvc/dtlEx/";
   var DETAIL_BUCKETS = 64; // build_site.py의 DETAIL_BUCKETS와 같아야 한다
   var SITE_TITLE = "지원모아";
+  /* 브라우저 탭 제목(페이지 제목): 홈은 사이트 이름만, 목록은 '모집 공고 | 지원모아'·'공공서비스 | 지원모아',
+   * 상세는 '공고 이름 | 지원모아'(drawDetail). 탭을 여러 개 열어 둬도 어느 화면인지 구분되게 */
+  var TAB_TITLE = { open: "모집 공고", services: "공공서비스" };
+  function viewTitle() {
+    return TAB_TITLE[state.tab] ? TAB_TITLE[state.tab] + " | " + SITE_TITLE : SITE_TITLE;
+  }
   var SRC_NAME = { bizinfo: "기업마당", kstartup: "K-Startup", bojo: "국고보조금", gov24: "보조금24" };
   var SRC_LINK = { bizinfo: "기업마당에서 원문 보기", kstartup: "K-Startup에서 원문 보기",
     bojo: "보조금 통합포털에서 원문 보기", gov24: "정부24에서 자세히 보기" };
@@ -1077,7 +1083,7 @@
     if (!state.id) {
       pane.replaceChildren(renderGuide());
       document.body.classList.remove("detail-open", "lock");
-      document.title = SITE_TITLE;
+      document.title = viewTitle();
       return;
     }
     var item = byId.get(state.id);
@@ -1088,6 +1094,7 @@
       }
       pane.replaceChildren(detailBar(), el("div", { className: "detail-inner" },
         el("p", { text: "지금 목록에 없는 지원사업입니다." })));
+      document.title = "지금 목록에 없는 지원사업 | " + SITE_TITLE;
       openOverlay();
       return;
     }
@@ -1724,7 +1731,7 @@
     $("#homeRegion").value = state.r;
     $("#homeNat").checked = state.nat;
     $("#homeNat").closest("label").hidden = !state.r;
-    document.title = SITE_TITLE;
+    document.title = viewTitle();
     placeSegGliders();
   }
 
