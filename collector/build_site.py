@@ -458,6 +458,33 @@ def write_js(name, var, data):
     return path
 
 
+# 다른 서비스(ORFA 챗봇 등)가 읽는 농업 지원사업 묶음 — 화면용 .js와 같은 자료에서 농업 판정(a=1)만 추린다.
+AGRI_FEED_KEYS = ("id", "k", "src", "t", "ag", "op", "cat", "nf", "tp", "pp", "rg", "s", "e", "pt", "py", "sp", "pd")
+AGRI_FEED_SM = 160  # 공공서비스 요약 글자 수(목록 요약 sm을 잘라 붙인다)
+
+
+def agri_feed(notices, services, built_at):
+    """농업 판정 공고·제도를 짧게 묶는다. 마감 공고는 이미 빠져 있다(live만 들어온다)."""
+    items = []
+    for item in list(notices) + list(services):
+        if not item.get("a"):
+            continue
+        out = {k: item[k] for k in AGRI_FEED_KEYS if item.get(k) not in (None, "", [])}
+        if item.get("sm"):
+            out["sm"] = trim(item["sm"], AGRI_FEED_SM)
+        items.append(out)
+    return {"builtAt": built_at, "site": "https://jiwonmoa.orfa.shop", "count": len(items), "items": items}
+
+
+def write_json(name, data):
+    SITE_DATA.mkdir(parents=True, exist_ok=True)
+    path = SITE_DATA / f"{name}.json"
+    tmp = path.with_suffix(".json.tmp")
+    tmp.write_text(json.dumps(data, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
+    tmp.replace(path)
+    return path
+
+
 def dedupe_notices(notices):
     """같은 출처에 같은 공고가 여러 번 올라온 경우(재게시·일련번호만 다른 등록) 하나만 남긴다.
 
@@ -566,6 +593,8 @@ def main():
         "noticeFields": NOTICE_FIELDS,
         "counts": {"services": len(services)},
     }
+    # 다른 서비스용 농업 묶음은 상세 글을 떼기 전(목록 요약 sm·운영기관 op가 아직 붙어 있을 때) 만든다
+    feed = agri_feed(notices, services, meta["builtAt"])
     buckets = split_details(services, notices)
     notice_text = split_notice_text(notices)
     history = persona_history(all_rows, last_run, today)
@@ -573,7 +602,8 @@ def main():
     paths = [write_js("meta", "HUB_META", meta), write_js("notices", "HUB_NOTICES", notices),
              write_js("notices-text", "HUB_NOTICE_TEXT", notice_text),
              write_js("services", "HUB_SERVICES", services), write_js("history", "HUB_HISTORY", history),
-             write_js("peek", "HUB_PEEK", service_peek(services)), write_js("me", "HUB_ME", me_index(services))]
+             write_js("peek", "HUB_PEEK", service_peek(services)), write_js("me", "HUB_ME", me_index(services)),
+             write_json("agri-feed", feed)]
     detail_dir = SITE_DATA / "sd"
     detail_dir.mkdir(parents=True, exist_ok=True)
     for i, chunk in enumerate(buckets):

@@ -386,3 +386,24 @@ class SecurityHeaderTest(unittest.TestCase):
             for bad in bads:
                 n = text.replace("공모사업 상세", "").count(bad)
                 self.assertEqual(n, 0, name + ": '" + bad + "' " + str(n) + "곳")
+
+
+class AgriFeedTest(unittest.TestCase):
+    """ORFA 챗봇이 읽는 site/data/agri-feed.json — 농업 판정(a=1)만, 짧은 키만, 상세 글은 넣지 않는다."""
+
+    def test_only_agri_items_with_short_keys(self):
+        notices = [
+            {"id": "bizinfo:1", "k": "n", "src": "bizinfo", "t": "유기농 자재 지원", "a": 1, "rg": ["전북"],
+             "s": "2026-10-01", "e": "2026-10-20", "ct": "긴 본문", "u": "https://example.org"},
+            {"id": "bizinfo:2", "k": "n", "src": "bizinfo", "t": "소프트웨어 창업", "rg": ["서울"]},
+        ]
+        services = [{"id": "gov24:3", "k": "s", "src": "gov24", "t": "친환경농업 직불", "a": 1, "op": "농관원",
+                     "sm": "가" * 400, "how": "방문", "cd": [["나이", "만 20세 이상"]]}]
+        feed = build_site.agri_feed(notices, services, "2026-10-06T09:14")
+        self.assertEqual(feed["count"], 2)
+        self.assertEqual([i["id"] for i in feed["items"]], ["bizinfo:1", "gov24:3"])
+        for item in feed["items"]:
+            self.assertTrue(set(item) <= set(build_site.AGRI_FEED_KEYS) | {"sm"}, item)
+        self.assertEqual(len(feed["items"][1]["sm"]), build_site.AGRI_FEED_SM + 1)  # trim은 '…'을 붙인다
+        self.assertEqual(feed["items"][1]["op"], "농관원")
+        self.assertEqual(feed["builtAt"], "2026-10-06T09:14")
