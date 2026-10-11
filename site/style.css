@@ -1232,7 +1232,10 @@ body.peek-lock .to-top, body.detail-open .to-top, body.filters-open .to-top, bod
  * 보이는 알약은 그대로 두고, 위아래로 보이지 않는 여백을 늘린다 */
 @media (pointer: coarse), (max-width: 639px) {
   .seg-mini button::before { content: ""; position: absolute; left: 0; right: 0; top: -7px; bottom: -7px; }
-  .tabs [role="tab"] { min-width: 44px; justify-content: center; }
+  .tabs [role="tab"] { min-width: 44px; justify-content: center; position: relative; }
+  /* 탭 누름 칸을 위아래로 늘려 44px 이상(보이는 알약 크기는 그대로, 탭 줄 안쪽 여백 안에서) */
+  .tabs [role="tab"]::after { content: ""; position: absolute; left: 0; right: 0; top: -4px; bottom: -4px; }
+  .kmap-list button, .kmap-wrap.wide .kmap-list button { min-height: 44px; } /* 지역 순위 줄 */
 }
 
 /* ---------- 탭 줄이 좁을 때 단계별로 줄이기(app.js fitTabs) ----------

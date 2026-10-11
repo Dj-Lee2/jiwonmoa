@@ -387,6 +387,15 @@ class SecurityHeaderTest(unittest.TestCase):
                 n = text.replace("공모사업 상세", "").count(bad)
                 self.assertEqual(n, 0, name + ": '" + bad + "' " + str(n) + "곳")
 
+    def test_first_visit_light(self):
+        # 공고 긴 글(notices-text.js, 첫 방문 무게의 절반)은 홈에서 바로 받지 않는다 — 검색·목록·상세 직전에만(prefetchNoticeText)
+        app = (ROOT / "site" / "app.js").read_text(encoding="utf-8")
+        self.assertNotIn("setTimeout(ensureNoticeText", app)
+        self.assertIn("function prefetchNoticeText", app)
+        # 공유 그림을 바꾸면 og:image 주소의 ?v= 를 올려 메신저 캐시를 새로 받게 한다
+        html = (ROOT / "site" / "index.html").read_text(encoding="utf-8")
+        self.assertRegex(html, r'og:image" content="https://jiwonmoa\.orfa\.shop/img/og\.png\?v=\d+"')
+
 
 class AgriFeedTest(unittest.TestCase):
     """ORFA 챗봇이 읽는 site/data/agri-feed.json — 농업 판정(a=1)만, 짧은 키만, 상세 글은 넣지 않는다."""

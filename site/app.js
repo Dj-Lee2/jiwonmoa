@@ -437,6 +437,12 @@
     }
     return noticeText;
   }
+  /* 곧 쓸 것 같을 때 미리 받기: 브라우저가 한가할 때(없으면 바로) */
+  function prefetchNoticeText() {
+    if (noticeText) return;
+    if (window.requestIdleCallback) window.requestIdleCallback(function () { ensureNoticeText(); }, { timeout: 1500 });
+    else ensureNoticeText();
+  }
   function retryNoticeText() {
     noticeText = null;
     noticeTextReady = false;
@@ -562,8 +568,14 @@
     if (item._h === undefined) {
       // 분야 칩 이름(예: '스마트팜·기술')은 넣지 않는다. '스마트팜' 검색에 스마트공장이 걸리지 않게.
       item._h = [item.t, item.ag, item.op, item.cat, item.sm, item.tg].join(" ").toLowerCase();
+      item._hn = item._h.replace(/\s+/g, ""); // 띄어쓰기를 뺀 글: '청년지원'으로 찾아도 '청년 지원'이 걸리게
     }
     return item._h;
+  }
+  /* 검색 낱말 하나가 이 사업 글에 있나(띄어쓰기 무시). 낱말이 여럿이면 모두 있어야 한다 */
+  function hasTerm(item, t) {
+    var h = haystack(item);
+    return h.indexOf(t) >= 0 || item._hn.indexOf(t) >= 0;
   }
 
   function fitsMe(item) {
@@ -591,8 +603,7 @@
   function matches(item, terms, skipSoon) {
     if (!inTab(item)) return false;
     if (terms.length) {
-      var h = haystack(item);
-      for (var i = 0; i < terms.length; i++) if (h.indexOf(terms[i]) < 0) return false;
+      for (var i = 0; i < terms.length; i++) if (!hasTerm(item, terms[i])) return false;
     }
     if (state.r) {
       var rg = item.rg || [];
@@ -729,12 +740,22 @@
     return items;
   }
 
-  function showState(kind) {
+  function showState(kind, terms) {
     var box = $("#listState");
     box.className = "state" + (kind === "error" ? " error" : "");
     if (kind === "empty") {
+      // 0건일 때 다음에 해 볼 것: 다른 탭(모집 공고 ↔ 공공서비스)에 같은 검색어가 있으면 그쪽으로, 낱말이 여럿이면 줄여 보기
+      var tips = el("div", { className: "state-tips" });
+      if (terms && terms.length) {
+        var other = emptyOther(terms);
+        if (other) tips.append(other);
+        tips.append(el("p", { className: "state-note", text: terms.length > 1
+          ? "낱말을 하나씩 줄여 보세요. 띄어쓰기는 상관없이 찾아요."
+          : "비슷한 다른 낱말(예: '창업' 대신 '스타트업')로도 찾아보세요." }));
+      }
       box.replaceChildren(icon("magnifying-glass"),
-        el("p", { className: "state-title", text: "조건에 맞는 지원사업이 없습니다" }),
+        el("p", { className: "state-title", text: terms && terms.length ? "‘" + state.q + "’에 맞는 지원사업이 없습니다" : "조건에 맞는 지원사업이 없습니다" }),
+        tips.childNodes.length ? tips : null,
         activeFilterCount() ? el("button", { type: "button", className: "btn dark", dataset: { action: "reset" },
           text: "조건 모두 지우기" }) : null);
     } else if (kind === "error") {
@@ -790,7 +811,7 @@
     }
     var hits = sortItems(data.filter(function (it) { return matches(it, terms); }));
     var listNote = $("#listNote"), textMissing = noticeTextFailed && terms.length > 0 && state.tab !== "services";
-    var cross = textMissing ? null : dueCrossNote(terms);
+    var cross = textMissing ? null : dueCrossNote(terms) || splitNote(data, terms, hits.length);
     listNote.hidden = !textMissing && !cross;
     listNote.replaceChildren(textMissing ? loadNote("공고 본문을 불러오지 못해 제목·기관 이름에서만 찾았습니다.", function () {
       retryNoticeText().then(function () { renderList(); renderDetail(); });
@@ -799,7 +820,7 @@
     $("#resultCount").textContent = fmtN(hits.length) + "건";
     $("#filterDone").textContent = "결과 " + fmtN(hits.length) + "건 보기";
     results.replaceChildren.apply(results, hits.slice(0, shown).map(function (item) { return row(item); }));
-    showState(hits.length ? null : "empty");
+    showState(hits.length ? null : "empty", terms);
     more.hidden = hits.length <= shown;
     more.textContent = "더 보기 (" + fmtN(Math.min(shown, hits.length)) + " / " + fmtN(hits.length) + ")";
     updateFilterBadge();
@@ -818,8 +839,8 @@
     state.tab = toSvc ? "services" : "open"; // matches가 탭에 따라 거르는 것(분야 등)을 그쪽 기준으로
     var n = pool.filter(function (it) {
       if (toSvc && terms.length) {
-        var h = [it.t, it.ag].join(" ").toLowerCase();
-        if (terms.some(function (t) { return h.indexOf(t) < 0; })) return false;
+        var h = [it.t, it.ag].join(" ").toLowerCase(), hn = h.replace(/\s+/g, "");
+        if (terms.some(function (t) { return h.indexOf(t) < 0 && hn.indexOf(t) < 0; })) return false;
       }
       return (toSvc || it.k === "n") && matches(it, toSvc ? [] : terms);
     }).length;
@@ -831,6 +852,53 @@
     b.addEventListener("click", function () {
       goTo({ tab: toSvc ? "services" : "open", q: state.q, soon: state.soon, due: state.due, sort: "deadline" });
     });
+    return b;
+  }
+
+  /* 붙여 쓴 한 낱말('청년지원')을 두 낱말('청년 지원')로 나눠 찾으면 훨씬 많으면 목록 위에 알린다.
+   * 띄어쓰기 무시(hasTerm)는 '청년 지원'이 붙어 있는 글만 찾으므로, '청년 … 지원'처럼 떨어진 글은 이렇게 권한다 */
+  function splitNote(data, terms, n) {
+    if (terms.length !== 1 || !/^[가-힣]{4,10}$/.test(terms[0])) return null;
+    var t = terms[0], best = null;
+    for (var k = 2; k <= t.length - 2; k++) {
+      var q = [t.slice(0, k), t.slice(k)];
+      var c = data.filter(function (it) { return matches(it, q); }).length;
+      if (!best || c > best.c) best = { q: q.join(" "), c: c };
+    }
+    if (!best || best.c < n * 2 || best.c - n < 5) return null;
+    var b = el("button", { type: "button", className: "cross-note" },
+      icon("magnifying-glass"), "띄어 쓴 ‘" + best.q + "’(으)로 찾으면 ", el("strong", { text: fmtN(best.c) + "건" }), icon("arrow-right"));
+    b.addEventListener("click", function () { // 다른 조건은 그대로 두고 검색어만 바꾼다
+      state.q = best.q; $("#q").value = best.q; shown = PAGE; renderList(); writeHash(true);
+    });
+    return b;
+  }
+
+  /* 검색 결과 0건일 때: 같은 검색어(다른 조건은 빼고)로 다른 탭에 있는 수. 공공서비스 자료를 아직 안 받았으면 건수 없이 단추만 */
+  function emptyOther(terms) {
+    var toSvc = state.tab !== "services", what = toSvc ? "공공서비스" : "모집 공고";
+    var pool = toSvc ? services : NOTICES;
+    if (!toSvc && !noticeTextReady) { // 공고 긴 글이 오면 개요·대상 글까지 넣어 다시 센다
+      ensureNoticeText().then(function () { if (state.tab === "services") renderList(); });
+    }
+    var go = function () { goTo({ tab: toSvc ? "services" : "open", q: state.q }); };
+    var label;
+    if (!pool) { // 공공서비스 자료를 받은 뒤 건수를 넣어 다시 그린다(없으면 이 줄은 사라진다)
+      ensureServices().then(function () { if (state.tab !== "services") renderList(); });
+      label = [what + "에서 ‘" + state.q + "’ 찾아보기"];
+    }
+    else {
+      var n = pool.filter(function (it) {
+        return statusOf(it) !== "마감" && terms.every(function (t) { return hasTerm(it, t); });
+      }).length;
+      if (!n) return null;
+      label = [what + "에는 ", el("strong", { text: fmtN(n) + "건" }), " 있어요"];
+    }
+    var b = el("button", { type: "button", className: "cross-note" },
+      el("span", { className: "kind-dot " + (toSvc ? "svc" : "open"), "aria-hidden": "true" }));
+    label.forEach(function (x) { b.append(x); });
+    b.append(icon("arrow-right"));
+    b.addEventListener("click", go);
     return b;
   }
 
@@ -1082,6 +1150,7 @@
     var pane = $("#detail");
     if (!state.id) {
       pane.replaceChildren(renderGuide());
+      pane._shown = null;
       document.body.classList.remove("detail-open", "lock");
       document.title = viewTitle();
       return;
@@ -1098,7 +1167,10 @@
       openOverlay();
       return;
     }
-    ensureDetail(item).then(function () { drawDetail(item); }, function () { drawDetail(item); });
+    // 공고 긴 글을 아직 안 받았으면(느린 망 수 초) 받은 것으로 먼저 그리고, 오면 다시 그린다
+    if (item.k !== "s" && !noticeTextReady) drawDetail(item, true);
+    ensureDetail(item).then(function () { if (state.id === item.id) drawDetail(item); },
+      function () { if (state.id === item.id) drawDetail(item); });
   }
 
   function detailBar() {
@@ -1107,7 +1179,7 @@
         icon("arrow-left"), "목록으로"));
   }
 
-  function drawDetail(item) {
+  function drawDetail(item, waiting) {
     var pane = $("#detail");
     var st = statusOf(item);
     var dday = st === "접수 중" && item.e ? daysBetween(today, item.e) : null;
@@ -1197,6 +1269,7 @@
     var inner = el("div", { className: "detail-inner" },
       head,
       el("h2", { id: "detailTitle", tabindex: "-1", text: item.t }),
+      waiting ? el("p", { className: "peek-wait detail-wait", role: "status", text: "공고 본문을 불러오는 중…" }) : null,
       lostNote,
       changeNote,
       facts,
@@ -1214,10 +1287,13 @@
       similarSection(item) || "",
       // 인쇄할 때만 보이는 꼬리: 어디서 뽑았는지와 다시 볼 주소
       el("p", { className: "print-only print-foot", text: "지원모아 " + shareUrl(item) + " · " + fmtDate(today, true) + " 인쇄" }));
+    // 같은 공고를 다시 그릴 때(긴 글이 늦게 옴)는 읽던 자리·초점을 그대로 둔다
+    var again = pane._shown === item.id && document.body.classList.contains("detail-open"), keep = pane.scrollTop;
     pane.replaceChildren(detailBar(), inner);
-    pane.scrollTop = 0;
+    pane._shown = item.id;
+    pane.scrollTop = again ? keep : 0;
     document.title = item.t + " | " + SITE_TITLE;
-    openOverlay();
+    if (!again) openOverlay();
   }
 
   /* 비슷한 지원사업 3건: 같은 종류(공고/공공서비스)에서 분야 같음 +3, 겹치는 대상마다 +2, 같은 지방 지역 +3(전국은 +1),
@@ -1421,6 +1497,7 @@
 
   function applyView() {
     var home = state.tab === "home";
+    if (state.tab === "open") prefetchNoticeText(); // 목록에서 공고를 누르면 바로 보이게
     $("#homePane").hidden = !home;
     $("#topHint").hidden = !home; // 그래프 안내는 홈에서만
     $("#listLayout").hidden = home;
@@ -1660,8 +1737,10 @@
     var runs = META.runs || [];
     var at = runs.map(function (r) { return r.at; }).sort().pop() || META.builtAt;
 
+    // 큰 제목은 '지금 신청할 수 있는' 것만: 마감과 아직 접수 전(접수 예정)은 뺀다(접수 예정은 숫자 타일·맨 아래 카드에)
+    var canApply = live.filter(function (n) { return statusOf(n) !== "접수 예정"; }).length;
     $("#homeTitle").replaceChildren((state.r ? state.r + "에서 " : "") + "지금 신청할 수 있는 모집 공고 ",
-      el("strong", { text: fmtN(live.length) }), "건");
+      el("strong", { text: fmtN(canApply) }), "건");
     $("#homeSub").textContent = NOTICES_MISSING ? "모집 공고 자료를 불러오지 못했습니다. 새로 고침해 주세요."
       : fmtStamp(at) + " 수집 · 공공서비스는 따로 셈";
     document.querySelectorAll("#homePane .sk-only").forEach(function (e) { e.remove(); }); // 첫 화면 자리 잡기(index.html)
@@ -1901,6 +1980,39 @@
   }
 
   /* 그래프 표시(막대·조각)를 키보드로도 고를 수 있게 한다. 이동할 곳이 없으면 읽기 전용 */
+  /* 키보드: 그래프 하나(막대·칸·지역 묶음, 도넛 범례, 지역 순위 목록)는 Tab 정거장 하나.
+   * 묶음 안에서는 화살표(←↑ 이전, →↓ 다음)·Home·End로 움직인다(예전엔 그래프 표시 84개가 모두 Tab 정거장이었다) */
+  function setupRoving(root) {
+    if (!root) return;
+    root.querySelectorAll("svg, .donut-legend, .kmap-list").forEach(function (g) {
+      var items = [].slice.call(g.querySelectorAll(g.tagName.toLowerCase() === "svg" ? "[tabindex]" : "button"));
+      if (items.length < 2) return;
+      g._rove = items;
+      g.setAttribute("aria-describedby", "roveHint");
+      items.forEach(function (it, i) { it.setAttribute("tabindex", i ? "-1" : "0"); });
+    });
+    if (root._roveBound) return;
+    root._roveBound = true;
+    root.addEventListener("focusin", function (e) {
+      var g = e.target.closest && e.target.closest("svg, .donut-legend, .kmap-list");
+      if (!g || !g._rove || g._rove.indexOf(e.target) < 0) return;
+      g._rove.forEach(function (it) { it.setAttribute("tabindex", it === e.target ? "0" : "-1"); });
+    });
+    root.addEventListener("keydown", function (e) {
+      var g = e.target.closest && e.target.closest("svg, .donut-legend, .kmap-list");
+      if (!g || !g._rove) return;
+      var items = g._rove, i = items.indexOf(e.target);
+      if (i < 0) return;
+      var j = { ArrowRight: i + 1, ArrowDown: i + 1, ArrowLeft: i - 1, ArrowUp: i - 1, Home: 0, End: items.length - 1 }[e.key];
+      if (j === undefined) return;
+      e.preventDefault();
+      items[Math.max(0, Math.min(items.length - 1, j))].focus();
+    });
+  }
+
+  /* 손가락으로 누르는 좁은 화면(style.css의 44px 누름 칸 규칙과 같은 조건) */
+  function PHONE_TAP() { return window.matchMedia("(pointer: coarse), (max-width: 639px)").matches; }
+
   function activate(node, label, onPick) {
     node.setAttribute("tabindex", "0");
     node.setAttribute("aria-label", label);
@@ -2408,6 +2520,7 @@
 
   function butterflyBars(data, series, label, W, fitH) {
     var head = 24, rowH = fitH ? Math.max(24, Math.min(40, Math.floor((fitH - head - 4) / data.length))) : 26;
+    if (PHONE_TAP()) rowH = 44; // 휴대폰: 막대 줄 높이 = 손가락 누름 칸 44px(막대 굵기는 그대로)
     var barT = Math.min(16, rowH - 8);
     var labelW = labelColumn(data.map(function (d) { return d.label; }), W) + 4;
     var side = (W - labelW) / 2, plot = side - 40;
@@ -2997,7 +3110,7 @@
     } else {
       S = Math.min(240, W - 20);
       cols = 2;
-      rowH = 34;
+      rowH = PHONE_TAP() ? 44 : 34; // 휴대폰: 범례 줄도 손가락 누름 칸 44px
     }
     var c = S / 2, R = c - DONUT_OFFSET - 2, r = Math.round(S * DONUT_INNER_K), zoom = S / 180;
     var legendRows = Math.ceil(rowsMax / cols), rowGap = side ? 2 : 4;
@@ -3259,6 +3372,7 @@
       cards = cards.concat(popBlock);
     }
     setupMotion(cards);
+    setupRoving($("#homeCharts"));
     placeSegGliders(); // 글꼴이 온 뒤 그래프만 다시 그릴 때도 전환 단추 알약을 맞춘다
   }
 
@@ -3664,8 +3778,13 @@
       renderList();
       renderDetail();
     }
-    // 첫 화면을 그린 뒤 공고 긴 글을 받아 둔다(검색·상세가 쓴다)
-    setTimeout(ensureNoticeText, 0);
+    // 공고 긴 글(notices-text.js, 압축 약 0.5MB)은 첫 화면에서 받지 않는다(첫 방문 무게의 절반이었음).
+    // 검색칸에 들어가거나·모집 공고 목록을 열거나·공고를 누르려 할 때 미리 받는다(prefetchNoticeText)
+    ["#homeQ", "#q"].forEach(function (sel) { $(sel).addEventListener("focus", prefetchNoticeText); });
+    document.addEventListener("pointerdown", function (e) {
+      if (e.target.closest && e.target.closest(".row[data-id], .peek-item, .stat")) prefetchNoticeText();
+    }, { capture: true, passive: true });
+    if (state.tab === "open" || state.q) prefetchNoticeText();
     if (document.readyState === "complete") animateMascot(); else window.addEventListener("load", animateMascot);
   }
 
