@@ -62,7 +62,7 @@ BIZINFO_AUDIENCE = {"중소기업": AUD_SME, "중견기업": AUD_SME, "제조업
 GOV24_AUDIENCE = {"개인": AUD_PERSON, "가구": AUD_PERSON, "소상공인": AUD_SOHO, "법인/시설/단체": AUD_ORG}
 
 # 화면의 '누구를 위한 지원' 조건. 한 사업이 여러 대상에 들 수 있다. 농업인은 여러 대상 중 하나다.
-PERSONAS = ["청년", "시니어", "장애인", "임산부·출산", "한부모·다자녀", "구직자", "근로자·직장인", "학생", "보훈대상자",
+PERSONAS = ["아동·청소년", "청년", "시니어", "장애인", "임산부·출산", "한부모·다자녀", "저소득층", "구직자", "근로자·직장인", "학생", "보훈대상자",
             "질병·질환자", "다문화·북한이탈주민", "무주택", "1인가구", "농업인",
             AUD_SOHO, AUD_SME, AUD_STARTUP, AUD_ORG]
 # 제목(공고는 지원대상 글도)에서 찾는 말. '고령군'·'유통경로'처럼 다른 뜻으로 쓰이는 경우는 뺀다
@@ -82,13 +82,22 @@ PERSONA_WORDS = {
     "1인가구": [r"1인\s?가구", r"독거"],
     "근로자·직장인": [r"근로자", r"직장인", r"노동자", r"재직자"],
     AUD_STARTUP: [r"창업"],
+    # 아래 둘은 보조금24에서만, 제목과 '지원대상' 글에서 찾는다(TARGET_PERSONAS). 대상이 비던 보조금24 2,551개 중 약 1,260개가 여기에 든다
+    "아동·청소년": [r"아동", r"청소년", r"영유아", r"영아", r"유아", r"어린이", r"초등", r"중학생", r"고등학생",
+                  r"만\s?(?:[0-9]|1[0-8])세\s?(?:이하|미만)"],
+    # '중위소득'은 100% 이하만(150%까지 받는 산모·신생아 지원 같은 소득 제한 제도는 저소득층 전용이 아니다)
+    "저소득층": [r"기초생활", r"생계급여", r"의료급여", r"수급자", r"수급가구", r"차상위", r"저소득", r"취약계층", r"위기가구",
+               r"중위\s?소득\s?(?:의\s?)?(?:[1-9]\d?|100)\s?%"],
 }
 PERSONA_PATTERNS = {p: re.compile("|".join(ws)) for p, ws in PERSONA_WORDS.items()}
 # 이 대상들은 제목에서만 찾는다. 지원대상 글은 '대학생·일반인·…'처럼 여럿을 늘어놓는 경우가 많아 잘못 걸린다
 TITLE_ONLY_PERSONAS = {"학생", "보훈대상자", "질병·질환자", "다문화·북한이탈주민", "무주택", "1인가구", "근로자·직장인"}
 # 이 대상은 보조금24(사람 대상 제도)에서만 말로 찾는다. 기업 공고의 '외국인 근로자 고용'·'근로자 재해예방 시설'은
 # 기업이 신청하는 사업이라 근로자 대상이 아니다
-PERSON_ONLY_PERSONAS = {"근로자·직장인"}
+PERSON_ONLY_PERSONAS = {"근로자·직장인", "아동·청소년", "저소득층"}
+# 보조금24 '지원대상' 글에서도 찾는 대상. 이 둘은 제목에 잘 안 드러나고(예: '연탄 쿠폰' → 대상 '기초생활수급자') 글에 분명히 적힌다.
+# 다른 대상은 지원대상 글이 '장애인·노인·아동 등'처럼 늘어놓는 경우가 많아 그대로 제목에서만 찾는다
+TARGET_PERSONAS = ("아동·청소년", "저소득층")
 # 보조금24 지원조건 코드 → 대상. 그 묶음에서 몇 개만 Y인 제도만 '그 대상 전용'으로 본다(전부 Y면 누구나 대상)
 JA_PERSONA = {"장애인": ["JA0328"], "임산부·출산": ["JA0301", "JA0302", "JA0303"],
               "한부모·다자녀": ["JA0403", "JA0411"], "구직자": ["JA0327"], "근로자·직장인": ["JA0326"],
@@ -406,7 +415,7 @@ def classify_sector(titles, weak_texts, agencies, tags=(), extra_agri=None, extr
     return 0, "", fish
 
 
-def personas_for(texts, base=(), agri=0, cond=None, person=False):
+def personas_for(texts, base=(), agri=0, cond=None, person=False, target=""):
     """'누구를 위한 지원' 대상 목록. 글에 나온 말, 기존 대상 구분, 농업 판정, 보조금24 지원조건을 합친다.
 
     texts[0]은 제목이다(TITLE_ONLY_PERSONAS는 제목에서만 찾는다).
@@ -417,6 +426,9 @@ def personas_for(texts, base=(), agri=0, cond=None, person=False):
     found.update(p for p, pat in PERSONA_PATTERNS.items()
                  if (person or p not in PERSON_ONLY_PERSONAS)
                  and pat.search(title if p in TITLE_ONLY_PERSONAS else text))
+    if person and target:
+        whole = match_text([texts[0] if texts else "", target])
+        found.update(p for p in TARGET_PERSONAS if PERSONA_PATTERNS[p].search(whole))
     if agri == 2:
         found.add("농업인")
     if cond:
@@ -675,7 +687,7 @@ def from_gov24(item, sigungu):
     detail = item.get("_상세") or {}
     laws = [x.strip() for k in ("법령", "자치법규", "행정규칙")
             for x in (detail.get(k) or "").split("||") if x.strip()]
-    personas = personas_for([title], audience, agri, cond, person=True)
+    personas = personas_for([title], audience, agri, cond, person=True, target=clean_text(item.get("지원대상")))
     return _finish({
         "uid": f"gov24:{item.get('서비스ID')}", "source": "gov24", "kind": "제도",
         "personas": personas,

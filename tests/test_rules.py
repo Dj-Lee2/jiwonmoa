@@ -107,6 +107,27 @@ class TextHelpersTest(unittest.TestCase):
         self.assertEqual(n.regions_from_name("중소벤처기업부"), set())
 
 
+class TargetPersonaTest(unittest.TestCase):
+    """보조금24 지원대상 글에서만 찾는 대상(아동·청소년, 저소득층). 기업 공고에는 붙지 않는다."""
+
+    def pp(self, title, target, person=True):
+        return n.personas_for([title, target] if not person else [title], person=person, target=target if person else "")
+
+    def test_low_income_from_target(self):
+        self.assertIn("저소득층", self.pp("연탄쿠폰 지원", "기초생활수급자 및 차상위계층"))
+        self.assertIn("저소득층", self.pp("희망저축", "기준 중위소득 50% 이하 가구"))
+        # 중위소득 150%까지는 저소득층 전용이 아니다
+        self.assertNotIn("저소득층", self.pp("산모·신생아 건강관리", "기준중위소득 150% 이하 출산 가정"))
+
+    def test_children_from_target(self):
+        self.assertIn("아동·청소년", self.pp("무료 심리검사", "만9세~만24세 청소년"))
+        self.assertNotIn("아동·청소년", self.pp("무료 법률상담", "구민 누구나"))
+
+    def test_not_for_company_notices(self):
+        self.assertNotIn("아동·청소년", self.pp("아동용품 수출기업 모집", "아동용품 제조 중소기업", person=False))
+        self.assertNotIn("저소득층", self.pp("취약계층 고용기업 지원", "취약계층을 고용한 기업", person=False))
+
+
 class PersonaTest(unittest.TestCase):
     def test_title_words(self):
         self.assertIn("청년", n.personas_for(["2026년 청년 창업 지원사업"]))
