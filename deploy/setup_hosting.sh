@@ -43,6 +43,11 @@ $DOMAIN {
 	encode zstd gzip
 	root * $DEST/site
 	file_server
+	# 없는 주소는 지원모아 모양의 안내(site/404.html, 상태 코드 404 그대로)
+	handle_errors 404 {
+		rewrite * /404.html
+		file_server
+	}
 	header {
 		X-Content-Type-Options "nosniff"
 		Referrer-Policy "strict-origin-when-cross-origin"

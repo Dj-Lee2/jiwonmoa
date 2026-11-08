@@ -90,6 +90,14 @@
 </script>
 
 <div id="main">
+<!-- 자바스크립트가 꺼져 있으면 목록·그래프를 그릴 수 없어 빈 틀만 보인다 → 까닭과 갈 곳을 알린다 -->
+<noscript>
+  <style>.tabs, .tabs-dock, #listLayout, .top-actions { display: none !important; }</style>
+  <div class="wrap noscript">
+    <p><strong>지원모아는 자바스크립트로 목록과 그래프를 그립니다.</strong> 브라우저 설정에서 자바스크립트를 켜면 볼 수 있어요.</p>
+    <p>그동안은 원문 사이트에서 찾아보세요: <a href="https://www.bizinfo.go.kr">기업마당</a> · <a href="https://www.k-startup.go.kr">K-Startup</a> · <a href="https://www.gov.kr/portal/rcvfvrSvc/main">보조금24</a></p>
+  </div>
+</noscript>
 <main id="homePane" class="wrap home" role="tabpanel" aria-labelledby="tab-home" hidden>
   <section class="home-hero">
     <h2 id="homeTitle" class="hero-title">지금 신청할 수 있는 모집 공고 <span class="sk-num" aria-hidden="true"></span></h2>

@@ -1125,6 +1125,12 @@ svg.has-pick .mark.picked .cell, svg.has-pick .mark.picked .bar { stroke: var(--
 .results.similar .row-title { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow: hidden; font-size: .9375rem; }
 .results.similar .row-meta { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .results.similar .row-arrow { display: none; }
+.noscript { margin-top: 24px; margin-bottom: 24px; padding: 16px 20px; border-radius: 16px; background: var(--surface-hover); color: var(--fg); line-height: 1.6; }
+.noscript p { margin: 0 0 6px; }
+.noscript a { color: var(--fg-strong); }
+.same-box { display: grid; gap: 6px; margin: 16px 0 0; padding: 12px 14px; border-radius: 16px; background: var(--surface-hover); }
+.same-title { display: flex; align-items: center; gap: 6px; margin: 0 0 2px; font-size: .8125rem; font-weight: 700; color: var(--fg); }
+.same-box .cross-note { width: 100%; margin: 0; background: var(--canvas); text-align: left; }
 .change-note { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin: 0 0 16px; padding: 12px 14px; border-radius: 16px;
   background: var(--kind-open-weak); color: var(--fg-strong); font-size: .875rem; font-weight: 600; }
 .change-note .ph { font-size: 1.125rem; color: var(--kind-open-text); }

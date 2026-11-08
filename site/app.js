@@ -39,6 +39,34 @@
   var services = window.HUB_SERVICES || null;
   var byId = new Map();
   NOTICES.forEach(function (n) { byId.set(n.id, n); });
+  groupSameNotices();
+
+  /* 같은 공고 묶기: 제목(띄어쓰기 무시)과 지역이 같은 모집 공고는 목록·숫자에서 하나로 센다.
+   *  - 기업마당 ↔ K-Startup에 함께 올라온 공고, 같은 곳에 다시 올린 공고(재공고)가 두 줄로 보이던 것
+   *  - 대표: 출처가 섞이면 마감일이 있는 것 → 기업마당 순, 같은 출처면 최근 게시한 것
+   *  - 나머지는 _dupOf(대표)로 남겨 주소(#id=…)로는 그대로 열리고, 대표 상세의 '같은 공고' 상자에서 이어진다 */
+  function groupSameNotices() {
+    var groups = {}, hidden = {};
+    NOTICES.forEach(function (n) {
+      var k = (n.t || "").replace(/\s+/g, "") + "|" + (n.rg || []).join("/");
+      (groups[k] = groups[k] || []).push(n);
+    });
+    Object.keys(groups).forEach(function (k) {
+      var g = groups[k];
+      if (g.length < 2) return;
+      var mixed = g.some(function (n) { return n.src !== g[0].src; });
+      g.sort(function (a, b) {
+        if (mixed) {
+          if (!!a.e !== !!b.e) return a.e ? -1 : 1;
+          if ((a.src === "bizinfo") !== (b.src === "bizinfo")) return a.src === "bizinfo" ? -1 : 1;
+        }
+        return (b.pd || "").localeCompare(a.pd || "") || (a.e ? 0 : 1) - (b.e ? 0 : 1) || (a.id < b.id ? -1 : 1);
+      });
+      g[0]._dups = g.slice(1);
+      g.slice(1).forEach(function (n) { n._dupOf = g[0]; hidden[n.id] = true; });
+    });
+    NOTICES = NOTICES.filter(function (n) { return !hidden[n.id]; });
+  }
 
   var DEFAULT = { tab: "open", q: "", r: "", nat: true, au: [], st: [], src: [], pv: true,
     tp: [], sp: [], cg: [], soon: false, nw: false, td: false, due: "", om: "", starts: "", fit: false, ag: "", ic: "", sx: "", sort: "", id: "" };
@@ -1180,6 +1208,26 @@
         icon("arrow-left"), "목록으로"));
   }
 
+  /* 상세의 '같은 공고' 상자(groupSameNotices): 대표에는 묶인 공고들, 묶인 공고에는 대표로 가는 줄 */
+  function sameNoticeBox(item) {
+    var others = item._dups || (item._dupOf ? [item._dupOf].concat(item._dupOf._dups.filter(function (n) { return n !== item; })) : null);
+    if (!others || !others.length) return null;
+    var box = el("div", { className: "same-box" },
+      el("p", { className: "same-title" }, icon("copy"), item._dupOf
+        ? "목록에는 같은 이름의 공고 하나로 묶여 있어요"
+        : "같은 이름의 공고가 " + fmtN(others.length) + "건 더 있어요 · 목록에는 하나로 묶었어요"));
+    others.forEach(function (n, i) {
+      var st = statusOf(n), when = n.e && (st === "접수 중" || st === "접수 예정" || st === "마감") ? st + " · " + fmtDate(n.e) + " 마감" : st;
+      var b = el("button", { type: "button", className: "cross-note" },
+        el("span", { className: "kind-dot open", "aria-hidden": "true" }),
+        (item._dupOf && i === 0 ? "대표 공고 · " : "") + SRC_NAME[n.src] + " · " + when + (n.pd ? " · " + fmtDate(n.pd) + " 게시" : ""),
+        icon("arrow-right"));
+      b.addEventListener("click", function () { goTo({ tab: "open", id: n.id }); });
+      box.append(b);
+    });
+    return box;
+  }
+
   function drawDetail(item, waiting) {
     var pane = $("#detail");
     var st = statusOf(item);
@@ -1243,6 +1291,7 @@
     var printBtn = el("button", { type: "button", className: "btn gray tool wide-only-print" }, icon("printer"), "인쇄");
     printBtn.addEventListener("click", function () { window.print(); });
     var tools = el("div", { className: "actions tools" }, favBtn, calBtn, shareBtn, printBtn);
+    var dupBox = sameNoticeBox(item);
     var ch = changeOf(item.id), changeNote = null;
     if (ch) {
       var ok = el("button", { type: "button", className: "btn gray" }, "확인했어요");
@@ -1277,6 +1326,7 @@
       facts,
       actions,
       tools,
+      dupBox,
       section("지원 대상", item.tg),
       // 보조금24는 상세의 서비스 목적 전문(pu)이 있으면 그것, 없으면 목록의 요약(sm)
       section(item.k === "s" ? "서비스 목적" : "사업 개요", item.pu || item.sm),

@@ -400,6 +400,13 @@ class SecurityHeaderTest(unittest.TestCase):
         self.assertNotIn('badge("아직 없음"', app)
         self.assertNotIn("i < 42", app)  # 마감 달력은 빈 줄 없이
         self.assertIn("function niceBreaks", app)
+        self.assertIn("function groupSameNotices", app)  # 같은 공고 두 줄 → 하나
+        html = (ROOT / "site" / "index.html").read_text(encoding="utf-8")
+        self.assertIn("<noscript>", html)
+        page404 = (ROOT / "site" / "404.html").read_text(encoding="utf-8")
+        self.assertNotIn("<script", page404)  # CSP: 404 화면은 스크립트 없이
+        hosting = (ROOT / "deploy" / "setup_hosting.sh").read_text(encoding="utf-8")
+        self.assertIn("handle_errors 404", hosting)
         # 배경을 바꾸는 :hover는 (hover: hover) 안에(터치에서 색이 남지 않게) — 한 줄짜리 규칙만 검사
         for sel in (".peek-item:hover", ".cross-note:hover", ".to-top:hover", ".file:hover"):
             line = next(l for l in css.splitlines() if sel + " {" in l)
