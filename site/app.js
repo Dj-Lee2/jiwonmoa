@@ -332,7 +332,7 @@
   }
 
   /* ---------- 내 마감 달력(이 기기에만 저장) ----------
-   * 상세의 '마감일 달력에 추가'로 넣은 공고를 홈 '언제 마감되나요?' 달력에 검은 점으로 표시한다.
+   * 상세의 '달력에 추가'로 넣은 공고를 홈 '언제 마감되나요?' 달력에 검은 점으로 표시한다.
    * localStorage "hub-cal" = 관심과 같은 짧은 사본 목록. 마감이 지난 것은 저절로 달력에서 사라진다 */
   var CAL_KEY = "hub-cal";
   var cals = loadList(CAL_KEY);
@@ -1194,7 +1194,8 @@
         small ? el("small", { text: small }) : null));
     }
     var period = periodText(item, true);
-    if (dday !== null) period += dday === 0 ? ", 오늘 마감" : ", 마감까지 " + dday + "일";
+    // '마감까지 53일'은 좁은 화면에서도 한 덩어리로(줄이 '마감까지 / 53일'로 끊기지 않게)
+    if (dday !== null) period = el("span", null, period + ", ", el("span", { className: "nowrap", text: dday === 0 ? "오늘 마감" : "마감까지 " + dday + "일" }));
     fact("신청기간", period || "원문 확인",
       item.py === "기간" && item.pt && !/^\d/.test(item.pt) ? "원문 표기: " + item.pt : null);
     // 국고보조금 공고의 지역은 수행기관 주소라 실제 신청 지역과 다를 수 있다
@@ -1228,11 +1229,11 @@
     var canCal = item.e && item.e >= today && (st === "접수 중" || st === "접수 예정");
     var calBtn = null;
     if (canCal) {
-      calBtn = el("button", { type: "button", className: "btn gray tool cal-btn" });
+      calBtn = el("button", { type: "button", className: "btn gray tool cal-btn", title: "홈 ‘언제 마감되나요?’ 달력에 마감일 표시" });
       var paintCal = function () {
         var on = inCal(item.id);
         calBtn.setAttribute("aria-pressed", String(on));
-        calBtn.replaceChildren(icon(on ? "calendar-check" : "calendar-plus"), on ? "달력에 넣음 · " + fmtDate(item.e) : "마감일 달력에 추가");
+        calBtn.replaceChildren(icon(on ? "calendar-check" : "calendar-plus"), on ? "달력에 넣음" : "달력에 추가"); // 날짜는 신청기간 줄에 있다(이름이 길면 단추가 두 줄로 밀림)
       };
       paintCal();
       calBtn.addEventListener("click", function () { toggleCal(item); paintCal(); });
@@ -1432,7 +1433,7 @@
           "공공서비스는 보조금24에 등록된 정부·지자체·공공기관의 서비스(수당·감면·이용권·상담 등)입니다. 언제든 신청하는 것도, 해마다 정해진 때 신청하는 것도, " +
           "신청 없이 받는 것도 있어 신청 시기는 각 상세에서 확인하세요. 둘을 합쳐 '지원사업'이라고 부릅니다."],
         ["찾는 방법", "홈에서 지역·대상을 고르거나 검색하세요. 목록의 '조건'에서 대상·분야·신청 상태·내 조건(나이·소득·성별)으로 좁힐 수 있습니다. 홈 그래프의 막대·칸·지역을 누르면 요약이 먼저 뜹니다."],
-        ["챙겨 두기", "상세 화면의 '관심 담기'는 홈 맨 위에, '마감일 달력에 추가'는 홈 마감 달력에 표시됩니다. 담은 뒤 마감일이 바뀌면 알려 드립니다."],
+        ["챙겨 두기", "상세 화면의 '관심 담기'는 홈 맨 위에, '달력에 추가'는 홈 마감 달력에 표시됩니다. 담은 뒤 마감일이 바뀌면 알려 드립니다."],
         ["꼭 확인하세요", "화면의 글은 원문 일부를 옮긴 것입니다. 신청 자격·기간·서류는 반드시 각 기관의 원문 공고에서 확인하세요."]
       ];
     } },
@@ -1967,11 +1968,17 @@
   var MAP_SHADES = ["var(--blue-100)", "var(--blue-300)", "var(--blue-400)", "var(--blue-700)", "var(--blue-900)"];
   var MAP_SHADES_GREEN = ["var(--green-100)", "var(--green-300)", "var(--green-400)", "var(--green-700)", "var(--green-900)"];
   var mapKind = "n", MAP_WHAT = { n: "모집 공고", s: "공공서비스" };
+  function niceBreaks(min, max) {
+    var raw = Math.max(1, (max - min) / 5), mag = Math.pow(10, Math.floor(Math.log10(raw)));
+    var step = [1, 2, 3, 5, 10].map(function (k) { return k * mag; }).filter(function (v) { return v >= raw; })[0];
+    var base = Math.floor(min / step) * step;
+    return [1, 2, 3, 4].map(function (k) { return base + k * step; });
+  }
   function mapShades() { return mapKind === "s" ? MAP_SHADES_GREEN : MAP_SHADES; }
 
   /* 카드 안쪽 실제 폭(px). 이 폭으로 좌표를 잡아야 휴대폰에서 글자가 작아지지 않는다 */
   function chartWidth() {
-    var w = $("#homeCharts").clientWidth || 480;
+    var w = ($("#homeCharts").clientWidth || 480) - chartsPeek();
     if (window.matchMedia("(min-width: 900px)").matches) w = (w - 16) / 2;
     return Math.max(280, Math.min(880, Math.round(w - 50))); // 카드 안쪽 여백 24px×2와 테두리 제외
   }
@@ -2144,9 +2151,12 @@
       close);
     if (spec.custom) return [head].concat(spec.custom);
     if (spec.cards) {
-      var pair = el("div", { className: "peek-cards" });
-      spec.cards.forEach(function (c) {
-        var box = el("section", { className: "peek-card", "aria-label": c.label },
+      // 0건 카드는 옆 카드 높이만큼 비어 보이지 않게 맨 아래 얇은 한 줄로(.peek-card.empty), 이때 창은 한 칸
+      var isEmpty = function (c) { return !c.n && !(c.items || []).length; };
+      var hasEmpty = spec.cards.some(isEmpty);
+      var pair = el("div", { className: "peek-cards" + (hasEmpty ? " has-empty" : "") });
+      spec.cards.slice().sort(function (a, b) { return isEmpty(a) - isEmpty(b); }).forEach(function (c) {
+        var box = el("section", { className: "peek-card" + (isEmpty(c) ? " empty" : ""), "aria-label": c.label },
           el("p", { className: "peek-kind" }, el("span", { className: "kind-dot " + c.kind, "aria-hidden": "true" }), c.label));
         peekSection(c).filter(Boolean).forEach(function (n) { box.append(n); });
         pair.append(box);
@@ -2776,7 +2786,15 @@
     var cw = Math.floor((W - 6 * gap) / 7);
     var ch = Math.max(36, Math.min(52, Math.round(cw * 0.72)));
     var gridW = 7 * cw + 6 * gap;
-    var H = top + 6 * ch + 5 * gap + 1;
+    var weeks = Math.max.apply(null, months.map(function (m0) {
+      var d0 = new Date(Date.parse(m0 + "T00:00:00Z"));
+      var days = new Date(Date.UTC(d0.getUTCFullYear(), d0.getUTCMonth() + 1, 0)).getUTCDate();
+      return Math.ceil((d0.getUTCDay() + days) / 7);
+    }));
+    var H = top + weeks * ch + (weeks - 1) * gap + 1;
+    // 이 달이 덜 필요하면(5줄) 빈 줄을 두지 않고 칸을 그만큼 키운다 → 달을 바꿔도 카드 높이는 그대로
+    var rowsHere = Math.ceil((lead + new Date(Date.UTC(+ym.slice(0, 4), +ym.slice(5), 0)).getUTCDate()) / 7);
+    ch = Math.floor((weeks * ch + (weeks - 1) * gap - (rowsHere - 1) * gap) / rowsHere);
     var root = svgEl("svg", { viewBox: "-0.5 -0.5 " + (gridW + 1) + " " + H, role: "group", "class": "duecal",
       "aria-label": (+ym.slice(5)) + "월 날짜별 마감 " + what + " 수 달력", style: "max-width:" + (gridW + 1) + "px" });
     // 지난날 칸의 빗금 무늬(style.css .duecal .past .cell)
@@ -2794,7 +2812,7 @@
     // 날짜는 늘 왼쪽 위. 마감 수는 넓은 칸이면 오른쪽 아래에 '12건'처럼 단위를 붙이고,
     // 좁은 칸(휴대폰)은 단위가 너무 작아지므로 흰 알약 안에 숫자만 넣어 날짜와 모양으로 구분한다
     var big = cw >= 44;
-    for (var i = 0; i < 42; i++) {
+    for (var i = 0; i < rowsHere * 7; i++) {
       var iso = addDays(gridStart, i);
       var x = (i % 7) * (cw + gap), y = top + Math.floor(i / 7) * (ch + gap);
       var inMonth = iso.slice(0, 7) === ym;
@@ -2963,9 +2981,10 @@
         else rg.forEach(function (r) { if (r in counts) counts[r]++; });
       });
     }
-    // 5단계 경계는 지금 자료의 분포(20·40·60·80%)로 정한다
+    // 5단계 경계는 같은 간격의 반올림한 수: 가장 적은~많은 지역 차이를 5로 나눠 1·2·3·5 × 10ⁿ으로 올린다
+    // (예전 분포 경계는 '49~55건'처럼 좁고 읽기 어려웠다)
     var sorted = META.regions.map(function (r) { return counts[r]; }).sort(function (x, y) { return x - y; });
-    var breaks = [0.2, 0.4, 0.6, 0.8].map(function (q) { return sorted[Math.floor(q * (sorted.length - 1))]; });
+    var breaks = niceBreaks(sorted[0] || 0, sorted[sorted.length - 1] || 0);
     function bin(v) { return breaks.filter(function (t) { return v > t; }).length; }
 
     function pick(name) {
@@ -2978,7 +2997,8 @@
     var lo = 0;
     breaks.concat([Infinity]).forEach(function (hi, i) {
       if (hi !== Infinity && hi < lo) return;
-      var text = hi === Infinity ? (fmtN(lo) + "건 이상") : (lo === hi ? fmtN(hi) + "건" : fmtN(lo) + "~" + fmtN(hi) + "건");
+      // 경계가 반올림한 같은 간격이라 위쪽 끝만 짧게: '~30건 · ~60 · ~90 · ~120 · 그 이상'(한 줄에 들어가게)
+      var text = hi === Infinity ? "그 이상" : "~" + fmtN(hi) + (i ? "" : "건");
       scale.append(el("span", null, el("i", { style: "background:" + mapShades()[i] }), text));
       lo = hi + 1;
     });
@@ -3144,9 +3164,11 @@
       cols = 1;
       rowH = Math.max(26, Math.floor((S - (rowsMax - 1) * 2) / rowsMax)); // 범례 높이 = 도넛 높이
     } else {
-      S = Math.min(240, W - 20);
-      // 320px 휴대폰(카드 안쪽 240px): 두 칸이면 이름·건수가 다 안 들어가 한 칸으로(chartWidth는 280 밑으로 안 내려가 실제 폭으로 잰다)
-      cols = ($("#homeCharts").clientWidth || 480) - 50 < 260 ? 1 : 2;
+      // 실제 카드 안쪽 폭(chartWidth는 280 밑으로 안 내려가 320px 폰에서 도넛이 카드 밖으로 나갔다)
+      var innerW = ($("#homeCharts").clientWidth || 480) - chartsPeek() - 50;
+      S = Math.min(240, W - 20, innerW - 20);
+      // 320px 휴대폰: 두 칸이면 이름·건수가 다 안 들어가 한 칸으로
+      cols = innerW < 260 ? 1 : 2;
       rowH = PHONE_TAP() ? 44 : 34; // 휴대폰: 범례 줄도 손가락 누름 칸 44px
     }
     var c = S / 2, R = c - DONUT_OFFSET - 2, r = Math.round(S * DONUT_INNER_K), zoom = S / 180;
@@ -3299,13 +3321,13 @@
   function upcomingRow(u) {
     var last = fmtDate(u.od, true);
     var b = el("button", { className: "row", type: "button",
-      "aria-label": u.t + ". 작년 " + last + " 접수 시작. " + (u.cid ? "올해 공고가 올라와 있습니다" : "올해 공고는 아직 없습니다") },
+      "aria-label": u.t + ". 작년 " + last + " 접수 시작. " + (u.cid ? "올해 공고가 올라와 있습니다" : "올해 공고는 아직 안 올라왔습니다") },
       el("span", { className: "row-main" },
         el("span", { className: "row-title", text: u.t }),
         el("span", { className: "row-meta", text: [u.ag, regionText(u), fmtDate(u.od) + " 시작", u.bg ? "사업 예산 " + u.bg : ""]
           .filter(Boolean).join(" · ") })),
       el("span", { className: "row-side" },
-        u.cid ? badge("올해 공고 있음", "new") : badge("아직 없음", "soft")));
+        u.cid ? badge("올해 공고 있음", "new") : badge("올해 공고 전", "soft"))); // '아직 없음'은 무엇이 없는지 몰라 짝을 맞춤
     b.title = u.cid ? "올해 공고 보기" : "작년 공고 원문 보기(새 창)";
     b.addEventListener("click", function () {
       if (u.cid) goTo({ tab: /^gov24:/.test(u.cid) ? "services" : "open", id: u.cid });
@@ -3411,7 +3433,82 @@
     setupMotion(cards);
     setupRoving($("#homeCharts"));
     placeSegGliders(); // 글꼴이 온 뒤 그래프만 다시 그릴 때도 전환 단추 알약을 맞춘다
+    setupHomePick();
   }
+
+  /* ---------- 휴대폰 홈(639px 이하): 한 번에 한 장씩 ----------
+   * 그래프 6장을 세로로 쌓으면 홈이 14화면이 넘어(형님 디자인 점검 6번, 시안 C)
+   *  - 그래프: 옆으로 넘겨 본다(한 번 밀면 한 장, 다음 카드 끝이 28px 보인다). 위 칩 줄로 바로 가고, 지금 카드가 칩에 표시된다.
+   *    카드마다 높이가 달라 그래프 칸 높이는 지금 카드에 맞춘다(ResizeObserver: 분야↔지원 방식 전환 등)
+   *  - 목록 카드 6장(마감 임박 … 새 공공서비스): 위 칩 줄에서 고른 한 장만 보인다
+   * 넓은 화면에서는 칩 줄이 숨고 전부 그대로 보인다(style.css .home-pick) */
+  var homePhone = window.matchMedia("(max-width: 639px)");
+  function chartsPeek() { return homePhone.matches ? 28 : 0; }
+  var listPick = 0, chartPick = 0, chartsRO = null;
+  var LIST_PICK_NAMES = ["마감 임박", "새로 올라온 공고", "곧 접수 시작", "많이 찾는", "곧 올라올 공고", "새 공공서비스"];
+  var CHART_PICK_NAMES = ["공고 분야", "공공서비스 분야", "누구를", "어느 지역", "언제 마감", "언제 올라오나"];
+  function pickRow(cls, label, names, onPick) {
+    var bar = el("div", { className: "home-pick " + cls, role: "group", "aria-label": label });
+    names.forEach(function (n, i) {
+      var b = el("button", { type: "button", className: "chip", "aria-pressed": "false", text: n });
+      b.addEventListener("click", function () { onPick(i); });
+      bar.append(b);
+    });
+    return bar;
+  }
+  function markPick(bar, i) {
+    [].forEach.call(bar.children, function (b, j) { b.setAttribute("aria-pressed", j === i ? "true" : "false"); });
+    var on = bar.children[i];
+    if (on && homePhone.matches) bar.scrollTo({ left: on.offsetLeft - 16, behavior: calmMotion() ? "auto" : "smooth" });
+  }
+  function calmMotion() { return window.matchMedia("(prefers-reduced-motion: reduce)").matches; }
+  function setupHomePick() {
+    // 목록 카드: .home-grid 셋 + #homeUpcoming 셋(많이 찾는 · 곧 올라올 · 새 공공서비스)
+    var secs = [].slice.call(document.querySelectorAll(".home-grid > section, #homeUpcoming > *"));
+    var oldL = $(".home-pick-lists"); if (oldL) oldL.remove();
+    if (listPick >= secs.length) listPick = 0;
+    var lists = pickRow("home-pick-lists", "목록 고르기", LIST_PICK_NAMES.slice(0, secs.length), function (i) { listPick = i; showList(); });
+    function showList() {
+      secs.forEach(function (s, j) { s.classList.toggle("pick-on", j === listPick); });
+      markPick(lists, listPick);
+    }
+    $(".home-grid").before(lists);
+    showList();
+
+    var box = $("#homeCharts"), cards = [].slice.call(box.querySelectorAll(":scope > .viz-card"));
+    var oldC = $(".home-pick-charts"); if (oldC) oldC.remove();
+    if (chartPick >= cards.length) chartPick = 0;
+    var charts = pickRow("home-pick-charts", "그래프 고르기", CHART_PICK_NAMES.slice(0, cards.length), function (i) {
+      box.scrollTo({ left: cards[i].offsetLeft - cards[0].offsetLeft, behavior: calmMotion() ? "auto" : "smooth" });
+    });
+    box.before(charts);
+    function fitBox() {
+      if (!homePhone.matches || !cards[chartPick]) { box.style.height = ""; return; }
+      box.style.height = cards[chartPick].offsetHeight + "px";
+    }
+    function sync() {
+      var x = box.scrollLeft, best = 0;
+      cards.forEach(function (c, i) {
+        if (Math.abs(c.offsetLeft - cards[0].offsetLeft - x) < Math.abs(cards[best].offsetLeft - cards[0].offsetLeft - x)) best = i;
+      });
+      chartPick = best;
+      markPick(charts, best);
+      fitBox();
+    }
+    var t = null;
+    box.onscroll = function () { clearTimeout(t); t = setTimeout(sync, 80); };
+    if (chartsRO) chartsRO.disconnect();
+    if (window.ResizeObserver) {
+      chartsRO = new ResizeObserver(function () { fitBox(); });
+      cards.forEach(function (c) { chartsRO.observe(c); });
+    }
+    // 지역을 바꾸는 등 다시 그려도 보던 그래프에 머문다
+    if (homePhone.matches && chartPick) box.scrollLeft = cards[chartPick].offsetLeft - cards[0].offsetLeft;
+    markPick(charts, chartPick);
+    fitBox();
+  }
+  // 휴대폰 ↔ 넓은 화면을 넘나들면 그래프 폭(다음 카드 보이는 몫)이 바뀌므로 다시 그린다
+  if (homePhone.addEventListener) homePhone.addEventListener("change", function () { if (state.tab === "home") renderHome(); });
 
   /* ---------- 그래프 움직임 ----------
    * 카드가 화면에 들어올 때(play): 카드가 올라오며 나타나고 막대가 자라나고 선이 그려진다.

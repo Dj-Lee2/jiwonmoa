@@ -396,6 +396,14 @@ class SecurityHeaderTest(unittest.TestCase):
         self.assertRegex(css, r"\.seg-mini button \{[^}]*white-space: nowrap")  # 알약 단추 글자는 꺾지 않는다
         self.assertIn("function syncTrap", app)  # 화면을 덮는 겹침은 뒤를 inert로
         self.assertIn('className: "cnt"', app)  # 도넛 범례 건수
+        self.assertIn("function setupHomePick", app)  # 휴대폰 홈: 그래프 넘겨 보기·목록 골라 보기
+        self.assertNotIn('badge("아직 없음"', app)
+        self.assertNotIn("i < 42", app)  # 마감 달력은 빈 줄 없이
+        self.assertIn("function niceBreaks", app)
+        # 배경을 바꾸는 :hover는 (hover: hover) 안에(터치에서 색이 남지 않게) — 한 줄짜리 규칙만 검사
+        for sel in (".peek-item:hover", ".cross-note:hover", ".to-top:hover", ".file:hover"):
+            line = next(l for l in css.splitlines() if sel + " {" in l)
+            self.assertTrue(line.startswith("@media (hover: hover)"), sel)
 
     def test_first_visit_light(self):
         # 공고 긴 글(notices-text.js, 첫 방문 무게의 절반)은 홈에서 바로 받지 않는다 — 검색·목록·상세 직전에만(prefetchNoticeText)
