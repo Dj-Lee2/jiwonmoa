@@ -127,6 +127,10 @@ README는 사이트를 소개하는 글이고, 이 문서는 고치는 사람을
 - 터치 화면에서 눌린 뒤 가리키기 색이 남지 않게, 배경을 바꾸는 :hover는 `@media (hover: hover)` 안에 둔다.
 - 대상 '아동·청소년'·'저소득층'(normalize `TARGET_PERSONAS`): 보조금24만, 제목 + 지원대상 글에서 찾는다(다른 대상은 제목에서만).
   저소득층의 '중위소득'은 100% 이하만. 규칙을 바꾸면 `collect.py --reprocess gov24` 후 build_site(대상이 비던 서비스 2,505 → 1,310).
+- 화면이 읽는 파일은 줄인 것(`app.min.js`·`style.min.css`, `deploy/build_assets.sh` = esbuild, 첫 줄에 원본 sha256). 원본을 고치면 다시 만들어 함께 커밋
+  (`test_min_assets_fresh`). 전송량 app 71→40KB, style 24→14KB. 공부 모드(study.js)·소리(sound.js)는 작아서 그대로.
+- 휴대폰 그래프 폭(`cardInnerWidth`): 칸 좌우 16px×2 + 다음 카드 28px + 카드 안쪽 16px×2를 뺀 실제 폭(예전엔 32px 커서 0.9배로 줄어 그려짐). 바닥 220px.
+  달별 막대 한 칸은 390px 폰에서 약 20px(1~12월이 한 줄이라 24px을 못 채움 — 키보드·요약 창으로 보완), 지도 작은 지역은 옆 순위 목록(44px)이 같은 일을 한다.
 - 같은 공고 묶기(`groupSameNotices`): 제목(띄어쓰기 무시)+지역이 같은 모집 공고는 목록·숫자에서 하나. 대표 = 출처가 섞이면 마감일 있는 것 →
   기업마당, 같은 출처면 최근 게시. 나머지는 `_dupOf`로 주소로는 열리고, 상세 '같은 공고' 상자(`sameNoticeBox`)로 서로 이어진다.
 - 없는 주소: Caddy `handle_errors 404` → `site/404.html`(스크립트 없음, 상태 404 그대로). 자바스크립트가 꺼지면 `<noscript>`가 빈 틀(탭·목록)을 숨기고 원문 사이트를 안내.

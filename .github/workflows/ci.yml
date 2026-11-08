@@ -27,4 +27,4 @@ jobs:
       - name: Rules
         run: python -m unittest discover -s tests -v
       - name: Site script syntax
-        run: node --check site/app.js && node --check site/sound.js
+        run: node --check site/app.js && node --check site/app.min.js && node --check site/sound.js

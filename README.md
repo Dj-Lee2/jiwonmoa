@@ -245,7 +245,7 @@ python -m http.server 8765 --directory site   # http://127.0.0.1:8765
 
 ### ✅ 테스트
 
-규칙을 고친 뒤에는 테스트를 돌립니다(표준 라이브러리만, GitHub Actions에서도 같은 명령).
+규칙을 고친 뒤에는 테스트를 돌립니다(표준 라이브러리만, GitHub Actions에서도 같은 명령). 화면 코드(`site/app.js`·`style.css`)를 고쳤다면 먼저 `bash deploy/build_assets.sh`로 줄인 파일을 다시 만듭니다.
 
 ```bash
 python -m unittest discover -s tests -v

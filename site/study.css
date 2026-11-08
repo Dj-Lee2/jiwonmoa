@@ -1,6 +1,6 @@
 /* 지원모아 공부 모드(study.js, PC만) — 머리 단추로 켤 때만 읽는다. 사이트 색 변수와 따로 둔 도구 색(분홍 테두리·검은 설명) */
 .st-box { position: fixed; z-index: 2147483000; display: none; pointer-events: none; border: 2px solid #ff3d71; border-radius: 10px;
-  background: rgba(255, 61, 113, .08); box-shadow: 0 0 0 9999px rgba(0, 0, 0, .0); transition: all .08s; }
+  background: rgba(255, 61, 113, .08); box-shadow: 0 0 0 9999px rgba(0, 0, 0, .0); transition-property: left, top, width, height; transition-duration: .08s; }
 .st-box.flash { animation: st-flash 1.2s ease-out 2; }
 @keyframes st-flash { 0%, 100% { background: rgba(255, 61, 113, .08); } 40% { background: rgba(255, 61, 113, .35); } }
 .st-tip { position: fixed; z-index: 2147483001; display: none; max-width: min(380px, calc(100vw - 16px)); padding: 12px 14px; border-radius: 14px;

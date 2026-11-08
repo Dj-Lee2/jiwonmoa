@@ -63,7 +63,7 @@ def read_js(name, var):
     return json.loads(text[len(f"window.{var}="):].rstrip().rstrip(";"))
 
 
-SITE_PATHS = ("/", "/data/meta.js", "/data/notices.js", "/app.js")
+SITE_PATHS = ("/", "/data/meta.js", "/data/notices.js", "/app.min.js", "/style.min.css")
 
 
 def http_codes():

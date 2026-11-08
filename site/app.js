@@ -2028,9 +2028,17 @@
 
   /* 카드 안쪽 실제 폭(px). 이 폭으로 좌표를 잡아야 휴대폰에서 글자가 작아지지 않는다 */
   function chartWidth() {
-    var w = ($("#homeCharts").clientWidth || 480) - chartsPeek();
+    // 바닥 220px: 320px 휴대폰의 실제 카드 안쪽(226px)보다 크면 그래프가 0.8배로 줄어 글자가 작아졌다
+    return Math.max(220, Math.min(880, cardInnerWidth()));
+  }
+  /* 그래프 카드 안쪽 실제 폭. 넓은 화면: 칸 폭 − 안쪽 여백 24px×2 − 테두리.
+   * 휴대폰(넘겨 보기): 그래프 칸 좌우 여백 16px×2와 다음 카드 보이는 몫(28px)을 빼고, 카드 안쪽 여백은 16px×2(style.css)
+   * (예전엔 휴대폰에서 이 값이 실제보다 32px 커서 그래프가 0.9배로 줄어 그려졌다) */
+  function cardInnerWidth() {
+    var w = $("#homeCharts").clientWidth || 480;
+    if (homePhone.matches) return Math.round(w - 32 - chartsPeek() - 34);
     if (window.matchMedia("(min-width: 900px)").matches) w = (w - 16) / 2;
-    return Math.max(280, Math.min(880, Math.round(w - 50))); // 카드 안쪽 여백 24px×2와 테두리 제외
+    return Math.round(w - 50);
   }
 
   function svgEl(tag, attrs) {
@@ -3215,7 +3223,7 @@
       rowH = Math.max(26, Math.floor((S - (rowsMax - 1) * 2) / rowsMax)); // 범례 높이 = 도넛 높이
     } else {
       // 실제 카드 안쪽 폭(chartWidth는 280 밑으로 안 내려가 320px 폰에서 도넛이 카드 밖으로 나갔다)
-      var innerW = ($("#homeCharts").clientWidth || 480) - chartsPeek() - 50;
+      var innerW = cardInnerWidth();
       S = Math.min(240, W - 20, innerW - 20);
       // 320px 휴대폰: 두 칸이면 이름·건수가 다 안 들어가 한 칸으로
       cols = innerW < 260 ? 1 : 2;

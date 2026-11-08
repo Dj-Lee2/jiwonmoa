@@ -433,6 +433,16 @@ class SecurityHeaderTest(unittest.TestCase):
             line = next(l for l in css.splitlines() if sel + " {" in l)
             self.assertTrue(line.startswith("@media (hover: hover)"), sel)
 
+    def test_min_assets_fresh(self):
+        # index.html은 줄인 파일을 읽는다. 원본을 고치고 deploy/build_assets.sh를 안 돌리면 옛 화면이 나간다
+        import hashlib
+        html = (ROOT / "site" / "index.html").read_text(encoding="utf-8")
+        for src, out in (("app.js", "app.min.js"), ("style.css", "style.min.css")):
+            self.assertIn('"' + out + '"', html)
+            digest = hashlib.sha256((ROOT / "site" / src).read_bytes()).hexdigest()
+            head = (ROOT / "site" / out).read_text(encoding="utf-8")[:200]
+            self.assertIn(src + " sha256:" + digest, head, out + "이 " + src + "와 다릅니다 — bash deploy/build_assets.sh")
+
     def test_first_visit_light(self):
         # 공고 긴 글(notices-text.js, 첫 방문 무게의 절반)은 홈에서 바로 받지 않는다 — 검색·목록·상세 직전에만(prefetchNoticeText)
         app = (ROOT / "site" / "app.js").read_text(encoding="utf-8")

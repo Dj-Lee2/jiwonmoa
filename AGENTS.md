@@ -10,7 +10,8 @@
 ## 순서
 
 1. 시작 전에 `git pull --ff-only`로 최신 main을 받는다.
-2. 고친 뒤 커밋한다. 메시지는 짧은 제목 한 줄로 쓰고 AI 표기(Co-Authored-By 등)는 넣지 않는다.
+2. `site/app.js`·`site/style.css`를 고쳤으면 `bash deploy/build_assets.sh`로 줄인 파일(`app.min.js`·`style.min.css`, 화면이 실제로 읽는 것)을 다시 만들어 함께 커밋한다(테스트가 어긋남을 잡는다).
+   고친 뒤 커밋한다. 메시지는 짧은 제목 한 줄로 쓰고 AI 표기(Co-Authored-By 등)는 넣지 않는다.
 3. `git push gov main`(GitLab)을 먼저 하고, 통과하면 `git push origin main`(GitHub). GitLab은 올릴 때 보안 검사(Gitleaks·Semgrep·OSV·Trivy)를 하며 걸리면 push 전체가 거부된다. 거부되면 고쳐서 커밋한 뒤 다시 GitLab부터 올린다.
 4. 서버 반영: 로컬에서는 `bash deploy/push.sh`, 서버에서는 `python3 collector/build_site.py`.
 

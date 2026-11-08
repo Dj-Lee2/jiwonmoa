@@ -28,7 +28,8 @@
 <!-- 첫 화면 자료를 먼저 받는다. 움직이는 마스코트(138KB)는 첫 화면을 다 그린 뒤에 받는다(app.js animateMascot) -->
 <link rel="preload" href="data/meta.js" as="script">
 <link rel="preload" href="data/notices.js" as="script">
-<link rel="stylesheet" href="style.css">
+<!-- style.min.css·app.min.js는 style.css·app.js를 줄인 것(deploy/build_assets.sh). 고치는 곳은 원본 -->
+<link rel="stylesheet" href="style.min.css">
 </head>
 <body>
 <a class="skip" href="#main">본문으로 건너뛰기</a>
@@ -385,6 +386,6 @@
 <script src="data/meta.js"></script>
 <script src="data/notices.js"></script>
 <script src="sound.js?v=1"></script>
-<script src="app.js"></script>
+<script src="app.min.js"></script>
 </body>
 </html>
