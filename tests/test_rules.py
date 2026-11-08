@@ -387,6 +387,16 @@ class SecurityHeaderTest(unittest.TestCase):
                 n = text.replace("공모사업 상세", "").count(bad)
                 self.assertEqual(n, 0, name + ": '" + bad + "' " + str(n) + "곳")
 
+    def test_design_rules(self):
+        # 디자인 점검(11-08)에서 고친 규칙이 되돌아가지 않게
+        app = (ROOT / "site" / "app.js").read_text(encoding="utf-8")
+        css = (ROOT / "site" / "style.css").read_text(encoding="utf-8")
+        self.assertIn('}, "orange", withDue.length', app)  # 7일 안에 마감 = 주황(빨강은 D-3·오류)
+        self.assertNotIn("#soonToggle[aria-pressed=\"true\"] { background: var(--urgent)", css)
+        self.assertRegex(css, r"\.seg-mini button \{[^}]*white-space: nowrap")  # 알약 단추 글자는 꺾지 않는다
+        self.assertIn("function syncTrap", app)  # 화면을 덮는 겹침은 뒤를 inert로
+        self.assertIn('className: "cnt"', app)  # 도넛 범례 건수
+
     def test_first_visit_light(self):
         # 공고 긴 글(notices-text.js, 첫 방문 무게의 절반)은 홈에서 바로 받지 않는다 — 검색·목록·상세 직전에만(prefetchNoticeText)
         app = (ROOT / "site" / "app.js").read_text(encoding="utf-8")

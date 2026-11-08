@@ -1152,6 +1152,7 @@
       pane.replaceChildren(renderGuide());
       pane._shown = null;
       document.body.classList.remove("detail-open", "lock");
+      syncTrap();
       document.title = viewTitle();
       return;
     }
@@ -1347,6 +1348,36 @@
 
   function narrow() { return window.matchMedia("(max-width: 1099px)").matches; }
 
+  /* 화면을 다 덮는 겹침(조건 시트 = 1099px 이하, 상세 = 759px 이하·PC 200% 확대 포함)은 창처럼 쓴다:
+   * 뒤 화면을 inert로 막아 Tab·화면 읽기가 가려진 목록·머리로 새지 않게 한다(WCAG 2.4.3·2.4.11).
+   * 760~1099px 상세는 목록이 왼쪽에 보이는 옆 창이라 막지 않는다(다른 공고를 바로 누를 수 있게). */
+  var trapPanel = null, trapped = [];
+  function syncTrap() {
+    var on = document.body.classList, want = null;
+    if (on.contains("filters-open") && narrow()) want = $("#filters");
+    else if (on.contains("detail-open") && window.matchMedia("(max-width: 759px)").matches) want = $("#detail");
+    if (want === (trapPanel || null)) return;
+    (trapped || []).forEach(function (s) { s.inert = false; });
+    trapped = [];
+    if (trapPanel) { trapPanel.removeAttribute("role"); trapPanel.removeAttribute("aria-modal"); }
+    trapPanel = want;
+    if (!want) return;
+    for (var n = want; n !== document.body && n.parentElement; n = n.parentElement) {
+      [].forEach.call(n.parentElement.children, function (s) {
+        // 창 밖에 새로 붙는 알림(.toast)·안내 창(dialog)은 막지 않는다
+        if (s === n || s.inert || /^(SCRIPT|STYLE|DIALOG|TEMPLATE)$/.test(s.tagName) || s.classList.contains("toast")) return;
+        s.inert = true;
+        trapped.push(s);
+      });
+    }
+    want.setAttribute("role", "dialog");
+    want.setAttribute("aria-modal", "true");
+  }
+  ["(max-width: 1099px)", "(max-width: 759px)"].forEach(function (q) {
+    var m = window.matchMedia(q);
+    if (m.addEventListener) m.addEventListener("change", syncTrap);
+  });
+
   function openOverlay() {
     document.body.classList.add("detail-open");
     if (narrow()) {
@@ -1354,6 +1385,7 @@
       var h = $("#detailTitle") || $("#detail");
       h.focus({ preventScroll: true });
     }
+    syncTrap();
   }
 
   function openDetail(id, rowButton) {
@@ -1741,8 +1773,10 @@
     var canApply = live.filter(function (n) { return statusOf(n) !== "접수 예정"; }).length;
     $("#homeTitle").replaceChildren((state.r ? state.r + "에서 " : "") + "지금 신청할 수 있는 모집 공고 ",
       el("strong", { text: fmtN(canApply) }), "건");
+    // 탭·숫자 타일의 '모집 공고 N'은 접수 예정까지 센 수 → 제목과 다른 까닭을 부제에서 바로 밝힌다
+    var notYet = live.length - canApply;
     $("#homeSub").textContent = NOTICES_MISSING ? "모집 공고 자료를 불러오지 못했습니다. 새로 고침해 주세요."
-      : fmtStamp(at) + " 수집 · 공공서비스는 따로 셈";
+      : fmtStamp(at) + " 수집 · " + (notYet ? "접수 예정 " + fmtN(notYet) + "건을 더하면 " + fmtN(live.length) + "건 · " : "") + "공공서비스는 따로 셈";
     document.querySelectorAll("#homePane .sk-only").forEach(function (e) { e.remove(); }); // 첫 화면 자리 잡기(index.html)
     // 오늘 올라온 공고·오늘 마감인 공고: 0건이어도 늘 보인다(형님 지시). 0건이면 회색으로, 눌러도 빈 목록으로 가지 않게 막는다
     var todayN = live.filter(isTodayNew).length;
@@ -1771,7 +1805,7 @@
           cards: [
             statCard(soonN, "모집 공고", false, function () { goTo({ tab: "open", soon: true, sort: "deadline" }); }, "7일 안에 마감하는 모집 공고가 없습니다."),
             statCard(soonS, "공공서비스", true, function () { goTo({ tab: "services", soon: true, sort: "deadline" }); }, "7일 안에 마감하는 공공서비스가 없습니다.")] };
-      }, "red", withDue.length, "마감일 있는 지원사업"),
+      }, "orange", withDue.length, "마감일 있는 지원사업"), // 색 규칙: 빨강 = 오늘~D-3, 주황 = 7일 안
       // 접수 예정: 7일 안에 시작하는 공고는 홈 맨 아래 '곧 접수가 시작되는 공고'에서 보이므로 그 뒤에 시작하는 것만
       statTile(laterN.length, "접수 예정", "calendar-check", function () {
         return noticePeek(laterN, where + "접수 예정인 모집 공고", SOON_DAYS + "일 뒤에 접수를 시작하는 것",
@@ -3091,7 +3125,9 @@
     var names = [].concat(META.serviceCats || [], META.supports || [], META.noticeFields || []);
     if (!measureCtx) measureCtx = document.createElement("canvas").getContext("2d");
     measureCtx.font = "700 14px " + getComputedStyle(document.body).fontFamily; // 가리킨 칸은 굵게 바뀌므로 굵은 글자로 잰다
-    return Math.ceil(Math.max.apply(null, names.map(function (t) { return measureCtx.measureText(t).width; })) + 42);
+    // + 오른쪽 건수 칸(가장 큰 수 '10,000' 폭 + 사이 8px)
+    return Math.ceil(Math.max.apply(null, names.map(function (t) { return measureCtx.measureText(t).width; })) + 42 +
+      measureCtx.measureText("10,000").width + 8);
   }
   // 가운데 구멍에 들어가게 긴 이름은 줄인다(전체 이름은 범례·요약 창에)
   function shortName(k, max) { max = max || 7; return k.length > max ? k.slice(0, max - 1) + "…" : k; }
@@ -3109,7 +3145,8 @@
       rowH = Math.max(26, Math.floor((S - (rowsMax - 1) * 2) / rowsMax)); // 범례 높이 = 도넛 높이
     } else {
       S = Math.min(240, W - 20);
-      cols = 2;
+      // 320px 휴대폰(카드 안쪽 240px): 두 칸이면 이름·건수가 다 안 들어가 한 칸으로(chartWidth는 280 밑으로 안 내려가 실제 폭으로 잰다)
+      cols = ($("#homeCharts").clientWidth || 480) - 50 < 260 ? 1 : 2;
       rowH = PHONE_TAP() ? 44 : 34; // 휴대폰: 범례 줄도 손가락 누름 칸 44px
     }
     var c = S / 2, R = c - DONUT_OFFSET - 2, r = Math.round(S * DONUT_INNER_K), zoom = S / 180;
@@ -3185,7 +3222,7 @@
         "aria-haspopup": peek ? "dialog" : null, "aria-expanded": peek ? "false" : null,
         "aria-label": d.what + " " + d.n + "건, 전체의 " + d.pct + "%. " + (peek ? "누르면 요약을 봅니다" : "누르면 목록으로 갑니다") },
         el("i", { style: "background:" + d.color }),
-        el("span", { className: "name", text: d.key }));
+        el("span", { className: "name", text: d.key }), el("span", { className: "cnt", "aria-hidden": "true", text: fmtN(d.n) }));
       b.addEventListener("click", function () { if (peek) peek(d, b, slices[i]); else go(d); });
       b.addEventListener("pointerenter", function (e) { hover(i, e); });
       b.addEventListener("pointerleave", function (e) { hover(-1, e); });
@@ -3666,6 +3703,7 @@
      * 시트 안에서 조건을 바꾸면 writeHash가 그 기록의 주소를 바꿔 쓰고, 닫기·결과 보기·Esc로 닫으면 기록을 되돌린다 */
     function openFilters() {
       document.body.classList.add("filters-open", "lock");
+      syncTrap();
       $("#filterOpen").setAttribute("aria-expanded", "true");
       $("#filtersTitle").focus();
       if (narrow() && !filtersEntry) {
@@ -3676,6 +3714,7 @@
       if (filtersEntry && fromBack !== true) { filtersPopIgnore = true; history.back(); }
       filtersEntry = false;
       document.body.classList.remove("filters-open");
+      syncTrap();
       if (!document.body.classList.contains("detail-open") || !narrow()) document.body.classList.remove("lock");
       $("#filterOpen").setAttribute("aria-expanded", "false");
       $("#filterOpen").focus();
