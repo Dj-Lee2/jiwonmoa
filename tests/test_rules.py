@@ -472,3 +472,35 @@ class AgriFeedTest(unittest.TestCase):
         self.assertEqual(len(feed["items"][1]["sm"]), build_site.AGRI_FEED_SM + 1)  # trim은 '…'을 붙인다
         self.assertEqual(feed["items"][1]["op"], "농관원")
         self.assertEqual(feed["builtAt"], "2026-10-06T09:14")
+
+
+class CheckPushRetryTest(unittest.TestCase):
+    """정기 점검이 점검 기록을 올릴 때: GitLab이 잠깐 끊겨도 다시 시도하고, 끝내 안 될 때만 알린다."""
+
+    def setUp(self):
+        sys.path.insert(0, str(ROOT / "deploy"))
+        import check
+        self.check = check
+
+    def fake(self, codes):
+        calls = []
+
+        class R:
+            def __init__(self, code):
+                self.returncode, self.stderr, self.stdout = code, ("fatal: gnutls_handshake() failed" if code else ""), ""
+
+        def run(cmd, **kw):
+            calls.append(cmd)
+            return R(codes[len(calls) - 1])
+        return run, calls
+
+    def test_retry_then_ok(self):
+        run, calls = self.fake([128, 0])
+        self.assertEqual(self.check.push("gov", run=run, sleep=lambda s: None), "")
+        self.assertEqual(len(calls), 2)
+
+    def test_gives_up_after_tries(self):
+        run, calls = self.fake([128] * self.check.PUSH_TRIES)
+        err = self.check.push("gov", run=run, sleep=lambda s: None)
+        self.assertIn("gnutls", err)
+        self.assertEqual(len(calls), self.check.PUSH_TRIES)

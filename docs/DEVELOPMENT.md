@@ -170,7 +170,7 @@ README는 사이트를 소개하는 글이고, 이 문서는 고치는 사람을
 | 홈 집계(지역·대상별 건수, 공모 달, 많이 찾는 공공서비스) | `collector/build_site.py`의 `service_counts`, `open_months`, `top_services` |
 | 곧 열릴 수 있는 공모(같은 사업 묶기) | `collector/build_site.py`의 `upcoming_calls`, `program_key` |
 | '현재 자료' 고르기(출처별 마지막 성공 수집 시각 `seen_at`) | `collector/report.py`의 `load` |
-| 정기 점검 | `deploy/check.py`, `deploy/check.sh` |
+| 정기 점검(기록을 GitLab → GitHub에 올릴 때 60초 쉬며 3번까지 다시 시도, `push`) | `deploy/check.py`, `deploy/check.sh` |
 | 화면 동작·그래프 | `site/app.js` |
 
 ## README 화면 그림 다시 찍기

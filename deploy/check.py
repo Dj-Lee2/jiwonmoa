@@ -22,6 +22,7 @@ import re
 import sqlite3
 import subprocess
 import sys
+import time
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -197,10 +198,34 @@ def publish(now, result):
     if c.returncode != 0:
         return f"점검 기록 커밋 실패: {(c.stderr or c.stdout).strip()[:160]}"
     for remote in ("gov", "origin"):
-        p = git("push", "-q", remote, "main", check=False)
-        if p.returncode != 0:
-            return f"점검 기록을 {('GitLab' if remote == 'gov' else 'GitHub')}에 올리지 못함: {p.stderr.strip()[-160:]}"
+        err = push(remote)
+        if err:
+            return f"점검 기록을 {('GitLab' if remote == 'gov' else 'GitHub')}에 올리지 못함({PUSH_TRIES}번 시도): {err}"
     return ""
+
+
+# 공공 GitLab은 가끔 접속을 중간에 끊는다(11-10·11-11 'gnutls_handshake() failed' → 다음 시도는 됨).
+# 한 번 실패로 바로 알리지 않고 PUSH_WAIT초 쉬며 PUSH_TRIES번까지 다시 올린다. 한 번에 PUSH_TIMEOUT초를 넘기면 실패로 본다
+PUSH_TRIES = 3
+PUSH_WAIT = int(os.environ.get("CHECK_PUSH_WAIT", "60"))
+PUSH_TIMEOUT = 180
+
+
+def push(remote, run=subprocess.run, sleep=time.sleep):
+    """remote main으로 올린다. 성공하면 "", 끝내 안 되면 마지막 오류 끝부분."""
+    last = ""
+    for n in range(PUSH_TRIES):
+        if n:
+            sleep(PUSH_WAIT)
+        try:
+            p = run(["git", "push", "-q", remote, "main"], cwd=ROOT, capture_output=True, text=True, timeout=PUSH_TIMEOUT)
+        except subprocess.TimeoutExpired:
+            last = f"{PUSH_TIMEOUT}초 안에 끝나지 않음"
+            continue
+        if p.returncode == 0:
+            return ""
+        last = (p.stderr or p.stdout or "").strip()[-160:]
+    return last
 
 
 def main():
