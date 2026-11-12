@@ -103,8 +103,6 @@
       desc: "타일이 무엇을 세는지. 칸이 좁으면 화살표를 숨기고, 그래도 모자라면 '예산 소진'처럼 줄인 이름으로 바뀝니다(화면 읽기는 늘 전체 이름)." },
     { group: "홈", go: HOME, sel: ".stat-of", name: "타일 기준 줄", code: ".stat-of · OF_SHORT",
       desc: "'무엇 N건 중 · %'. 큰 숫자가 어떤 전체 가운데 몇 %인지 보여 줍니다. 칸이 모자라면 줄인 이름 → % 숨김 순으로 줄어듭니다." },
-    { group: "홈", go: HOME, sel: ".stat-ticks", name: "타일 눈금 막대", code: ".stat-ticks",
-      desc: "40칸 중 칠한 칸 = 기준 줄의 % 입니다. 처음 홈을 그릴 때만 자라나는 움직임이 있습니다." },
     { group: "홈", go: HOME, big: true, sel: ".who-card", name: "나에게 맞는 지원 찾기", code: ".who-card · #homeWho",
       desc: "청년·농업인·소상공인 등 20가지 대상 칩입니다. 칩 숫자는 공고 + 공공서비스 합계이고, 누르면 그 대상이 더 많은 쪽 탭 목록으로 갑니다." },
     { group: "홈", go: HOME, sel: ".charts-hint", name: "그래프 안내 줄", code: ".charts-hint",

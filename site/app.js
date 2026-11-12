@@ -1622,7 +1622,7 @@
 
   /* 숫자 타일 아래 눈금 막대: 전체(of) 가운데 이 숫자가 차지하는 몫을 40칸 중 칠한 칸으로 보인다.
    * 막대는 홈을 처음 그릴 때만 자라난다(지역을 바꿔 다시 그릴 때는 칸 수만 바뀐다) */
-  var STAT_TICKS = 40, statsGrown = false, todayDueTab = "open";
+  var statsGrown = false, todayDueTab = "open"; // 타일 = 숫자·이름·기준(눈금 막대 장식은 뺐다, unslop 11-12)
   // 타일 이름이 칸보다 길 때(320px 휴대폰·글자 크게) 쓸 줄인 이름. 화면 읽기는 늘 전체 이름(aria-label)
   var STAT_SHORT = { "7일 안에 마감": "7일 안 마감", "예산 소진 시까지": "예산 소진", "내 조건에 맞음": "내 조건", "공공서비스": "서비스" };
   // 타일 아래 '무엇 N건 중'의 줄인 이름(넓은 화면 6칸·휴대폰). 늘 무엇 중인지 보이게(형님 지적: '901건 중'만 보이면 헷갈림)
@@ -1652,10 +1652,7 @@
     var mark = icon(iconName);
     mark.classList.add("tone-" + tone);
     var share = of > 0 ? num / of : 0;
-    var on = num > 0 ? Math.max(1, Math.round(share * STAT_TICKS)) : 0;
     var pct = of > 0 ? (share < 0.01 && num > 0 ? "1% 미만" : Math.round(share * 100) + "%") : "";
-    var ticks = el("span", { className: "stat-ticks tone-" + tone, "aria-hidden": "true" });
-    for (var i = 0; i < STAT_TICKS; i++) ticks.append(el("i", { className: i < on ? "on" : "", style: "--i:" + i }));
     var b = el("button", { type: "button", className: "stat", "aria-haspopup": "dialog", "aria-expanded": "false",
       "aria-label": label + " " + fmtN(num) + "건, " + ofLabel + " " + fmtN(of) + "건 중 " + pct + ". 누르면 요약을 봅니다" },
       el("span", { className: "stat-num", text: fmtN(num) }),
@@ -1667,8 +1664,7 @@
       el("span", { className: "stat-of" }, el("span", null,
         el("span", { className: "of-what", text: ofLabel + " " }),
         OF_SHORT[ofLabel] ? el("span", { className: "of-short", "aria-hidden": "true", text: OF_SHORT[ofLabel] + " " }) : null,
-        fmtN(of) + "건 중"), el("span", { text: pct })),
-      ticks);
+        fmtN(of) + "건 중"), el("span", { text: pct })));
     // 누르면 바로 목록으로 가지 않고 화면 가운데 요약 창(openPeek "modal", 뒤는 어둡게)을 연다. 목록은 창의 '모두 보기'로.
     // 휴대폰은 다른 요약과 같은 아래 시트
     b.addEventListener("click", function () { openPeek("stat:" + label, b, onClick, null, "modal"); });
@@ -1701,8 +1697,7 @@
         el("span", { className: "stat-num" }, icon("user-circle-plus"), el("span", { text: "입력" })),
         el("span", { className: "stat-label" }, icon("user-circle-check"), el("span", { className: "stat-full", text: "내 조건에 맞음" }),
           el("span", { className: "stat-short", "aria-hidden": "true", text: "내 조건" }), icon("arrow-right")),
-        el("span", { className: "stat-of" }, el("span", { text: "나이·소득을 넣어 보세요" })),
-        el("span", { className: "stat-ticks", "aria-hidden": "true" }));
+        el("span", { className: "stat-of" }, el("span", { text: "나이·소득을 넣어 보세요" })));
       b0.querySelector(".stat-label .ph-user-circle-check").classList.add("tone-dark");
       b0.addEventListener("click", function () { openPeek("stat:me", b0, meFormSpec, null, "modal"); });
       return b0;
@@ -1711,7 +1706,7 @@
       // me.js를 받는 동안은 자리만(받으면 이 타일만 바꾼다 — 홈 전체를 다시 그리면 그래프가 다시 움직이므로)
       var wait = el("div", { className: "stat stat-sk", "aria-hidden": "true" },
         el("span", { className: "stat-num", text: "0" }), el("span", { className: "stat-label", text: "0" }),
-        el("span", { className: "stat-of" }, el("span", { text: "0" })), el("span", { className: "stat-ticks" }));
+        el("span", { className: "stat-of" }, el("span", { text: "0" })));
       ensureMe().then(function () { if (wait.isConnected) { wait.replaceWith(meTile(homeLive())); fitStatLabels(); } },
         function () { if (wait.isConnected) wait.replaceWith(el("div", { className: "stat stat-sk" })); });
       return wait;
@@ -3177,9 +3172,12 @@
    * 색은 한 계열(초록) 진하기로, 큰 조각일수록 진하다. '기타'는 회색. 오른쪽(좁으면 아래) 목록과
    * 가리키기가 서로 이어지고, 조각이나 목록을 누르면 그 조건의 공공서비스 목록으로 간다 */
   var svcKind = "cat";
-  var DONUT_GREENS = ["#0c440c", "#155c15", "#1d721d", "#2b8a2b", "#3fa33f", "#62b862", "#8fd08f", "#addfad", "#c4e9c4", "#d9f2d9"]; // --green-900 → --green-100 사이를 10단계로
-  var DONUT_BLUES = ["#0d366b", "#164a8c", "#1c5cab", "#2a6fc6", "#3987e5", "#5c9ce9", "#86b6ef", "#a9cbf4", "#cde2fb"]; // --blue-900 → --blue-100
-  var DONUT_OTHER = "var(--gray-300)";
+  // 큰 조각 셋만 색(진한 → 옅은), 나머지는 회색 단계: 같은 색 10단계는 어느 조각이 주인공인지 안 보였다(unslop 11-12).
+  // 이름·건수는 범례에 있어 색으로 조각을 찾지 않아도 된다
+  var DONUT_REST = ["#8a8a8a", "#a3a3a3", "#b8b8b8", "#c9c9c9", "#d6d6d6", "#e1e1e1", "#eaeaea"]; // --gray-500 → 옅은 회색
+  var DONUT_GREENS = ["#0c440c", "#2b8a2b", "#8fd08f"].concat(DONUT_REST); // --green-900 · 진한 초록 · --green-300
+  var DONUT_BLUES = ["#0d366b", "#2a6fc6", "#86b6ef"].concat(DONUT_REST); // --blue-900 · 진한 파랑 · --blue-300
+  var DONUT_OTHER = "#eeeeee"; // '기타'는 가장 옅게
 
   function donutArc(cx, cy, R, r, a0, a1) {
     function p(rad, a) { return (cx + rad * Math.sin(a)).toFixed(2) + " " + (cy - rad * Math.cos(a)).toFixed(2); }
@@ -3202,7 +3200,7 @@
   function donutLegendWidth() {
     var names = [].concat(META.serviceCats || [], META.supports || [], META.noticeFields || []);
     if (!measureCtx) measureCtx = document.createElement("canvas").getContext("2d");
-    measureCtx.font = "700 14px " + getComputedStyle(document.body).fontFamily; // 가리킨 칸은 굵게 바뀌므로 굵은 글자로 잰다
+    measureCtx.font = "600 14px " + getComputedStyle(document.body).fontFamily; // 가리킨 칸은 굵게 바뀌므로 굵은 글자로 잰다
     // + 오른쪽 건수 칸(가장 큰 수 '10,000' 폭 + 사이 8px)
     return Math.ceil(Math.max.apply(null, names.map(function (t) { return measureCtx.measureText(t).width; })) + 42 +
       measureCtx.measureText("10,000").width + 8);
